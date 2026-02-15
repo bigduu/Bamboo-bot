@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Select, Space, Spin, Typography, theme } from "antd";
 
 const { Text } = Typography;
@@ -22,8 +22,12 @@ const SystemSettingsModelSelection: React.FC<
   onModelChange,
 }) => {
   const { token } = useToken();
-  const modelOptions =
-    models && models.length > 0 ? models : selectedModel ? [selectedModel] : [];
+
+  // 去重模型列表，避免重复的 key
+  const modelOptions = useMemo(() => {
+    const rawOptions = models && models.length > 0 ? models : selectedModel ? [selectedModel] : [];
+    return [...new Set(rawOptions)]; // 使用 Set 去重
+  }, [models, selectedModel]);
 
   if (modelOptions.length === 0) {
     return (

@@ -360,7 +360,12 @@ impl LLMProvider for CopilotProvider {
             .await
             .map_err(|e| LLMError::Http(e))?;
 
-        Ok(models.data.into_iter().map(|m| m.id).collect())
+        // Deduplicate model IDs to avoid duplicates in the list
+        let mut model_ids: Vec<String> = models.data.into_iter().map(|m| m.id).collect();
+        model_ids.sort();
+        model_ids.dedup();
+
+        Ok(model_ids)
     }
 }
 
