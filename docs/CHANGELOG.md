@@ -1,97 +1,70 @@
-# Changelog
+# 重构更新日志
 
-All notable changes to this project will be documented in this file.
+## 2026-02-16 - Anthropic Model Mapping 动态 Provider 支持
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### 🎯 问题
+`ModelMappingCard` 组件硬编码使用 Copilot provider 的模型列表，当用户切换到其他 provider（OpenAI/Anthropic/Gemini）时无法正常工作。
 
-## [Unreleased]
+### ✅ 解决方案
+重构 `ModelMappingCard` 组件，使其自主管理模型获取逻辑：
+- 自动读取当前配置的 provider
+- 根据 provider 类型调用对应的 API
+- 显示该 provider 的可用模型列表
 
-### Added
-- New agent system with autonomous tool execution and approval gates
-- Spotlight search functionality (Cmd+Shift+Space) for quick actions
-- Comprehensive documentation reorganization and cleanup
-- **Skill System v2: Folder-based skill storage with embedded resources**
-  - Skills now stored as folders (`~/.bamboo/skills/<skill-name>/SKILL.md`) instead of single files
-  - Support for skill resources: scripts, references, and assets within skill folders
-  - Recursive skill discovery - skills can be organized in subdirectories
-  - Built-in `skill-creator` skill with embedded Python scripts for skill initialization and validation
-  - Cross-platform `execute_command` tool (uses `sh -c` on Unix, `cmd /c` on Windows)
-  - `read_file` tool now supports `~` expansion for home directory paths
-  - Smart skill loading: metadata in system prompt, detailed content loaded on-demand via AI tool calls
-  - Auto-refresh skill list in System Settings UI (every 30s + on focus)
+### 📝 修改文件
+1. `src/pages/SettingsPage/components/SystemSettingsPage/ModelMappingCard.tsx`
+   - 移除 `models` 和 `isLoadingModels` props
+   - 添加内部状态管理
+   - 实现 provider 配置自动获取
+   - 实现动态模型列表获取
 
-### Changed
-- Migrated from legacy copilot_client to new agent-based architecture
-- Refactored web_service and src-tauri to use new agent system
-- Unified configuration directory paths using `chat_core::paths`
-- Translated all documentation from Chinese to English
-- **Skill metadata now included in system prompt instead of full content** - reduces token usage and allows AI to intelligently select relevant skills
-- Removed `enabled_by_default` field from skills - all skills are now available by default
+2. `src/pages/SettingsPage/components/SystemSettingsPage/SystemSettingsConfigTab.tsx`
+   - 简化组件接口
+   - 移除不必要的 props 传递
 
-### Removed
-- Deprecated `copilot_client` crate (replaced by agent system)
-- Deprecated `skill_manager` crate (functionality merged into agent system)
-- Deprecated `copilot-agent` legacy crates
-- Legacy AgentPage and frontend agent components
-- OpenSpec system and related files
-- Checkpoint module and Claude Code integration
-- 40+ temporary implementation and bug-fix reports (moved to CHANGELOG)
-- Skill enable/disable functionality (skills are now always available, selected contextually by AI)
+3. `src/pages/SettingsPage/components/SystemSettingsPage/index.tsx`
+   - 清理未使用的 `useModels` hook
 
-### Fixed
-- Async loop handling in agent engine
-- Windows command execution for Claude (`cmd /C`)
-- Environment variable propagation for local base URL
-- TodoList SSE reconnection loop causing "Stream started" log spam every 5 seconds
-- QuestionDialog aggressive polling reduced with adaptive intervals and auto-stop
-- Deleting chat/session now properly removes backend session files (`~/.bamboo/*.json` and `*.jsonl`)
-- Proxy configuration no longer auto-populates from `HTTP_PROXY`/`HTTPS_PROXY` environment variables; settings now persist correctly when cleared
-- **Skill file validation now correctly matches directory name with skill ID**
+### 📚 新增文档
+- `docs/refactoring/ANTHROPIC_MODEL_MAPPING_PROVIDER_SUPPORT.md` - 详细重构文档
+- `docs/implementation/ANTHROPIC_MODEL_MAPPING_DYNAMIC_PROVIDER.md` - 技术实现细节
 
-## [0.2.0] - 2025-11-05
+### 🔄 更新文档
+- `docs/plans/2026-02-12-config-ui-redesign.md` - 更新 ModelMappingCard 说明
+- `docs/plans/2026-02-12-config-cleanup-implementation.md` - 添加重构状态
 
-### Added
-- Chat memory that restores the most recent conversation across sessions and devices
-- AI-assisted chat title generation with user preference controls and inline status feedback
-- System prompt selector improvements: Markdown preview, syntax highlighting, and copy support
-- Enhanced tool & workflow result cards with collapsible formatting and execution metadata
-- Drag-and-drop / paste support for multiple file types plus `@` file reference selector
-- Virtualised chat message list powered by `@tanstack/react-virtual` for smoother scrolling
-- Plan-Act agent architecture for complex multi-step tasks
-- Context Manager v2: Backend-managed chat context with persistence
-- Dual-mode architecture: LLM-driven tools and user-invoked workflows
-- Built-in tools: filesystem operations, search, command execution
-- Mermaid diagram rendering in chat messages
-- PDF export functionality for conversations
+### ✨ 影响
+- **前端**: 3 个组件文件
+- **后端**: 无变化
+- **API**: 无变化
+- **配置文件**: 无变化
+- **破坏性变更**: 无
 
-### Changed
-- Refactored message transformation utilities to share backend DTO conversion logic
-- Streamlined message input props into a dedicated interaction contract
-- Added development-only React Profiler instrumentation for MainLayout renders
-- Introduced Prettier formatting scripts and applied consistent styling across the repo
-- Migrated chat context from browser LocalStorage to backend storage
+### 🧪 测试状态
+- [ ] OpenAI provider 模型获取
+- [ ] Anthropic provider 模型获取
+- [ ] Gemini provider 模型获取
+- [ ] Copilot provider 模型获取
+- [ ] 模型映射保存/加载
 
-### Fixed
-- Addressed inconsistencies in system prompt display when switching prompts mid-chat
-- Resolved various TypeScript typing issues surfaced during UI/UX refactor
+### 📊 代码统计
+```
+Files changed: 3
+Lines added: +75
+Lines removed: -36
+Net change: +39 lines
+```
 
-### Security
-- Secure proxy authentication storage with encryption
-- Backend proxy auth dialog with "remember me" and "skip" options
-- Removed frontend proxy auth UI to prevent credential exposure
+---
 
-## [0.1.0] - 2025-08-01
+## 历史记录
 
-### Added
-- Initial release of Bamboo - GitHub Copilot Chat Desktop
-- React 18 + TypeScript frontend with Ant Design 5
-- Tauri + Rust backend architecture
-- Basic chat interface with streaming responses
-- Syntax highlighting for code blocks
-- System prompt management
-- Cross-platform support (macOS, Windows, Linux)
+### 2026-02-15 - Provider 动态模型选择
+- 扩展 `LLMProvider` trait 支持 `model` 参数
+- 实现 Gemini model mapping 服务
+- 更新所有 provider 实现
 
-[Unreleased]: https://github.com/bigduu/copilot_client_app/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/bigduu/copilot_client_app/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/bigduu/copilot_client_app/releases/tag/v0.1.0
+### 2026-02-12 - 配置 UI 重构
+- 分离 Network Settings
+- 重构 Provider Settings
+- 改进配置组件结构

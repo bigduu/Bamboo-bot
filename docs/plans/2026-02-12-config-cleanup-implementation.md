@@ -343,14 +343,26 @@ fn migrate_config(old: OldConfig) -> Config {
 
 #### 2.4 ModelMappingCard
 
+**Status**: ✅ 已实现并重构
+
 ```tsx
 <Card title="Model Mapping (Advanced)">
   <Collapse>
     <Panel header="Anthropic Model Mapping" key="1">
       <Space direction="vertical">
         <Text type="secondary">
-          Configure which Copilot models to use when Claude CLI requests specific models.
+          Configure which {currentProvider} models to use when Claude CLI requests specific models.
         </Text>
+
+        {/* 显示当前 provider 和模型数量 */}
+        <Space direction="vertical">
+          <Text type="secondary">
+            Current Provider: <Text strong>{currentProvider}</Text>
+          </Text>
+          <Text type="secondary">
+            Available Models: <Text strong>{availableModels.length}</Text>
+          </Text>
+        </Space>
 
         {['opus', 'sonnet', 'haiku'].map(modelType => (
           <Select
@@ -358,7 +370,9 @@ fn migrate_config(old: OldConfig) -> Config {
             label={`${modelType.charAt(0).toUpperCase() + modelType.slice(1)} (contains "${modelType}")`}
             value={mappings[modelType]}
             onChange={(value) => handleMappingChange(modelType, value)}
-            options={models.map(m => ({ label: m, value: m }))}
+            options={availableModels.map(m => ({ label: m, value: m }))}
+            loading={isLoadingModels}
+            disabled={isLoadingModels || availableModels.length === 0}
           />
         ))}
 
@@ -372,6 +386,15 @@ fn migrate_config(old: OldConfig) -> Config {
   </Collapse>
 </Card>
 ```
+
+**关键改进** (2026-02-16):
+- ✅ 自动获取当前配置的 provider
+- ✅ 根据 provider 类型动态获取模型列表
+- ✅ 支持所有 provider（Copilot/OpenAI/Anthropic/Gemini）
+- ✅ 显示当前 provider 和可用模型数量
+- ✅ 移除对父组件 props 的依赖
+
+详见: [Anthropic Model Mapping Provider Support](../refactoring/ANTHROPIC_MODEL_MAPPING_PROVIDER_SUPPORT.md)
 
 ### Phase 3: 移除不需要的字段
 
