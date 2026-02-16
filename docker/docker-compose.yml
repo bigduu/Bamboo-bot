@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  bamboo-web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: bamboo-web-service:latest
+    container_name: bamboo-web
+    ports:
+      - "8080:8080"
+    volumes:
+      - bamboo-data:/data
+      - ./config.json:/data/config.json:ro
+    environment:
+      - RUST_LOG=info
+      - BAMBOO_DATA_DIR=/data
+      - BAMBOO_PORT=8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  bamboo-data:
+    driver: local
