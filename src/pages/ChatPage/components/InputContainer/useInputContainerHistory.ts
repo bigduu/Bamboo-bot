@@ -29,17 +29,16 @@ export const useInputContainerHistory = ({
     const history = [...currentMessages];
     if (history.length === 0) return;
 
-    const lastMessage = history[history.length - 1];
-    let trimmedHistory = history;
-    if (lastMessage?.role === "assistant") {
-      deleteMessage(currentChatId, lastMessage.id);
-      trimmedHistory = history.slice(0, -1);
-    }
-
-    const lastUser = [...trimmedHistory]
+    // Find the last user message
+    const lastUserIndex = [...history]
       .reverse()
-      .find((msg) => msg.role === "user");
-    if (!lastUser) return;
+      .findIndex((msg) => msg.role === "user");
+
+    if (lastUserIndex === -1) return;
+
+    // Convert back to forward index
+    const actualIndex = history.length - 1 - lastUserIndex;
+    const lastUser = history[actualIndex];
 
     const content =
       "content" in lastUser
@@ -47,6 +46,13 @@ export const useInputContainerHistory = ({
         : (lastUser as UserFileReferenceMessage).displayText;
     if (typeof content !== "string") return;
 
+    // Delete the last user message and all messages after it (including any assistant responses)
+    const messagesToDelete = history.slice(actualIndex);
+    for (const message of messagesToDelete) {
+      deleteMessage(currentChatId, message.id);
+    }
+
+    // Resend the last user message content
     await sendMessage(content);
   }, [currentChat, currentChatId, currentMessages, deleteMessage, sendMessage]);
 
