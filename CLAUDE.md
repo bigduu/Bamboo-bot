@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **Bamboo**, a GitHub Copilot Chat Desktop application built with Tauri (Rust backend) and React/TypeScript (frontend). The application provides a native desktop interface for interacting with GitHub Copilot's chat API, featuring conversation management, agent-driven tool execution, workflows, and Spotlight search.
+This is **Bamboo**, a GitHub Copilot Chat Desktop application built with Tauri (Rust backend) and React/TypeScript (frontend). The application provides a native desktop interface for interacting with GitHub Copilot's chat API, featuring conversation management, agent-driven tool execution, and workflows.
 
 ## Architecture
 
@@ -53,7 +53,6 @@ This is **Bamboo**, a GitHub Copilot Chat Desktop application built with Tauri (
 **Application Entry:**
 - `src-tauri/` - Main Tauri application integrating all crates, with commands for:
   - Claude Code integration (checkpoints, sessions, projects)
-  - Spotlight global shortcut (Cmd+Shift+Space)
   - Proxy authentication dialog
   - File operations
 
@@ -68,7 +67,6 @@ This is **Bamboo**, a GitHub Copilot Chat Desktop application built with Tauri (
   - `store/slices/` - Zustand slices (appSettings, favorites, prompt)
   - `types/` - TypeScript type definitions
 - `src/pages/SettingsPage/` - Application settings (includes Claude Installer)
-- `src/pages/SpotlightPage/` - Quick search/action interface
 - `src/shared/` - Cross-page utilities and components
 - `src/services/` - Shared services (common utilities, agent services)
 
@@ -127,7 +125,7 @@ cargo test -p web_service
 
 ### Build Configuration
 - **Vite**: Port 1420 with HMR, manual chunking for vendor libraries (React, Ant Design, Mermaid, PDF)
-- **Tauri**: macOS private API enabled, global shortcut plugin for Spotlight
+- **Tauri**: macOS private API enabled
 
 ### Testing
 - **Frontend**: Vitest with jsdom, tests in `src/**/__tests__/` directories
