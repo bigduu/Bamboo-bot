@@ -155,8 +155,15 @@ export const ModelMappingCard: React.FC = () => {
     }
   }, [currentProvider, fetchModels]);
 
-  const handleMappingChange = async (modelType: string, selectedModel: string) => {
-    const newMappings = { ...mappings, [modelType]: selectedModel };
+  const handleMappingChange = async (modelType: string, selectedModel: string | string[]) => {
+    // Handle both string and array (from tags mode)
+    const modelValue = Array.isArray(selectedModel) ? selectedModel[0] || "" : selectedModel;
+
+    if (!modelValue) {
+      return; // Don't save empty values
+    }
+
+    const newMappings = { ...mappings, [modelType]: modelValue };
     setMappings(newMappings);
 
     try {
@@ -246,7 +253,7 @@ export const ModelMappingCard: React.FC = () => {
                   style={{ width: "100%" }}
                   value={mappedModel || undefined}
                   onChange={(value) => handleMappingChange(key, value)}
-                  placeholder={`Select ${label} model`}
+                  placeholder={`Select ${label} model (or type custom model name)`}
                   loading={isLoadingModels}
                   disabled={isLoadingModels || availableModels.length === 0}
                   showSearch
@@ -255,6 +262,9 @@ export const ModelMappingCard: React.FC = () => {
                   optionFilterProp="children"
                   options={availableModels.map((m) => ({ label: m, value: m }))}
                   status={!isMappingValid ? "warning" : undefined}
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                  }
                 />
                 {/* Model Validation Warning */}
                 {!isMappingValid && mappedModel && (
