@@ -10,8 +10,10 @@ import {
   Alert,
   Button,
   Spin,
+  Input,
+  Modal,
 } from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
+import { ReloadOutlined, PlusOutlined } from "@ant-design/icons";
 import { serviceFactory } from "../../../../services/common/ServiceFactory";
 import { settingsService } from "../../../../services/config/SettingsService";
 
@@ -43,6 +45,11 @@ export const ModelMappingCard: React.FC = () => {
 
   // Model cache state
   const [modelCache, setModelCache] = useState<ModelCache>({});
+
+  // Custom model input modal state
+  const [customModalVisible, setCustomModalVisible] = useState(false);
+  const [customModelType, setCustomModelType] = useState<string>("");
+  const [customModelName, setCustomModelName] = useState<string>("");
 
   // Load current provider configuration
   useEffect(() => {
@@ -155,15 +162,20 @@ export const ModelMappingCard: React.FC = () => {
     }
   }, [currentProvider, fetchModels]);
 
-  const handleMappingChange = async (modelType: string, selectedModel: string | string[]) => {
-    // Handle both string and array (from tags mode)
-    const modelValue = Array.isArray(selectedModel) ? selectedModel[0] || "" : selectedModel;
+  const handleMappingChange = async (modelType: string, selectedModel: string) => {
+    // Handle custom input
+    if (selectedModel === "__custom__") {
+      setCustomModelType(modelType);
+      setCustomModelName("");
+      setCustomModalVisible(true);
+      return;
+    }
 
-    if (!modelValue) {
+    if (!selectedModel) {
       return; // Don't save empty values
     }
 
-    const newMappings = { ...mappings, [modelType]: modelValue };
+    const newMappings = { ...mappings, [modelType]: selectedModel };
     setMappings(newMappings);
 
     try {
@@ -172,6 +184,26 @@ export const ModelMappingCard: React.FC = () => {
     } catch (error) {
       console.error("Failed to save model mapping:", error);
       msgApi.error("Failed to save model mapping");
+    }
+  };
+
+  const handleCustomModelSave = async () => {
+    if (!customModelName.trim()) {
+      msgApi.warning("Please enter a model name");
+      return;
+    }
+
+    const newMappings = { ...mappings, [customModelType]: customModelName.trim() };
+    setMappings(newMappings);
+
+    try {
+      await serviceFactory.setAnthropicModelMapping({ mappings: newMappings });
+      msgApi.success("Custom model mapping saved");
+      setCustomModalVisible(false);
+      setCustomModelName("");
+    } catch (error) {
+      console.error("Failed to save custom model mapping:", error);
+      msgApi.error("Failed to save custom model mapping");
     }
   };
 
@@ -253,14 +285,16 @@ export const ModelMappingCard: React.FC = () => {
                   style={{ width: "100%" }}
                   value={mappedModel || undefined}
                   onChange={(value) => handleMappingChange(key, value)}
-                  placeholder={`Select ${label} model (or type custom model name)`}
+                  placeholder={`Select ${label} model`}
                   loading={isLoadingModels}
                   disabled={isLoadingModels || availableModels.length === 0}
                   showSearch
-                  mode="tags" // Allow manual input
-                  maxCount={1} // Only allow one selection
+                  allowClear
                   optionFilterProp="children"
-                  options={availableModels.map((m) => ({ label: m, value: m }))}
+                  options={[
+                    ...availableModels.map((m) => ({ label: m, value: m })),
+                    { label: "✏️ Custom model...", value: "__custom__" }
+                  ]}
                   status={!isMappingValid ? "warning" : undefined}
                   filterOption={(input, option) =>
                     (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
@@ -321,6 +355,35 @@ export const ModelMappingCard: React.FC = () => {
         items={collapseItems}
         style={{ marginBottom: token.marginSM }}
       />
+
+      {/* Custom Model Input Modal */}
+      <Modal
+        title="Enter Custom Model Name"
+        open={customModalVisible}
+        onOk={handleCustomModelSave}
+        onCancel={() => {
+          setCustomModalVisible(false);
+          setCustomModelName("");
+        }}
+        okText="Save"
+        cancelText="Cancel"
+      >
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Text type="secondary">
+            Enter a custom model name for <Text strong>{customModelType}</Text>
+          </Text>
+          <Input
+            placeholder="e.g., gpt-4-turbo-preview"
+            value={customModelName}
+            onChange={(e) => setCustomModelName(e.target.value)}
+            onPressEnter={handleCustomModelSave}
+            autoFocus
+          />
+          <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+            Note: Make sure the model name is valid for the current provider.
+          </Text>
+        </Space>
+      </Modal>
     </>
   );
 };
