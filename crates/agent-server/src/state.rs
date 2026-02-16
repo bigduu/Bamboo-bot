@@ -105,14 +105,20 @@ impl AppState {
     ) -> Self {
         // Use provided app_data_dir or default to ~/.bamboo
         let data_dir = app_data_dir.unwrap_or_else(bamboo_dir);
+        let sessions_dir = data_dir.join("sessions");
 
-        log::info!("Initializing storage at: {:?}", data_dir);
-        let storage = JsonlStorage::new(&data_dir);
+        // Migrate session files from old location if needed
+        if let Err(e) = chat_core::migrate_session_files() {
+            log::warn!("Failed to migrate session files: {}", e);
+        }
+
+        log::info!("Initializing storage at: {:?}", sessions_dir);
+        let storage = JsonlStorage::new(&sessions_dir);
         if let Err(e) = storage.init().await {
-            log::error!("Failed to init storage at {:?}: {}", data_dir, e);
+            log::error!("Failed to init storage at {:?}: {}", sessions_dir, e);
             panic!("Failed to init storage: {}", e);
         }
-        log::info!("Storage initialized successfully at: {:?}", data_dir);
+        log::info!("Storage initialized successfully at: {:?}", sessions_dir);
 
         // Initialize LLM Provider based on provider type
         log::info!(
