@@ -3,7 +3,6 @@ import { Button, Flex, Layout, Tabs, Typography, message, theme } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useChatManager } from "../../../ChatPage/hooks/useChatManager";
 import { serviceFactory } from "../../../../services/common/ServiceFactory";
-import { useModels } from "../../hooks/useModels";
 import {
   getSystemPromptEnhancement,
   setSystemPromptEnhancement,
@@ -52,11 +51,6 @@ const SystemSettingsPage = ({
   } = useChatManager();
   const [isResetting, setIsResetting] = useState(false);
   const [msgApi, contextHolder] = message.useMessage();
-  const {
-    models,
-    isLoading: isLoadingModels,
-    error: modelsError,
-  } = useModels();
   const [promptEnhancement, setPromptEnhancement] = useState("");
   const [mermaidEnhancementEnabled, setMermaidEnhancementEnabledState] =
     useState(isMermaidEnhancementEnabled());
@@ -185,9 +179,6 @@ const SystemSettingsPage = ({
               children: (
                 <SystemSettingsConfigTab
                   msgApi={msgApi}
-                  models={models}
-                  modelsError={modelsError}
-                  isLoadingModels={isLoadingModels}
                 />
               ),
             },

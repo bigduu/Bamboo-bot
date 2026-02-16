@@ -12,16 +12,10 @@ interface SystemSettingsConfigTabProps {
     success: (content: string) => void;
     error: (content: string) => void;
   };
-  models: string[];
-  modelsError: string | null;
-  isLoadingModels: boolean;
 }
 
 export const SystemSettingsConfigTab: React.FC<SystemSettingsConfigTabProps> = ({
   msgApi,
-  models,
-  modelsError,
-  isLoadingModels,
 }) => {
   const { token } = useToken();
   const [config, setConfig] = useState({
@@ -106,10 +100,7 @@ export const SystemSettingsConfigTab: React.FC<SystemSettingsConfigTabProps> = (
       />
 
       {/* Model Mapping */}
-      <ModelMappingCard
-        models={models}
-        isLoadingModels={isLoadingModels}
-      />
+      <ModelMappingCard />
 
       {/* Backend Settings */}
       <Card size="small" title={<Text strong>Backend API Base URL</Text>}>

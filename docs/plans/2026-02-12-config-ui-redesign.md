@@ -254,11 +254,13 @@ fn anthropic_mapping_path() -> PathBuf {
 // SystemSettingsConfigTab.tsx
 <SystemSettingsConfigTab>
   <NetworkSettingsCard />
-  <GitHubCopilotSettingsCard />
-  <ModelMappingCard collapsible />
+  <ModelMappingCard /> {/* ✅ 已实现：自动获取当前 provider 的模型 */}
   <BackendSettingsCard />
 </SystemSettingsConfigTab>
 ```
+
+**Note**: `ModelMappingCard` 已重构为自主管理模型获取，支持所有 provider（Copilot/OpenAI/Anthropic/Gemini）。
+详见: [Anthropic Model Mapping Provider Support](../refactoring/ANTHROPIC_MODEL_MAPPING_PROVIDER_SUPPORT.md)
 
 #### 2. **添加配置说明和帮助**
 
