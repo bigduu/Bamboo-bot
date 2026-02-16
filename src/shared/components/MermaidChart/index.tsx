@@ -3,6 +3,7 @@ import { theme } from "antd";
 import MermaidChartError from "./MermaidChartError";
 import MermaidChartViewer from "./MermaidChartViewer";
 import { useMermaidRenderState } from "./useMermaidRenderState";
+import { useMermaidSettings } from "../../store/mermaidSettingsStore";
 
 const { useToken } = theme;
 
@@ -17,6 +18,7 @@ export interface MermaidChartProps {
 export const MermaidChart: React.FC<MermaidChartProps> = React.memo(
   ({ chart, id: _id, className, style, onFix }) => {
     const { token } = useToken();
+    const userSettings = useMermaidSettings();
     const { renderState } = useMermaidRenderState(chart);
     const { svg, height, svgWidth, error, isLoading } = renderState;
     const [isFixing, setIsFixing] = useState(false);
@@ -24,15 +26,18 @@ export const MermaidChart: React.FC<MermaidChartProps> = React.memo(
     const containerRef = useRef<HTMLDivElement>(null);
 
     const calculateInitialScale = () => {
+      // Use user-configured default scale
+      const baseScale = userSettings.defaultScale;
+
       if (svgWidth > 1200) {
-        return 0.8;
+        return baseScale * 0.8;
       }
 
       if (svgWidth > 800) {
-        return 1.0;
+        return baseScale * 1.0;
       }
 
-      return 1.2;
+      return baseScale * 1.2;
     };
 
     const initialScale = calculateInitialScale();

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Space, Typography, Input, Button, theme } from "antd";
+import { Card, Space, Typography, Input, Button, theme, Alert } from "antd";
 import { NetworkSettingsCard } from "./NetworkSettingsCard";
-import { CopilotSettingsCard } from "./CopilotSettingsCard";
 import { ModelMappingCard } from "./ModelMappingCard";
 import { serviceFactory } from "../../../../services/common/ServiceFactory";
 
@@ -28,8 +27,6 @@ export const SystemSettingsConfigTab: React.FC<SystemSettingsConfigTabProps> = (
   const [config, setConfig] = useState({
     http_proxy: "",
     https_proxy: "",
-    model: "",
-    headless_auth: false,
   });
   const [backendBaseUrl, setBackendBaseUrl] = useState("http://127.0.0.1:8080/v1");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,8 +39,6 @@ export const SystemSettingsConfigTab: React.FC<SystemSettingsConfigTabProps> = (
       setConfig({
         http_proxy: bambooConfig.http_proxy || "",
         https_proxy: bambooConfig.https_proxy || "",
-        model: bambooConfig.model || "",
-        headless_auth: bambooConfig.headless_auth || false,
       });
     } catch (error) {
       console.error("Failed to load config:", error);
@@ -64,14 +59,6 @@ export const SystemSettingsConfigTab: React.FC<SystemSettingsConfigTabProps> = (
 
   const handleHttpsProxyChange = (value: string) => {
     setConfig((prev) => ({ ...prev, https_proxy: value }));
-  };
-
-  const handleModelChange = (model: string) => {
-    setConfig((prev) => ({ ...prev, model }));
-  };
-
-  const handleHeadlessAuthChange = (checked: boolean) => {
-    setConfig((prev) => ({ ...prev, headless_auth: checked }));
   };
 
   const handleSaveConfig = async () => {
@@ -98,26 +85,21 @@ export const SystemSettingsConfigTab: React.FC<SystemSettingsConfigTabProps> = (
 
   return (
     <Space direction="vertical" size={token.marginMD} style={{ width: "100%" }}>
+      {/* Info Banner */}
+      <Alert
+        message="Provider Configuration Moved"
+        description="GitHub Copilot and other provider settings have been moved to the Provider Settings tab. Please configure your providers there."
+        type="info"
+        showIcon
+        closable
+      />
+
       {/* Network Settings */}
       <NetworkSettingsCard
         httpProxy={config.http_proxy}
         httpsProxy={config.https_proxy}
         onHttpProxyChange={handleHttpProxyChange}
         onHttpsProxyChange={handleHttpsProxyChange}
-        onReload={loadConfig}
-        onSave={handleSaveConfig}
-        isLoading={isLoading}
-      />
-
-      {/* GitHub Copilot Settings */}
-      <CopilotSettingsCard
-        model={config.model}
-        onModelChange={handleModelChange}
-        headlessAuth={config.headless_auth}
-        onHeadlessAuthChange={handleHeadlessAuthChange}
-        models={models}
-        isLoadingModels={isLoadingModels}
-        modelsError={modelsError}
         onReload={loadConfig}
         onSave={handleSaveConfig}
         isLoading={isLoading}

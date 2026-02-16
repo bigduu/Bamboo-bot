@@ -35,6 +35,7 @@ export interface GeminiConfig {
 
 export interface CopilotConfig {
   // Copilot uses OAuth - no API key required
+  headless_auth?: boolean;  // Print login URL in console instead of opening browser
 }
 
 export type ProviderType = 'copilot' | 'openai' | 'anthropic' | 'gemini';

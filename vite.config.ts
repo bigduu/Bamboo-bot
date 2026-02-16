@@ -8,6 +8,9 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  // No optimizeDeps config - let Vite handle mermaid naturally
+  // The 404 issue will be handled by proper chunk splitting in build
+
   build: {
     chunkSizeWarningLimit: 1000,
     rollupOptions: {

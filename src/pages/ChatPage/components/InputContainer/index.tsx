@@ -13,6 +13,7 @@ import { useInputContainerAttachments } from "./useInputContainerAttachments";
 import { useInputContainerSubmit } from "./useInputContainerSubmit";
 import { useInputContainerHistory } from "./useInputContainerHistory";
 import { getInputContainerPlaceholder } from "./inputContainerPlaceholder";
+import { useActiveModel } from "../../hooks/useActiveModel";
 
 const FilePreview = lazy(() => import("../FilePreview"));
 const WorkflowSelector = lazy(() => import("../WorkflowSelector"));
@@ -56,6 +57,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   const deleteMessage = useAppStore((state) => state.deleteMessage);
   const isProcessing = useAppStore((state) => state.isProcessing);
   const setProcessing = useAppStore((state) => state.setProcessing);
+  const activeModel = useActiveModel();
 
   const { sendMessage, cancel: cancelMessage, agentAvailable } = useMessageStreaming({
     currentChat,
@@ -174,6 +176,9 @@ export const InputContainer: React.FC<InputContainerProps> = ({
 
   // Agent status indicator config
   const agentStatusConfig = useMemo(() => {
+    if (!activeModel) {
+      return { color: "warning", icon: <RobotOutlined />, text: "Loading Model..." };
+    }
     if (agentAvailable === null) {
       return { color: "default", icon: <RobotOutlined />, text: "Checking..." };
     }
@@ -181,7 +186,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
       return { color: "success", icon: <RobotOutlined />, text: "Agent Mode" };
     }
     return { color: "red", icon: <RobotOutlined />, text: "Agent Unavailable" };
-  }, [agentAvailable]);
+  }, [activeModel, agentAvailable]);
 
   const handleCloseReferencePreview = () => setReferenceText(null);
 
@@ -284,6 +289,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
         onSubmit={handleSubmit}
         placeholder={placeholder}
         allowImages={true}
+        disabled={!activeModel}
         isWorkflowSelectorVisible={workflowState.showWorkflowSelector}
         validateMessage={(message) => {
           if (isRestrictConversation && autoToolPrefix) {

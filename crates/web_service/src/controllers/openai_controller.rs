@@ -304,6 +304,13 @@ pub async fn chat_completions(
     let request = req.into_inner();
     let model = request.model.clone();
 
+    // If model is "default", use None to let provider use its configured default
+    let model_override = if model == "default" {
+        None
+    } else {
+        Some(model.as_str())
+    };
+
     // Convert messages to internal format
     let internal_messages = convert_messages(request.messages)?;
     let internal_tools = convert_tools(request.tools)?;
@@ -318,7 +325,7 @@ pub async fn chat_completions(
                 &internal_messages,
                 &internal_tools,
                 max_tokens,
-                None,
+                model_override,  // Pass model override
             )
             .await
             .map_err(|e| {
@@ -374,7 +381,7 @@ pub async fn chat_completions(
                 &internal_messages,
                 &internal_tools,
                 max_tokens,
-                None,
+                model_override,  // Pass model override
             )
             .await
             .map_err(|e| {

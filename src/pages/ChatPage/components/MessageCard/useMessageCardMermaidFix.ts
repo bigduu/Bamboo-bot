@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { getOpenAIClient } from "../../services/openaiClient";
 import type { ChatItem, Message } from "../../types/chat";
+import { useActiveModel } from "../../hooks/useActiveModel";
 
 interface UseMessageCardMermaidFixProps {
   message: Message;
   messageId: string;
-  selectedModel?: string | null;
   currentChatId?: string | null;
   currentChat?: ChatItem | null;
   updateChat: (chatId: string, update: Partial<ChatItem>) => void;
@@ -40,7 +40,8 @@ const replaceMermaidBlock = (
 const fixMermaidWithAI = async (chart: string, model?: string | null) => {
   const client = getOpenAIClient();
   const response = await client.chat.completions.create({
-    model: model || "gpt-4o-mini",
+    // Use provided model, or use "default" to let backend use its configured default
+    model: model || "default",
     messages: [
       {
         role: "system",
@@ -61,11 +62,11 @@ const fixMermaidWithAI = async (chart: string, model?: string | null) => {
 export const useMessageCardMermaidFix = ({
   message,
   messageId,
-  selectedModel,
   currentChatId,
   currentChat,
   updateChat,
 }: UseMessageCardMermaidFixProps) => {
+  const activeModel = useActiveModel();
   const canFixMermaid =
     message.role === "assistant" &&
     message.type === "text" &&
@@ -82,7 +83,7 @@ export const useMessageCardMermaidFix = ({
         throw new Error("Mermaid fix is only available for assistant messages");
       }
 
-      const fixedChart = await fixMermaidWithAI(chart, selectedModel);
+      const fixedChart = await fixMermaidWithAI(chart, activeModel);
       if (!fixedChart) {
         throw new Error("AI did not return a Mermaid fix");
       }
@@ -114,7 +115,7 @@ export const useMessageCardMermaidFix = ({
     currentChatId,
     message,
     messageId,
-    selectedModel,
+    activeModel,
     updateChat,
   ]);
 };

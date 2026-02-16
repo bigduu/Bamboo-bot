@@ -13,6 +13,7 @@ import {
   Tag,
   Spin,
   Modal,
+  Switch,
 } from 'antd';
 import {
   SaveOutlined,
@@ -63,6 +64,8 @@ export const ProviderSettings: React.FC = () => {
   const [completingAuth, setCompletingAuth] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [copiedUserCode, setCopiedUserCode] = useState(false);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [availableModels, setAvailableModels] = useState<Array<{value: string; label: string}>>([]);
 
   // Countdown timer for device code expiration
   useEffect(() => {
@@ -99,7 +102,17 @@ export const ProviderSettings: React.FC = () => {
   const loadConfig = async () => {
     try {
       setLoading(true);
-      const config = await settingsService.getProviderConfig();
+      const response = await settingsService.getProviderConfig();
+
+      // Transform backend response to frontend format
+      // Backend returns: { provider, providers: { openai: {...} } }
+      // Frontend expects: { provider, providers: { openai: {...} } }
+      const config: ProviderConfig = {
+        provider: response.provider,
+        providers: (response as any).providers || {},
+      };
+
+      console.log('Loaded provider config:', config);
       setCurrentProvider(config.provider as ProviderType);
       form.setFieldsValue(config);
       setConfigLoaded(true);
@@ -197,13 +210,105 @@ export const ProviderSettings: React.FC = () => {
   const handleProviderChange = (value: ProviderType) => {
     setCurrentProvider(value);
     form.setFieldsValue({ provider: value });
+    setAvailableModels([]); // Clear models when switching provider
+  };
+
+  const handleFetchOpenAIModels = async () => {
+    try {
+      setFetchingModels(true);
+
+      // Use backend to fetch models with real API key
+      const models = await settingsService.fetchProviderModels('openai');
+
+      // Format models for Select component
+      const formattedModels = models.map((model: string) => ({
+        value: model,
+        label: model,
+      }));
+
+      setAvailableModels(formattedModels);
+      message.success(`Found ${formattedModels.length} available models`);
+    } catch (error) {
+      message.error('Failed to fetch models. Please check your API key and base URL.');
+      console.error('Failed to fetch OpenAI models:', error);
+    } finally {
+      setFetchingModels(false);
+    }
+  };
+
+  const handleFetchAnthropicModels = async () => {
+    try {
+      setFetchingModels(true);
+
+      // Use backend to fetch models with real API key
+      const models = await settingsService.fetchProviderModels('anthropic');
+
+      // Format models for Select component
+      const formattedModels = models.map((model: string) => ({
+        value: model,
+        label: model,
+      }));
+
+      setAvailableModels(formattedModels);
+      message.success(`Found ${formattedModels.length} available models`);
+    } catch (error) {
+      message.error('Failed to fetch models. Please check your API key and base URL.');
+      console.error('Failed to fetch Anthropic models:', error);
+    } finally {
+      setFetchingModels(false);
+    }
+  };
+
+  const handleFetchGeminiModels = async () => {
+    try {
+      setFetchingModels(true);
+
+      // Use backend to fetch models with real API key
+      const models = await settingsService.fetchProviderModels('gemini');
+
+      // Format models for Select component
+      const formattedModels = models.map((model: string) => ({
+        value: model,
+        label: model,
+      }));
+
+      setAvailableModels(formattedModels);
+      message.success(`Found ${formattedModels.length} available models`);
+    } catch (error) {
+      message.error('Failed to fetch models. Please check your API key and base URL.');
+      console.error('Failed to fetch Gemini models:', error);
+    } finally {
+      setFetchingModels(false);
+    }
   };
 
   const handleSave = async (values: ProviderConfig) => {
     try {
       setLoading(true);
-      await settingsService.saveProviderConfig(values);
+
+      // Transform frontend format to backend format
+      // Frontend has: { provider, providers: { openai: {...} } }
+      // Backend expects: { provider, providers: { openai: {...} } }
+      const payload = {
+        provider: values.provider,
+        providers: values.providers || {},
+      };
+
+      console.log('Saving provider config:', payload);
+      await settingsService.saveProviderConfig(payload);
       message.success('Configuration saved successfully');
+
+      // Automatically apply configuration after saving
+      try {
+        setApplyingConfig(true);
+        await settingsService.reloadConfig();
+        message.success('Configuration applied successfully. Changes will take effect for new conversations.');
+      } catch (applyError) {
+        message.warning('Configuration saved but failed to apply. Please click "Reload Configuration" manually.');
+        console.error('Failed to apply configuration:', applyError);
+      } finally {
+        setApplyingConfig(false);
+      }
     } catch (error) {
       message.error('Failed to save configuration');
       console.error('Failed to save configuration:', error);
@@ -216,6 +321,12 @@ export const ProviderSettings: React.FC = () => {
     try {
       setApplyingConfig(true);
       await settingsService.reloadConfig();
+
+      // Reload provider config in frontend
+      // This ensures useActiveModel() returns the updated model
+      const { useProviderStore } = await import('../../../ChatPage/store/slices/providerSlice');
+      await useProviderStore.getState().loadProviderConfig();
+
       message.success('Configuration applied successfully. Changes will take effect for new conversations.');
     } catch (error) {
       message.error('Failed to apply configuration');
@@ -250,16 +361,28 @@ export const ProviderSettings: React.FC = () => {
             <Form.Item
               name={['providers', 'openai', 'base_url']}
               label="Base URL (Optional)"
-              extra="Leave empty to use the default OpenAI API endpoint"
+              extra="Leave empty to use the default OpenAI API endpoint. Include full path (e.g., /v1) if needed."
             >
               <Input placeholder="https://api.openai.com/v1" />
             </Form.Item>
             <Form.Item
               name={['providers', 'openai', 'model']}
               label="Default Model"
+              rules={[{ required: true, message: 'Please select a model' }]}
+              extra={
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={handleFetchOpenAIModels}
+                  loading={fetchingModels}
+                  style={{ padding: 0 }}
+                >
+                  {fetchingModels ? 'Fetching models...' : 'Fetch available models from API'}
+                </Button>
+              }
             >
-              <Select placeholder="Select a model" allowClear>
-                {OPENAI_MODELS.map((model) => (
+              <Select placeholder="Select a model" allowClear showSearch>
+                {(availableModels.length > 0 ? availableModels : OPENAI_MODELS).map((model) => (
                   <Option key={model.value} value={model.value}>
                     {model.label}
                   </Option>
@@ -292,16 +415,28 @@ export const ProviderSettings: React.FC = () => {
             <Form.Item
               name={['providers', 'anthropic', 'base_url']}
               label="Base URL (Optional)"
-              extra="Leave empty to use the default Anthropic API endpoint"
+              extra="Leave empty to use the default Anthropic API endpoint. Include full path (e.g., /v1) if needed."
             >
-              <Input placeholder="https://api.anthropic.com" />
+              <Input placeholder="https://api.anthropic.com/v1" />
             </Form.Item>
             <Form.Item
               name={['providers', 'anthropic', 'model']}
               label="Default Model"
+              rules={[{ required: true, message: 'Please select a model' }]}
+              extra={
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={handleFetchAnthropicModels}
+                  loading={fetchingModels}
+                  style={{ padding: 0 }}
+                >
+                  {fetchingModels ? 'Fetching models...' : 'Fetch available models from API'}
+                </Button>
+              }
             >
-              <Select placeholder="Select a model" allowClear>
-                {ANTHROPIC_MODELS.map((model) => (
+              <Select placeholder="Select a model" allowClear showSearch>
+                {(availableModels.length > 0 ? availableModels : ANTHROPIC_MODELS).map((model) => (
                   <Option key={model.value} value={model.value}>
                     {model.label}
                   </Option>
@@ -341,16 +476,28 @@ export const ProviderSettings: React.FC = () => {
             <Form.Item
               name={['providers', 'gemini', 'base_url']}
               label="Base URL (Optional)"
-              extra="Leave empty to use the default Google AI API endpoint"
+              extra="Leave empty to use the default Google AI API endpoint. Include full path if needed."
             >
-              <Input placeholder="https://generativelanguage.googleapis.com" />
+              <Input placeholder="https://generativelanguage.googleapis.com/v1beta" />
             </Form.Item>
             <Form.Item
               name={['providers', 'gemini', 'model']}
               label="Default Model"
+              rules={[{ required: true, message: 'Please select a model' }]}
+              extra={
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={handleFetchGeminiModels}
+                  loading={fetchingModels}
+                  style={{ padding: 0 }}
+                >
+                  {fetchingModels ? 'Fetching models...' : 'Fetch available models from API'}
+                </Button>
+              }
             >
-              <Select placeholder="Select a model" allowClear>
-                {GEMINI_MODELS.map((model) => (
+              <Select placeholder="Select a model" allowClear showSearch>
+                {(availableModels.length > 0 ? availableModels : GEMINI_MODELS).map((model) => (
                   <Option key={model.value} value={model.value}>
                     {model.label}
                   </Option>
@@ -423,6 +570,15 @@ export const ProviderSettings: React.FC = () => {
               </Space>
             </Card>
 
+            <Form.Item
+              name={['providers', 'copilot', 'headless_auth']}
+              label="Headless Authentication"
+              valuePropName="checked"
+              extra="Print login URL in console instead of opening browser automatically"
+            >
+              <Switch />
+            </Form.Item>
+
             <Paragraph type="secondary">
               To use GitHub Copilot:
               <ul style={{ marginTop: 8, marginBottom: 0 }}>
@@ -450,8 +606,8 @@ export const ProviderSettings: React.FC = () => {
       }
     >
       <Paragraph type="secondary">
-        Configure your preferred LLM provider. Changes will take effect for new conversations
-        after you click "Apply Configuration".
+        Configure your preferred LLM provider. Configuration will be saved and applied automatically.
+        Use "Reload Configuration" if you need to manually reload the backend.
       </Paragraph>
 
       <Divider />
@@ -487,10 +643,10 @@ export const ProviderSettings: React.FC = () => {
             type="primary"
             htmlType="submit"
             icon={<SaveOutlined />}
-            loading={loading}
+            loading={loading || applyingConfig}
             size="large"
           >
-            Save Configuration
+            Save and Apply Configuration
           </Button>
           <Button
             icon={<ReloadOutlined />}
@@ -499,7 +655,7 @@ export const ProviderSettings: React.FC = () => {
             disabled={loading}
             size="large"
           >
-            Apply Configuration
+            Reload Configuration
           </Button>
         </Space>
       </Form>

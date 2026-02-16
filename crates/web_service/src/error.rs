@@ -6,6 +6,9 @@ pub type Result<T, E = AppError> = std::result::Result<T, E>;
 
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+
     #[error("Tool '{0}' not found")]
     ToolNotFound(String),
 
@@ -47,6 +50,7 @@ struct JsonErrorWrapper {
 impl ResponseError for AppError {
     fn status_code(&self) -> StatusCode {
         match self {
+            AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
             AppError::ToolNotFound(_) => StatusCode::NOT_FOUND,
             AppError::ToolExecutionError(_) => StatusCode::BAD_REQUEST,
             AppError::ToolApprovalRequired(_) => StatusCode::FORBIDDEN,

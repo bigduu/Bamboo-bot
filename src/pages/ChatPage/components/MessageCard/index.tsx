@@ -66,7 +66,6 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
   const updateChat = useAppStore((state) => state.updateChat);
   const isProcessing = useAppStore((state) => state.isProcessing);
   const addFavorite = useAppStore((state) => state.addFavorite);
-  const selectedModel = useAppStore((state) => state.selectedModel);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState<boolean>(false);
 
@@ -128,7 +127,6 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
   const onFixMermaid = useMessageCardMermaidFix({
     message,
     messageId,
-    selectedModel,
     currentChatId,
     currentChat,
     updateChat,
