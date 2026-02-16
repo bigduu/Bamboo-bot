@@ -10,6 +10,7 @@ import { DownOutlined, UpOutlined } from "@ant-design/icons";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { useAppStore } from "../../store";
+import { useProviderStore } from "../../store/slices/providerSlice";
 import type { Message } from "../../types/chat";
 import { ChatInputArea } from "./ChatInputArea";
 import { ChatMessagesList } from "./ChatMessagesList";
@@ -26,6 +27,13 @@ const { useToken } = theme;
 const { useBreakpoint } = Grid;
 
 export const ChatView: React.FC = () => {
+  // Load provider configuration on mount
+  const loadProviderConfig = useProviderStore((state) => state.loadProviderConfig);
+
+  useEffect(() => {
+    loadProviderConfig();
+  }, [loadProviderConfig]);
+
   // Maintain persistent subscription to agent events for real-time streaming
   useAgentEventSubscription();
 

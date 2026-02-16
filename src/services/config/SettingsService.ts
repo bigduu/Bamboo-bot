@@ -5,7 +5,6 @@
  */
 
 import { apiClient } from '../api';
-import type { ProviderConfig } from '../../pages/ChatPage/types/providerConfig';
 
 /**
  * Copilot authentication status
@@ -44,14 +43,14 @@ export class SettingsService {
   /**
    * Get the current provider configuration
    */
-  async getProviderConfig(): Promise<ProviderConfig> {
-    return apiClient.get<ProviderConfig>('/bamboo/settings/provider');
+  async getProviderConfig(): Promise<any> {
+    return apiClient.get<any>('/bamboo/settings/provider');
   }
 
   /**
    * Save provider configuration
    */
-  async saveProviderConfig(config: ProviderConfig): Promise<void> {
+  async saveProviderConfig(config: any): Promise<void> {
     return apiClient.post<void>('/bamboo/settings/provider', config);
   }
 
@@ -95,6 +94,16 @@ export class SettingsService {
    */
   async logoutCopilot(): Promise<void> {
     return apiClient.post<void>('/bamboo/copilot/logout');
+  }
+
+  /**
+   * Fetch available models for a provider (via backend)
+   */
+  async fetchProviderModels(provider: string): Promise<string[]> {
+    const response = await apiClient.post<{ models: string[] }>('/bamboo/settings/provider/models', {
+      provider,
+    });
+    return response.models;
   }
 }
 

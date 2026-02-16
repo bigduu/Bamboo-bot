@@ -17,6 +17,7 @@ use crate::controllers::{
     agent_controller, settings_controller, openai_controller,
     skill_controller, tools_controller, workspace_controller,
 };
+use crate::model_config_helper::get_default_model_from_config;
 
 const DEFAULT_METRICS_CHANNEL_CAPACITY: usize = 10000;
 
@@ -226,17 +227,23 @@ pub fn agent_api_config(cfg: &mut web::ServiceConfig) {
     );
 }
 
-async fn build_agent_state(app_data_dir: PathBuf, port: u16) -> AgentAppState {
+async fn build_agent_state(app_data_dir: PathBuf, port: u16, config: &Config) -> Result<AgentAppState, String> {
     let base_url = format!("http://127.0.0.1:{}/v1", port);
-    AgentAppState::new_with_config(
+
+    // Get model from config - fail if not configured
+    let model = get_default_model_from_config(config)
+        .map_err(|e| format!("Failed to get model from config: {}. Please specify a model in your config.json file.", e))?;
+
+    info!("Agent Server using model from config: {}", model);
+
+    Ok(AgentAppState::new_with_config(
         "openai",
         base_url,
-        "gpt-4o-mini".to_string(),
+        model,
         "tauri".to_string(),
         Some(app_data_dir),
         true,
-    )
-    .await
+    ).await)
 }
 
 pub async fn run(app_data_dir: PathBuf, port: u16) -> Result<(), String> {
@@ -252,7 +259,9 @@ pub async fn run(app_data_dir: PathBuf, port: u16) -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to create provider: {}", e))?;
 
-    let agent_state = web::Data::new(build_agent_state(app_data_dir.clone(), port).await);
+    let agent_state = web::Data::new(
+        build_agent_state(app_data_dir.clone(), port, &config).await?
+    );
 
     let app_state = web::Data::new(AppState {
         app_data_dir,
@@ -322,7 +331,9 @@ impl WebService {
             .await
             .map_err(|e| format!("Failed to create provider: {}", e))?;
 
-        let agent_state = web::Data::new(build_agent_state(self.app_data_dir.clone(), port).await);
+        let agent_state = web::Data::new(
+            build_agent_state(self.app_data_dir.clone(), port, &config).await?
+        );
 
         let app_state = web::Data::new(AppState {
             app_data_dir: self.app_data_dir.clone(),

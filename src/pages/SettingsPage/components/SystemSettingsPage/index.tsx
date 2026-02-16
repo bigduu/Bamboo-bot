@@ -23,6 +23,7 @@ import SystemSettingsKeywordMaskingTab from "./SystemSettingsKeywordMaskingTab";
 import SystemSettingsWorkflowsTab from "./SystemSettingsWorkflowsTab";
 import SystemSettingsMcpTab from "./SystemSettingsMcpTab";
 import SystemSettingsMetricsTab from "./SystemSettingsMetricsTab";
+import MermaidSettingsTab from "./MermaidSettingsTab";
 import { ProviderSettings } from "../ProviderSettings";
 import { SkillManager } from "../../../../components/Skill";
 
@@ -204,6 +205,11 @@ const SystemSettingsPage = ({
                   onSaveEnhancement={handleSaveEnhancement}
                 />
               ),
+            },
+            {
+              key: "mermaid",
+              label: "Mermaid",
+              children: <MermaidSettingsTab />,
             },
             {
               key: "skills",

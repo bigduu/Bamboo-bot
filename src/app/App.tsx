@@ -7,7 +7,8 @@ import { MainLayout } from "./MainLayout";
 import { SetupPage } from "../pages/SetupPage";
 import { useAppStore, initializeStore } from "../pages/ChatPage/store";
 
-const DARK_MODE_KEY = "copilot_dark_mode";
+const THEME_STORAGE_KEY = "copilot_ui_theme_v1";
+
 interface SetupStatus {
   is_complete: boolean;
   has_proxy_config: boolean;
@@ -17,10 +18,16 @@ interface SetupStatus {
 
 function App() {
   const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
-    return (localStorage.getItem(DARK_MODE_KEY) as "light" | "dark") || "light";
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    return (saved as "light" | "dark") || "light";
   });
   const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null);
   const loadSystemPrompts = useAppStore((state) => state.loadSystemPrompts);
+
+  // Save theme to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+  }, [themeMode]);
 
   useEffect(() => {
     const checkSetupStatus = async () => {

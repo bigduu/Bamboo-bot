@@ -8,6 +8,9 @@ import { ChatAutoTitleEffect } from "../pages/ChatPage/components/ChatAutoTitleE
 import { useAppStore } from "../pages/ChatPage/store";
 import { Message } from "../pages/ChatPage/types/chat";
 import { useSettingsViewStore } from "../shared/store/settingsViewStore";
+import { useMermaidTheme } from "../shared/components/MermaidChart/useMermaidTheme";
+import { mermaidCache } from "../shared/components/MermaidChart/mermaidConfig";
+import { useMermaidSettings } from "../shared/store/mermaidSettingsStore";
 
 export const MainLayout: React.FC<{
   themeMode: "light" | "dark";
@@ -18,6 +21,22 @@ export const MainLayout: React.FC<{
   const { token } = theme.useToken();
   const currentChatId = useAppStore((state) => state.currentChatId);
   const chats = useAppStore((state) => state.chats);
+  const mermaidSettings = useMermaidSettings();
+
+  // Enable global Mermaid theme updates
+  useMermaidTheme();
+
+  // Clear Mermaid cache when theme changes to force re-render
+  useEffect(() => {
+    console.log("🔄 Theme changed, clearing Mermaid cache");
+    mermaidCache.clear();
+  }, [themeMode]);
+
+  // Clear Mermaid cache when user settings change
+  useEffect(() => {
+    console.log("🔄 Mermaid settings changed, clearing cache");
+    mermaidCache.clear();
+  }, [mermaidSettings]);
 
   // Memoize currentMessages to avoid infinite loop
   const currentMessages = useMemo<Message[]>(() => {

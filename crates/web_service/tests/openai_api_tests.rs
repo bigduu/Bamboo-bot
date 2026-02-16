@@ -45,6 +45,7 @@ impl LLMProvider for MockProvider {
         _messages: &[agent_core::Message],
         _tools: &[agent_core::tools::ToolSchema],
         _max_output_tokens: Option<u32>,
+        _model: Option<&str>,
     ) -> Result<LLMStream, LLMError> {
         let items = self.chunks.clone().into_iter().map(Ok);
         Ok(Box::pin(stream::iter(items)))
@@ -85,11 +86,12 @@ async fn setup_test_environment(
 
     // The OpenAI controller handler currently requires AgentAppState extraction
     // (even though it doesn't use it). Build a lightweight instance rooted in our temp dir.
+    // Use a specific model for tests (not "default")
     let agent_state = web::Data::new(
         AgentAppState::new_with_config(
             "openai",
             "http://127.0.0.1:0/v1".to_string(),
-            "gpt-4o-mini".to_string(),
+            "gpt-4o-mini".to_string(),  // Test-specific model
             "sk-test".to_string(),
             Some(temp_dir.path().to_path_buf()),
             true,

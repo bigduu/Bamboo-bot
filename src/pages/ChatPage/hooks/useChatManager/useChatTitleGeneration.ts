@@ -4,6 +4,7 @@ import { useAppStore } from "../../store";
 import { getOpenAIClient } from "../../services/openaiClient";
 import type { AssistantTextMessage, Message } from "../../types/chat";
 import type { UseChatState } from "./types";
+import { useActiveModel } from "../useActiveModel";
 
 /**
  * Hook for chat title generation and validation
@@ -32,7 +33,7 @@ export function useChatTitleGeneration(
   const { message: appMessage } = AntApp.useApp();
 
   const autoGenerateTitles = useAppStore((state) => state.autoGenerateTitles);
-  const selectedModel = useAppStore((state) => state.selectedModel);
+  const activeModel = useActiveModel();
   const setAutoGenerateTitlesPreference = useAppStore(
     (state) => state.setAutoGenerateTitlesPreference,
   );
@@ -102,7 +103,7 @@ export function useChatTitleGeneration(
       try {
         const candidate = await generateTitleWithAI(
           userAssistantMessages,
-          selectedModel,
+          activeModel,
         );
         if (!candidate) {
           throw new Error("Generated title is empty");
@@ -137,7 +138,7 @@ export function useChatTitleGeneration(
         titleGenerationInFlightRef.current.delete(chatId);
       }
     },
-    [appMessage, autoGenerateTitles, isDefaultTitle, selectedModel, state],
+    [appMessage, autoGenerateTitles, isDefaultTitle, activeModel, state],
   );
 
   return {
@@ -204,7 +205,8 @@ const generateTitleWithAI = async (
 
   const client = getOpenAIClient();
   const response = await client.chat.completions.create({
-    model: model || "gpt-4o-mini",
+    // Use provided model, or use "default" to let backend use its configured default
+    model: model || "default",
     temperature: 0.2,
     max_tokens: MAX_TITLE_TOKENS,
     messages: [

@@ -6,6 +6,7 @@ import type { ImageFile } from "../../utils/imageUtils";
 import { streamingMessageBus } from "../../utils/streamingMessageBus";
 import { useAppStore } from "../../store";
 import { getSystemPromptEnhancementText } from "../../../../shared/utils/systemPromptEnhancement";
+import { useActiveModel } from "../useActiveModel";
 
 export interface UseMessageStreaming {
   sendMessage: (content: string, images?: ImageFile[]) => Promise<void>;
@@ -42,7 +43,7 @@ export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageSt
   const startAgentHealthCheck = useAppStore(
     (state) => state.startAgentHealthCheck,
   );
-  const selectedModel = useAppStore((state) => state.selectedModel);
+  const activeModel = useActiveModel();
 
   useEffect(() => {
     startAgentHealthCheck();
@@ -89,7 +90,7 @@ export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageSt
           system_prompt: baseSystemPrompt || undefined,
           enhance_prompt: enhancePrompt || undefined,
           workspace_path: workspacePath || undefined,
-          model: selectedModel || undefined,
+          model: activeModel || undefined,
         });
 
         const { session_id } = response;
@@ -124,7 +125,7 @@ export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageSt
         throw error; // Re-throw to trigger fallback
       }
     },
-    [deps, selectedModel],
+    [deps, activeModel],
   );
 
   const sendMessage = useCallback(
@@ -144,6 +145,12 @@ export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageSt
 
       if (!isAgentAvailable) {
         appMessage.error("Agent unavailable. Please try again later.");
+        return;
+      }
+
+      // Check if active model is loaded
+      if (!activeModel) {
+        appMessage.error("Model configuration not loaded. Please wait or reload the page.");
         return;
       }
 

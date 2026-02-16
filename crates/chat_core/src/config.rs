@@ -9,7 +9,7 @@ pub struct Config {
     pub proxy_auth: Option<ProxyAuth>,
     pub model: Option<String>,
     #[serde(default)]
-    pub headless_auth: bool,
+    pub headless_auth: bool,  // Deprecated: moved to providers.copilot.headless_auth
 
     // Provider configuration
     #[serde(default = "default_provider")]
@@ -58,9 +58,10 @@ pub struct GeminiConfig {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CopilotConfig {
-    // Copilot uses OAuth, no additional config needed
     #[serde(default)]
     pub enabled: bool,
+    #[serde(default)]
+    pub headless_auth: bool,  // Print login URL in console instead of opening browser
 }
 
 fn default_provider() -> String {

@@ -372,7 +372,7 @@ pub async fn set_anthropic_model_mapping(
 struct ProviderConfigResponse {
     provider: String,
     available_providers: Vec<String>,
-    config: Value,
+    providers: Value,
 }
 
 #[derive(Deserialize)]
@@ -389,10 +389,70 @@ pub async fn get_provider_config(
 ) -> Result<HttpResponse, AppError> {
     let path = config_path(&app_state);
 
-    let config_value = match fs::read_to_string(&path).await {
+    let mut config_value = match fs::read_to_string(&path).await {
         Ok(content) => {
             let mut config: Value = serde_json::from_str(&content)?;
             decrypt_proxy_auth(&mut config);
+
+            let mut needs_save = false;
+
+            // Migration 1: Move root-level "model" field to provider-specific config
+            if let Some(old_model) = config.get("model").and_then(|m| m.as_str()).map(|s| s.to_string()) {
+                let provider = config.get("provider").and_then(|p| p.as_str()).unwrap_or("copilot").to_string();
+
+                // Only migrate for non-Copilot providers
+                if provider != "copilot" {
+                    if let Some(providers) = config.get_mut("providers") {
+                        if let Some(provider_config) = providers.get_mut(&provider) {
+                            // Only set if not already present
+                            if provider_config.get("model").is_none() {
+                                provider_config["model"] = Value::String(old_model.clone());
+                                log::info!("Migrated root-level model '{}' to provider '{}' config", old_model, provider);
+
+                                // Remove root-level model field
+                                if let Some(obj) = config.as_object_mut() {
+                                    obj.remove("model");
+                                }
+                                needs_save = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Migration 2: Move root-level "headless_auth" to providers.copilot.headless_auth
+            if let Some(headless_auth) = config.get("headless_auth").and_then(|h| h.as_bool()) {
+                if let Some(providers) = config.get_mut("providers") {
+                    // Ensure copilot config exists
+                    if providers.get("copilot").is_none() {
+                        providers["copilot"] = Value::Object(serde_json::Map::new());
+                    }
+
+                    if let Some(copilot_config) = providers.get_mut("copilot") {
+                        // Only set if not already present
+                        if copilot_config.get("headless_auth").is_none() {
+                            copilot_config["headless_auth"] = Value::Bool(headless_auth);
+                            log::info!("Migrated root-level headless_auth to providers.copilot config");
+
+                            // Remove root-level headless_auth field
+                            if let Some(obj) = config.as_object_mut() {
+                                obj.remove("headless_auth");
+                            }
+                            needs_save = true;
+                        }
+                    }
+                }
+            }
+
+            // Save migrated config if needed
+            if needs_save {
+                let mut config_to_save = config.clone();
+                encrypt_proxy_auth(&mut config_to_save)?;
+                let content = serde_json::to_string_pretty(&config_to_save)?;
+                fs::write(&path, content).await?;
+                log::info!("Saved migrated configuration to file");
+            }
+
             config
         }
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
@@ -423,7 +483,7 @@ pub async fn get_provider_config(
     let response = ProviderConfigResponse {
         provider,
         available_providers: AVAILABLE_PROVIDERS.iter().map(|s| s.to_string()).collect(),
-        config: masked_providers,
+        providers: masked_providers,
     };
 
     Ok(HttpResponse::Ok().json(response))
@@ -541,13 +601,178 @@ pub async fn update_provider_config(
     })))
 }
 
+/// Fetch available models for a specific provider
+#[post("/bamboo/settings/provider/models")]
+pub async fn fetch_provider_models(
+    app_state: web::Data<AppState>,
+    payload: web::Json<serde_json::Value>,
+) -> Result<HttpResponse, AppError> {
+    let provider_type = payload
+        .get("provider")
+        .and_then(|v| v.as_str())
+        .unwrap_or("openai");
+
+    // Read current config to get the real API key
+    let path = config_path(&app_state);
+    let config_value = match fs::read_to_string(&path).await {
+        Ok(content) => {
+            let mut config: Value = serde_json::from_str(&content)?;
+            decrypt_proxy_auth(&mut config);
+            config
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            return Err(AppError::NotFound("Configuration file not found".to_string()));
+        }
+        Err(err) => return Err(AppError::StorageError(err)),
+    };
+
+    // Get provider-specific config
+    let provider_config = config_value
+        .get("providers")
+        .and_then(|p| p.get(provider_type))
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({}));
+
+    let api_key = provider_config
+        .get("api_key")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if api_key.is_empty() {
+        return Err(AppError::BadRequest("API key not configured".to_string()));
+    }
+
+    let base_url = provider_config
+        .get("base_url")
+        .and_then(|v| v.as_str());
+
+    // Fetch models from the API
+    let models = fetch_models_from_api(provider_type, api_key, base_url).await?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "models": models
+    })))
+}
+
+/// Fetch models from external API
+async fn fetch_models_from_api(
+    provider: &str,
+    api_key: &str,
+    base_url: Option<&str>,
+) -> Result<Vec<String>, AppError> {
+    let (url, auth_header, use_query_param) = match provider {
+        "openai" => {
+            let url = if let Some(base) = base_url {
+                let base = base.trim_end_matches('/');
+                format!("{}/models", base)
+            } else {
+                "https://api.openai.com/v1/models".to_string()
+            };
+            (url, format!("Bearer {}", api_key), false)
+        }
+        "anthropic" => {
+            let url = if let Some(base) = base_url {
+                let base = base.trim_end_matches('/');
+                format!("{}/models", base)
+            } else {
+                "https://api.anthropic.com/v1/models".to_string()
+            };
+            (url, api_key.to_string(), false) // Anthropic uses x-api-key header
+        }
+        "gemini" => {
+            let url = if let Some(base) = base_url {
+                let base = base.trim_end_matches('/');
+                format!("{}?key={}", base, api_key)
+            } else {
+                format!("https://generativelanguage.googleapis.com/v1beta/models?key={}", api_key)
+            };
+            (url, String::new(), true) // Gemini uses query param for auth
+        }
+        _ => {
+            return Err(AppError::BadRequest(format!(
+                "Unsupported provider: {}",
+                provider
+            )));
+        }
+    };
+
+    log::info!("Fetching models from: {}", url);
+
+    let client = reqwest::Client::new();
+    let mut request = client.get(&url);
+
+    // Set appropriate authentication header based on provider (not for Gemini)
+    if !use_query_param {
+        if provider == "anthropic" {
+            request = request.header("x-api-key", auth_header);
+        } else {
+            request = request.header("Authorization", auth_header);
+        }
+    }
+
+    let response = request
+        .send()
+        .await
+        .map_err(|e| AppError::InternalError(anyhow::anyhow!("Request failed: {}", e)))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(AppError::InternalError(anyhow::anyhow!(
+            "API request failed: {} - {}",
+            status,
+            error_text
+        )));
+    }
+
+    let json: Value = response
+        .json()
+        .await
+        .map_err(|e| AppError::InternalError(anyhow::anyhow!("Failed to parse JSON: {}", e)))?;
+
+    // Extract model IDs from different response formats
+    let models: Vec<String> = if let Some(data) = json.get("data").and_then(|d| d.as_array()) {
+        // Standard OpenAI format
+        data.iter()
+            .filter_map(|model| model.get("id").and_then(|id| id.as_str()).map(|s| s.to_string()))
+            .collect()
+    } else if let Some(models_arr) = json.get("models").and_then(|m| m.as_array()) {
+        // Alternative format: { models: [...] } - Gemini uses this
+        models_arr
+            .iter()
+            .filter_map(|model| {
+                // Gemini models have "name" field
+                if let Some(name) = model.get("name").and_then(|n| n.as_str()) {
+                    Some(name.to_string())
+                } else if let Some(id) = model.get("id").and_then(|i| i.as_str()) {
+                    Some(id.to_string())
+                } else {
+                    model.as_str().map(|s| s.to_string())
+                }
+            })
+            .collect()
+    } else if let Some(arr) = json.as_array() {
+        // Direct array format
+        arr.iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect()
+    } else {
+        return Err(AppError::InternalError(anyhow::anyhow!(
+            "Unexpected response format"
+        )));
+    };
+
+    log::info!("Fetched {} models", models.len());
+    Ok(models)
+}
+
 /// Reload configuration and recreate provider
 #[post("/bamboo/settings/reload")]
 pub async fn reload_provider_config(
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, AppError> {
-    // Reload the configuration
-    let new_config = chat_core::Config::new();
+    // First, reload the configuration from file into AppState
+    let new_config = app_state.reload_config().await;
 
     // Validate the configuration
     if let Err(e) = agent_llm::validate_provider_config(&new_config) {
@@ -557,7 +782,7 @@ pub async fn reload_provider_config(
         })));
     }
 
-    // Reload the provider in AppState
+    // Reload the provider in AppState using the updated config
     if let Err(e) = app_state.reload_provider().await {
         return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
             "success": false,
@@ -586,5 +811,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         // Provider configuration endpoints
         .service(get_provider_config)
         .service(update_provider_config)
-        .service(reload_provider_config);
+        .service(reload_provider_config)
+        .service(fetch_provider_models);
 }

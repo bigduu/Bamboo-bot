@@ -10,16 +10,6 @@ const SELECTED_MODEL_LS_KEY = "bamboo_selected_model_id";
 const FALLBACK_MODELS = ["gpt-5-mini", "gpt-5", "gemini-2.5-pro"];
 let fetchModelsInFlight: Promise<void> | null = null;
 
-// 同步读取 localStorage 中的模型选择
-const getInitialSelectedModel = (): string | undefined => {
-  try {
-    const stored = localStorage.getItem(SELECTED_MODEL_LS_KEY);
-    return stored || undefined;
-  } catch {
-    return undefined;
-  }
-};
-
 export interface ModelSlice {
   // Model Management State
   models: string[];
@@ -38,9 +28,9 @@ export const createModelSlice: StateCreator<AppState, [], [], ModelSlice> = (
   set,
   get,
 ) => ({
-  // Initial state - 同步读取 localStorage 避免启动时 fallback
+  // Initial state - Don't read from localStorage anymore (provider-specific models)
   models: [],
-  selectedModel: getInitialSelectedModel(),
+  selectedModel: undefined,
   isLoadingModels: false,
   modelsError: null,
   configModel: undefined,
@@ -56,21 +46,19 @@ export const createModelSlice: StateCreator<AppState, [], [], ModelSlice> = (
   },
 
   // Load model from config.json
+  // NOTE: This is deprecated - models should be configured per-provider
+  // Keeping this for backward compatibility with Copilot model list
   loadConfigModel: async () => {
     try {
       const configModel = await configService.getModel();
       if (configModel) {
         set({ configModel });
-        // If no model is selected in localStorage, use the one from config
-        const currentSelected = get().selectedModel;
-        if (!currentSelected) {
-          set({ selectedModel: configModel });
-          try {
-            localStorage.setItem(SELECTED_MODEL_LS_KEY, configModel);
-          } catch (error) {
-            console.error("Failed to save config model to localStorage:", error);
-          }
-        }
+        // Don't write to localStorage anymore - provider-specific models are used now
+        // const currentSelected = get().selectedModel;
+        // if (!currentSelected) {
+        //   set({ selectedModel: configModel });
+        //   localStorage.setItem(SELECTED_MODEL_LS_KEY, configModel);
+        // }
       }
     } catch (error) {
       console.error("Failed to load model from config:", error);

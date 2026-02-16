@@ -127,15 +127,16 @@ export const useMermaidRenderState = (chart: string) => {
           document.body.appendChild(tempDiv);
 
           const svgElement = tempDiv.querySelector("svg");
-          let finalHeight = 200;
+          let finalHeight = 300;
           let svgWidth = 800;
-          let svgHeight = 200;
+          let svgHeight = 300;
 
           if (svgElement) {
             const rect = svgElement.getBoundingClientRect();
             svgWidth = rect.width;
             svgHeight = rect.height;
-            finalHeight = Math.max(rect.height + 32, 200);
+            // Add sufficient padding (80px) for container padding, margins, and zoom controls
+            finalHeight = Math.max(rect.height + 80, 300);
           }
 
           document.body.removeChild(tempDiv);
