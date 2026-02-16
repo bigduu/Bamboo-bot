@@ -15,6 +15,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 use tauri::Manager;
 use tauri::{App, Runtime};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 use tauri_plugin_log::{Target, TargetKind};
 use web_service::server::run as start_server;
 
@@ -562,6 +563,18 @@ async fn set_proxy_config(
     Ok(())
 }
 
+/// Toggle main window visibility - show if hidden, hide if visible
+fn toggle_main_window<R: Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if window.is_visible().unwrap_or(true) {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let log_plugin = tauri_plugin_log::Builder::new()
@@ -582,7 +595,24 @@ pub fn run() {
         .plugin(fs_plugin)
         .plugin(log_plugin)
         .plugin(dialog_plugin)
-        .setup(|app| setup(app))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .setup(|app| {
+            // Register global shortcut: Cmd+Shift+Space (or Ctrl+Shift+Space on Windows/Linux)
+            #[cfg(target_os = "macos")]
+            let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::Space);
+            #[cfg(not(target_os = "macos"))]
+            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
+
+            if let Err(e) = app.global_shortcut().on_shortcut(shortcut, move |app, _, _| {
+                toggle_main_window(app);
+            }) {
+                log::warn!("Failed to register global shortcut: {}", e);
+            } else {
+                log::info!("Global shortcut registered: Cmd/Ctrl+Shift+Space");
+            }
+
+            setup(app)
+        })
         .invoke_handler(tauri::generate_handler![
             copy_to_clipboard,
             pick_folder,

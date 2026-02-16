@@ -53,6 +53,7 @@ crossbeam = { workspace = true }
 # Utilities
 tauri-plugin-dialog = { workspace = true }
 tauri-plugin-fs = { workspace = true }
+tauri-plugin-global-shortcut = { workspace = true }
 tokio = { workspace = true }
 reqwest = { workspace = true, features = ["rustls-tls"] }
 uuid = { workspace = true }
