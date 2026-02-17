@@ -87,26 +87,22 @@
 
 ---
 
-### 3. Incomplete Features in agent-tools
+### 3. ✅ Incomplete Features in agent-tools (Resolved 2026-02-17)
 
-**Locations:**
-- `crates/agent-tools/src/output_manager.rs:77, 166`
-  - `truncated_token_count` calculated but never used
-  - `metadata` retrieved but never used
-- `crates/agent-tools/src/tools/create_todo_list.rs:149`
-  - JSON serialized but not used (comment: "Return the todo list as JSON so it can be stored in session")
+**Resolution:**
+- `ToolOutputManager::cap_tool_result()` now reserves inline token budget for the truncation notice,
+  so the final returned inline output stays within `max_inline_tokens`.
+- `ToolOutputManager::list_artifacts()` now uses filesystem metadata and returns best-effort
+  `tool_call_id` + `full_token_count` instead of placeholders.
+- Removed redundant JSON serialization in `create_todo_list` and centralized TodoList construction
+  in a shared helper used by both the tool and `agent-loop` runner.
 
-**Impact:**
-- Dead code that may indicate missing functionality
-- Wasted computation
-- Unclear requirements
+**Notes:**
+- `ArtifactRef.truncated_token_count` was removed because it had no consumers and ambiguous
+  semantics (count vs limit vs prefix vs full inline output). It can be reintroduced later with
+  precise meaning if a caller needs it.
 
-**Options:**
-- **Option A:** Complete the features (use the calculated values)
-- **Option B:** Remove dead code if features cancelled
-- **Option C:** Add TODO comments explaining what's missing
-
-**Decision Needed:** Are these features still needed?
+**Docs:** `docs/plans/2026-02-17-agent-tools-incomplete-features-design.md`
 
 ---
 
