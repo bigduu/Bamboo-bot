@@ -111,9 +111,7 @@ export const DEFAULT_HEALTHCHECK_INTERVAL_MS = 30_000;
 export const DEFAULT_STDIO_STARTUP_TIMEOUT_MS = 20_000;
 export const DEFAULT_SSE_CONNECT_TIMEOUT_MS = 10_000;
 
-export const createDefaultMcpServerConfig = (
-  id: string,
-): McpServerConfig => ({
+export const createDefaultMcpServerConfig = (id: string): McpServerConfig => ({
   id,
   enabled: true,
   transport: {

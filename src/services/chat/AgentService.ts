@@ -39,7 +39,11 @@ export interface ContextSummaryInfo {
 }
 
 // TodoList Types
-export type TodoItemStatus = 'pending' | 'in_progress' | 'completed' | 'blocked';
+export type TodoItemStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "blocked";
 
 export interface TodoItem {
   id: string;
@@ -79,11 +83,13 @@ export interface AgentEvent {
   error?: string;
   message?: string; // For Error events
   // Union type because 'usage' field has different shapes for different events
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  } | TokenBudgetUsage;
+  usage?:
+    | {
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+      }
+    | TokenBudgetUsage;
   summary_info?: ContextSummaryInfo;
   // TodoList events
   todo_list?: TodoList;
@@ -154,9 +160,17 @@ export interface AgentEventHandlers {
   onToolError?: (toolCallId: string, error: string) => void;
   onTodoListUpdated?: (todoList: TodoList) => void;
   onTodoListItemProgress?: (delta: TodoListDelta) => void;
-  onTodoListCompleted?: (sessionId: string, totalRounds: number, totalToolCalls: number) => void;
+  onTodoListCompleted?: (
+    sessionId: string,
+    totalRounds: number,
+    totalToolCalls: number,
+  ) => void;
   onTodoEvaluationStarted?: (sessionId: string, itemsCount: number) => void;
-  onTodoEvaluationCompleted?: (sessionId: string, updatesCount: number, reasoning: string) => void;
+  onTodoEvaluationCompleted?: (
+    sessionId: string,
+    updatesCount: number,
+    reasoning: string,
+  ) => void;
   onTokenBudgetUpdated?: (usage: TokenBudgetUsage) => void;
   onContextSummarized?: (summaryInfo: ContextSummaryInfo) => void;
   onComplete?: (usage: AgentEvent["usage"]) => void;
@@ -212,7 +226,11 @@ export class AgentClient {
         if (body) {
           try {
             const errorData = JSON.parse(body);
-            errorMessage = errorData.error || errorData.message || errorData.detail || errorMessage;
+            errorMessage =
+              errorData.error ||
+              errorData.message ||
+              errorData.detail ||
+              errorMessage;
           } catch {
             errorMessage = body || errorMessage;
           }
@@ -291,7 +309,11 @@ export class AgentClient {
         if (body) {
           try {
             const errorData = JSON.parse(body);
-            errorMessage = errorData.error || errorData.message || errorData.detail || errorMessage;
+            errorMessage =
+              errorData.error ||
+              errorData.message ||
+              errorData.detail ||
+              errorMessage;
           } catch {
             errorMessage = body || errorMessage;
           }
@@ -377,7 +399,13 @@ export class AgentClient {
         }
         break;
       case "todo_list_item_progress":
-        if (event.session_id && event.item_id && event.status && event.tool_calls_count !== undefined && event.version !== undefined) {
+        if (
+          event.session_id &&
+          event.item_id &&
+          event.status &&
+          event.tool_calls_count !== undefined &&
+          event.version !== undefined
+        ) {
           handlers.onTodoListItemProgress?.({
             session_id: event.session_id,
             item_id: event.item_id,
@@ -388,22 +416,41 @@ export class AgentClient {
         }
         break;
       case "todo_list_completed":
-        if (event.session_id && event.total_rounds !== undefined && event.total_tool_calls !== undefined) {
-          handlers.onTodoListCompleted?.(event.session_id, event.total_rounds, event.total_tool_calls);
+        if (
+          event.session_id &&
+          event.total_rounds !== undefined &&
+          event.total_tool_calls !== undefined
+        ) {
+          handlers.onTodoListCompleted?.(
+            event.session_id,
+            event.total_rounds,
+            event.total_tool_calls,
+          );
         }
         break;
       case "todo_evaluation_started":
         if (event.session_id && event.items_count !== undefined) {
-          handlers.onTodoEvaluationStarted?.(event.session_id, event.items_count);
+          handlers.onTodoEvaluationStarted?.(
+            event.session_id,
+            event.items_count,
+          );
         }
         break;
       case "todo_evaluation_completed":
-        if (event.session_id && event.updates_count !== undefined && event.reasoning) {
-          handlers.onTodoEvaluationCompleted?.(event.session_id, event.updates_count, event.reasoning);
+        if (
+          event.session_id &&
+          event.updates_count !== undefined &&
+          event.reasoning
+        ) {
+          handlers.onTodoEvaluationCompleted?.(
+            event.session_id,
+            event.updates_count,
+            event.reasoning,
+          );
         }
         break;
       case "token_budget_updated":
-        if (event.usage && 'system_tokens' in event.usage) {
+        if (event.usage && "system_tokens" in event.usage) {
           handlers.onTokenBudgetUpdated?.(event.usage);
         }
         break;

@@ -14,15 +14,17 @@ interface SystemSettingsConfigTabProps {
   };
 }
 
-export const SystemSettingsConfigTab: React.FC<SystemSettingsConfigTabProps> = ({
-  msgApi,
-}) => {
+export const SystemSettingsConfigTab: React.FC<
+  SystemSettingsConfigTabProps
+> = ({ msgApi }) => {
   const { token } = useToken();
   const [config, setConfig] = useState({
     http_proxy: "",
     https_proxy: "",
   });
-  const [backendBaseUrl, setBackendBaseUrl] = useState("http://127.0.0.1:8080/v1");
+  const [backendBaseUrl, setBackendBaseUrl] = useState(
+    "http://127.0.0.1:8080/v1",
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   // Load config

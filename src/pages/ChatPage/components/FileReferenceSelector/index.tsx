@@ -162,7 +162,9 @@ const FileReferenceSelector: React.FC<FileReferenceSelectorProps> = ({
         ) : filteredFiles.length === 0 && !loading ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={searchText ? "No matching files found" : "Directory is empty"}
+            description={
+              searchText ? "No matching files found" : "Directory is empty"
+            }
           />
         ) : (
           <div ref={listContainerRef}>

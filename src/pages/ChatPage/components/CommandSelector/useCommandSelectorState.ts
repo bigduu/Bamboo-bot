@@ -53,7 +53,10 @@ export const useCommandSelectorState = ({
         command.name.toLowerCase().includes(searchLower) ||
         command.description.toLowerCase().includes(searchLower) ||
         (command.category?.toLowerCase().includes(searchLower) ?? false) ||
-        (command.tags?.some((tag: string) => tag.toLowerCase().includes(searchLower)) ?? false)
+        (command.tags?.some((tag: string) =>
+          tag.toLowerCase().includes(searchLower),
+        ) ??
+          false)
       );
     });
     setFilteredCommands(filtered);

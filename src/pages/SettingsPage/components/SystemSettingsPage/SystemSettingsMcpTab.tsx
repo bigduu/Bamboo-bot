@@ -1,5 +1,14 @@
 import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Space, Tag, Typography, message, theme } from "antd";
+import {
+  Alert,
+  Button,
+  Card,
+  Space,
+  Tag,
+  Typography,
+  message,
+  theme,
+} from "antd";
 import { useMemo, useState } from "react";
 import {
   ServerStatus,
@@ -140,7 +149,9 @@ const SystemSettingsMcpTab: React.FC = () => {
       await connectServer(server.id);
       msgApi.success(`Connected to ${server.name || server.id}`);
     } catch (connectError) {
-      msgApi.error(getErrorMessage(connectError, "Failed to connect MCP server"));
+      msgApi.error(
+        getErrorMessage(connectError, "Failed to connect MCP server"),
+      );
     }
   };
 
@@ -169,7 +180,9 @@ const SystemSettingsMcpTab: React.FC = () => {
       await refreshAll();
       msgApi.success("MCP status refreshed");
     } catch (refreshError) {
-      msgApi.error(getErrorMessage(refreshError, "Failed to refresh MCP status"));
+      msgApi.error(
+        getErrorMessage(refreshError, "Failed to refresh MCP status"),
+      );
     }
   };
 
@@ -180,7 +193,11 @@ const SystemSettingsMcpTab: React.FC = () => {
       {error ? <Alert type="error" showIcon message={error} /> : null}
 
       <Card size="small" title="MCP Overview">
-        <Space direction="vertical" size={token.marginXS} style={{ width: "100%" }}>
+        <Space
+          direction="vertical"
+          size={token.marginXS}
+          style={{ width: "100%" }}
+        >
           <Text type="secondary">
             Configure external MCP servers and inspect registered tool aliases.
           </Text>
@@ -210,7 +227,11 @@ const SystemSettingsMcpTab: React.FC = () => {
             >
               Refresh All
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={openCreateModal}
+            >
               Add Server
             </Button>
           </Space>

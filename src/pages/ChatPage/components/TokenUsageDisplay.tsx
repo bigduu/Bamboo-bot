@@ -1,11 +1,11 @@
-import React from 'react';
-import { Progress, Tooltip, Space } from 'antd';
+import React from "react";
+import { Progress, Tooltip, Space } from "antd";
 import {
   TokenUsage,
   getUsagePercentage,
   getUsageColor,
   formatTokenCount,
-} from '../types/tokenBudget';
+} from "../types/tokenBudget";
 
 interface TokenUsageDisplayProps {
   /** Token usage information */
@@ -13,7 +13,7 @@ interface TokenUsageDisplayProps {
   /** Whether to show the detailed breakdown */
   showDetails?: boolean;
   /** Size of the progress bar */
-  size?: 'small' | 'default';
+  size?: "small" | "default";
   /** Additional CSS class */
   className?: string;
 }
@@ -29,27 +29,37 @@ interface TokenUsageDisplayProps {
 export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
   usage,
   showDetails = true,
-  size = 'small',
-  className = '',
+  size = "small",
+  className = "",
 }) => {
   const percentage = getUsagePercentage(usage);
   const color = getUsageColor(usage);
 
   const getProgressStrokeColor = () => {
-    if (percentage >= 90) return '#ff4d4f';
-    if (percentage >= 70) return '#faad14';
-    return '#52c41a';
+    if (percentage >= 90) return "#ff4d4f";
+    if (percentage >= 70) return "#faad14";
+    return "#52c41a";
   };
 
   const tooltipContent = (
     <div style={{ minWidth: 180 }}>
-      <div style={{ marginBottom: 4, fontWeight: 'bold' }}>Token Usage</div>
+      <div style={{ marginBottom: 4, fontWeight: "bold" }}>Token Usage</div>
       <div style={{ fontSize: 12 }}>
-        {formatTokenCount(usage.totalTokens)} / {formatTokenCount(usage.budgetLimit)} tokens
+        {formatTokenCount(usage.totalTokens)} /{" "}
+        {formatTokenCount(usage.budgetLimit)} tokens
       </div>
-      <div style={{ fontSize: 12, color: '#888' }}>{percentage.toFixed(1)}% used</div>
+      <div style={{ fontSize: 12, color: "#888" }}>
+        {percentage.toFixed(1)}% used
+      </div>
       {showDetails && (
-        <div style={{ marginTop: 6, borderTop: '1px solid #ddd', paddingTop: 6, fontSize: 11 }}>
+        <div
+          style={{
+            marginTop: 6,
+            borderTop: "1px solid #ddd",
+            paddingTop: 6,
+            fontSize: 11,
+          }}
+        >
           <div>System: {formatTokenCount(usage.systemTokens)}</div>
           {usage.summaryTokens > 0 && (
             <div>Summary: {formatTokenCount(usage.summaryTokens)}</div>
@@ -71,16 +81,21 @@ export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
         <Progress
           type="line"
           percent={Math.min(percentage, 100)}
-          size={{ height: size === 'small' ? 6 : 8, width: 80 }}
+          size={{ height: size === "small" ? 6 : 8, width: 80 }}
           strokeColor={getProgressStrokeColor()}
           showInfo={false}
           style={{ margin: 0, lineHeight: 1 }}
         />
         <span
           style={{
-            fontSize: size === 'small' ? 11 : 12,
-            color: color === 'error' ? '#ff4d4f' : color === 'warning' ? '#faad14' : '#52c41a',
-            whiteSpace: 'nowrap',
+            fontSize: size === "small" ? 11 : 12,
+            color:
+              color === "error"
+                ? "#ff4d4f"
+                : color === "warning"
+                  ? "#faad14"
+                  : "#52c41a",
+            whiteSpace: "nowrap",
             fontWeight: 500,
           }}
         >
@@ -97,20 +112,20 @@ export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
 export const TokenUsageBadge: React.FC<{
   usage: TokenUsage;
   className?: string;
-}> = ({ usage, className = '' }) => {
+}> = ({ usage, className = "" }) => {
   const percentage = getUsagePercentage(usage);
   const color = getUsageColor(usage);
 
   const getBadgeColor = () => {
     switch (color) {
-      case 'error':
-        return '#ff4d4f';
-      case 'warning':
-        return '#faad14';
-      case 'success':
-        return '#52c41a';
+      case "error":
+        return "#ff4d4f";
+      case "warning":
+        return "#faad14";
+      case "success":
+        return "#52c41a";
       default:
-        return '#bfbfbf';
+        return "#bfbfbf";
     }
   };
 
@@ -121,13 +136,13 @@ export const TokenUsageBadge: React.FC<{
       <span
         className={`token-usage-badge ${className}`}
         style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          padding: '1px 6px',
+          display: "inline-flex",
+          alignItems: "center",
+          padding: "1px 6px",
           borderRadius: 10,
           fontSize: 11,
           fontWeight: 500,
-          backgroundColor: getBadgeColor() + '20',
+          backgroundColor: getBadgeColor() + "20",
           color: getBadgeColor(),
           border: `1px solid ${getBadgeColor()}40`,
           lineHeight: 1,

@@ -21,7 +21,11 @@ export const SkillCard: React.FC<SkillCardProps> = ({ skill }) => {
       }
       styles={{ body: { padding: token.paddingMD } }}
     >
-      <Space direction="vertical" size={token.marginXS} style={{ width: "100%" }}>
+      <Space
+        direction="vertical"
+        size={token.marginXS}
+        style={{ width: "100%" }}
+      >
         <Text type="secondary">{skill.description}</Text>
         {skill.tags.length > 0 && (
           <Space size={token.marginXXS} wrap>

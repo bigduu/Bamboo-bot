@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { McpServerFormModal } from "../McpServerFormModal";
 
 describe("McpServerFormModal", () => {
-  let unhandledRejectionHandler: ((event: PromiseRejectionEvent) => void) | null;
+  let unhandledRejectionHandler:
+    | ((event: PromiseRejectionEvent) => void)
+    | null;
 
   beforeEach(() => {
     unhandledRejectionHandler = null;
@@ -107,9 +109,7 @@ describe("McpServerFormModal", () => {
     const displayNameInput = screen.getByPlaceholderText(
       "Filesystem MCP",
     ) as HTMLInputElement;
-    const commandInput = screen.getByPlaceholderText(
-      "npx",
-    ) as HTMLInputElement;
+    const commandInput = screen.getByPlaceholderText("npx") as HTMLInputElement;
 
     expect(serverIdInput.value).toBe("my-server");
     expect(displayNameInput.value).toBe("My Server");

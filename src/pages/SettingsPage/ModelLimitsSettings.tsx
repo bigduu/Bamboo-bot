@@ -1,10 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Table, InputNumber, Switch, Select, Button, Space, Card, Typography, message, Divider } from 'antd';
-import { SaveOutlined, ReloadOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from "react";
+import {
+  Table,
+  InputNumber,
+  Switch,
+  Select,
+  Button,
+  Space,
+  Card,
+  Typography,
+  message,
+  Divider,
+} from "antd";
+import { SaveOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
   KNOWN_MODEL_LIMITS,
   BudgetStrategy,
-} from '../ChatPage/types/tokenBudget';
+} from "../ChatPage/types/tokenBudget";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -22,7 +33,7 @@ interface ModelLimitConfig {
 export const ModelLimitsSettings: React.FC = () => {
   const [configs, setConfigs] = useState<ModelLimitConfig[]>([]);
   const [defaultStrategy, setDefaultStrategy] = useState<BudgetStrategy>({
-    type: 'hybrid',
+    type: "hybrid",
     windowSize: 20,
     enableSummarization: true,
   });
@@ -30,8 +41,8 @@ export const ModelLimitsSettings: React.FC = () => {
 
   // Load settings from localStorage on mount
   useEffect(() => {
-    const savedConfigs = localStorage.getItem('modelLimitsConfigs');
-    const savedStrategy = localStorage.getItem('defaultBudgetStrategy');
+    const savedConfigs = localStorage.getItem("modelLimitsConfigs");
+    const savedStrategy = localStorage.getItem("defaultBudgetStrategy");
 
     if (savedConfigs) {
       try {
@@ -68,11 +79,14 @@ export const ModelLimitsSettings: React.FC = () => {
   const saveSettings = () => {
     setLoading(true);
     try {
-      localStorage.setItem('modelLimitsConfigs', JSON.stringify(configs));
-      localStorage.setItem('defaultBudgetStrategy', JSON.stringify(defaultStrategy));
-      message.success('Settings saved successfully');
+      localStorage.setItem("modelLimitsConfigs", JSON.stringify(configs));
+      localStorage.setItem(
+        "defaultBudgetStrategy",
+        JSON.stringify(defaultStrategy),
+      );
+      message.success("Settings saved successfully");
     } catch {
-      message.error('Failed to save settings');
+      message.error("Failed to save settings");
     } finally {
       setLoading(false);
     }
@@ -81,49 +95,53 @@ export const ModelLimitsSettings: React.FC = () => {
   const resetToDefaults = () => {
     initializeDefaultConfigs();
     setDefaultStrategy({
-      type: 'hybrid',
+      type: "hybrid",
       windowSize: 20,
       enableSummarization: true,
     });
-    localStorage.removeItem('modelLimitsConfigs');
-    localStorage.removeItem('defaultBudgetStrategy');
-    message.info('Settings reset to defaults');
+    localStorage.removeItem("modelLimitsConfigs");
+    localStorage.removeItem("defaultBudgetStrategy");
+    message.info("Settings reset to defaults");
   };
 
   const updateConfig = (index: number, updates: Partial<ModelLimitConfig>) => {
     setConfigs((prev) =>
-      prev.map((config, i) => (i === index ? { ...config, ...updates } : config))
+      prev.map((config, i) =>
+        i === index ? { ...config, ...updates } : config,
+      ),
     );
   };
 
   const columns = [
     {
-      title: 'Model',
-      dataIndex: 'model',
-      key: 'model',
+      title: "Model",
+      dataIndex: "model",
+      key: "model",
       width: 200,
       render: (model: string) => <Text strong>{model}</Text>,
     },
     {
-      title: 'Context Window',
-      dataIndex: 'maxContextTokens',
-      key: 'maxContextTokens',
+      title: "Context Window",
+      dataIndex: "maxContextTokens",
+      key: "maxContextTokens",
       width: 150,
       render: (value: number, _record: ModelLimitConfig, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateConfig(index, { maxContextTokens: v || 128000 })}
+          onChange={(v) =>
+            updateConfig(index, { maxContextTokens: v || 128000 })
+          }
           min={1000}
           max={1000000}
           step={1000}
-          style={{ width: '100%' }}
+          style={{ width: "100%" }}
         />
       ),
     },
     {
-      title: 'Max Output',
-      dataIndex: 'maxOutputTokens',
-      key: 'maxOutputTokens',
+      title: "Max Output",
+      dataIndex: "maxOutputTokens",
+      key: "maxOutputTokens",
       width: 150,
       render: (value: number, _record: ModelLimitConfig, index: number) => (
         <InputNumber
@@ -132,24 +150,32 @@ export const ModelLimitsSettings: React.FC = () => {
           min={256}
           max={100000}
           step={256}
-          style={{ width: '100%' }}
+          style={{ width: "100%" }}
         />
       ),
     },
     {
-      title: 'Strategy',
-      dataIndex: 'strategy',
-      key: 'strategy',
-      render: (strategy: BudgetStrategy, _record: ModelLimitConfig, index: number) => (
+      title: "Strategy",
+      dataIndex: "strategy",
+      key: "strategy",
+      render: (
+        strategy: BudgetStrategy,
+        _record: ModelLimitConfig,
+        index: number,
+      ) => (
         <Space>
           <Select
             value={strategy.type}
             onChange={(type) =>
               updateConfig(index, {
                 strategy:
-                  type === 'window'
-                    ? { type: 'window', size: 20 }
-                    : { type: 'hybrid', windowSize: 20, enableSummarization: true },
+                  type === "window"
+                    ? { type: "window", size: 20 }
+                    : {
+                        type: "hybrid",
+                        windowSize: 20,
+                        enableSummarization: true,
+                      },
               })
             }
             style={{ width: 100 }}
@@ -157,12 +183,12 @@ export const ModelLimitsSettings: React.FC = () => {
             <Option value="window">Window</Option>
             <Option value="hybrid">Hybrid</Option>
           </Select>
-          {strategy.type === 'window' && (
+          {strategy.type === "window" && (
             <InputNumber
               value={strategy.size}
               onChange={(v) =>
                 updateConfig(index, {
-                  strategy: { type: 'window', size: v || 20 },
+                  strategy: { type: "window", size: v || 20 },
                 })
               }
               min={5}
@@ -170,7 +196,7 @@ export const ModelLimitsSettings: React.FC = () => {
               addonBefore="Size"
             />
           )}
-          {strategy.type === 'hybrid' && (
+          {strategy.type === "hybrid" && (
             <>
               <InputNumber
                 value={strategy.windowSize}
@@ -213,16 +239,20 @@ export const ModelLimitsSettings: React.FC = () => {
         <Divider />
 
         <Title level={5}>Default Strategy</Title>
-        <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+        <Space direction="vertical" style={{ width: "100%", marginBottom: 16 }}>
           <Space>
             <Text>Strategy Type:</Text>
             <Select
               value={defaultStrategy.type}
               onChange={(type) =>
                 setDefaultStrategy(
-                  type === 'window'
-                    ? { type: 'window', size: 20 }
-                    : { type: 'hybrid', windowSize: 20, enableSummarization: true }
+                  type === "window"
+                    ? { type: "window", size: 20 }
+                    : {
+                        type: "hybrid",
+                        windowSize: 20,
+                        enableSummarization: true,
+                      },
                 )
               }
               style={{ width: 120 }}
@@ -231,27 +261,30 @@ export const ModelLimitsSettings: React.FC = () => {
               <Option value="hybrid">Hybrid</Option>
             </Select>
           </Space>
-          {defaultStrategy.type === 'window' && (
+          {defaultStrategy.type === "window" && (
             <Space>
               <Text>Window Size:</Text>
               <InputNumber
                 value={defaultStrategy.size}
                 onChange={(v) =>
-                  setDefaultStrategy({ type: 'window', size: v || 20 })
+                  setDefaultStrategy({ type: "window", size: v || 20 })
                 }
                 min={5}
                 max={100}
               />
             </Space>
           )}
-          {defaultStrategy.type === 'hybrid' && (
+          {defaultStrategy.type === "hybrid" && (
             <>
               <Space>
                 <Text>Window Size:</Text>
                 <InputNumber
                   value={defaultStrategy.windowSize}
                   onChange={(v) =>
-                    setDefaultStrategy({ ...defaultStrategy, windowSize: v || 20 })
+                    setDefaultStrategy({
+                      ...defaultStrategy,
+                      windowSize: v || 20,
+                    })
                   }
                   min={5}
                   max={100}
@@ -262,7 +295,10 @@ export const ModelLimitsSettings: React.FC = () => {
                 <Switch
                   checked={defaultStrategy.enableSummarization}
                   onChange={(checked) =>
-                    setDefaultStrategy({ ...defaultStrategy, enableSummarization: checked })
+                    setDefaultStrategy({
+                      ...defaultStrategy,
+                      enableSummarization: checked,
+                    })
                   }
                 />
               </Space>

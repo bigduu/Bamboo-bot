@@ -1,11 +1,11 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 /**
  * Mermaid built-in themes
  * @see https://mermaid.js.org/config/theming.html
  */
-export type MermaidTheme = 'default' | 'neutral' | 'dark' | 'forest' | 'base';
+export type MermaidTheme = "default" | "neutral" | "dark" | "forest" | "base";
 
 /**
  * Mermaid Configuration Settings
@@ -25,7 +25,7 @@ export interface MermaidSettings {
   // Flowchart settings
   flowchartNodeSpacing: number;
   flowchartRankSpacing: number;
-  flowchartCurve: 'basis' | 'linear' | 'cardinal';
+  flowchartCurve: "basis" | "linear" | "cardinal";
 
   // Sequence settings
   sequenceActorMargin: number;
@@ -40,7 +40,7 @@ export interface MermaidSettings {
 
 const DEFAULT_SETTINGS: MermaidSettings = {
   // Theme
-  theme: 'default',
+  theme: "default",
   themeVariables: {},
 
   // Global
@@ -51,7 +51,7 @@ const DEFAULT_SETTINGS: MermaidSettings = {
   // Flowchart
   flowchartNodeSpacing: 50,
   flowchartRankSpacing: 50,
-  flowchartCurve: 'basis',
+  flowchartCurve: "basis",
 
   // Sequence
   sequenceActorMargin: 50,
@@ -78,13 +78,12 @@ export const useMermaidSettingsStore = create<MermaidSettingsStore>()(
         set((state) => ({
           settings: { ...state.settings, ...updates },
         })),
-      resetSettings: () =>
-        set({ settings: DEFAULT_SETTINGS }),
+      resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
     }),
     {
-      name: 'mermaid-settings',
-    }
-  )
+      name: "mermaid-settings",
+    },
+  ),
 );
 
 /**

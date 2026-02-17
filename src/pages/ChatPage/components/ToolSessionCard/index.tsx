@@ -1,12 +1,5 @@
 import React, { memo, useMemo, useState } from "react";
-import {
-  Collapse,
-  Space,
-  Typography,
-  theme,
-  Badge,
-  CollapseProps,
-} from "antd";
+import { Collapse, Space, Typography, theme, Badge, CollapseProps } from "antd";
 import type { GlobalToken } from "antd/es/theme/interface";
 import {
   ToolOutlined,
@@ -43,7 +36,10 @@ interface ToolItemStatus {
   text: string;
 }
 
-function getToolStatus(item: ToolSessionItem, token: GlobalToken): ToolItemStatus {
+function getToolStatus(
+  item: ToolSessionItem,
+  token: GlobalToken,
+): ToolItemStatus {
   if (!item.result) {
     return {
       icon: <LoadingOutlined spin style={{ color: token.colorPrimary }} />,
@@ -78,9 +74,12 @@ function generateToolIntent(
   };
 
   const nameMap: Record<string, (p: typeof params) => string> = {
-    file_read: (p) => `Reading: ${truncate(p.path || p.file_path || "unknown", 35)}`,
-    file_write: (p) => `Writing: ${truncate(p.path || p.file_path || "unknown", 35)}`,
-    file_edit: (p) => `Editing: ${truncate(p.path || p.file_path || "unknown", 35)}`,
+    file_read: (p) =>
+      `Reading: ${truncate(p.path || p.file_path || "unknown", 35)}`,
+    file_write: (p) =>
+      `Writing: ${truncate(p.path || p.file_path || "unknown", 35)}`,
+    file_edit: (p) =>
+      `Editing: ${truncate(p.path || p.file_path || "unknown", 35)}`,
     bash: (p) => `Executing: ${truncate(p.command, 35)}`,
     grep: (p) => `Searching: "${truncate(p.pattern, 25)}"`,
     glob: (p) => `Finding: "${p.pattern}"`,
@@ -159,7 +158,10 @@ const ToolSessionCardComponent: React.FC<ToolSessionCardProps> = ({
         if (!toolCall) return null;
 
         const status = getToolStatus(item, token);
-        const intent = generateToolIntent(toolCall.toolName, toolCall.parameters);
+        const intent = generateToolIntent(
+          toolCall.toolName,
+          toolCall.parameters,
+        );
 
         return {
           key: item.call.id,
@@ -182,7 +184,10 @@ const ToolSessionCardComponent: React.FC<ToolSessionCardProps> = ({
                 {index + 1}.
               </span>
               <span style={{ flexShrink: 0 }}>{status.icon}</span>
-              <Text strong style={{ fontSize: token.fontSizeSM, flexShrink: 0 }}>
+              <Text
+                strong
+                style={{ fontSize: token.fontSizeSM, flexShrink: 0 }}
+              >
                 {toolCall.toolName}
               </Text>
               <Text
@@ -242,7 +247,9 @@ const ToolSessionCardComponent: React.FC<ToolSessionCardProps> = ({
         style={{
           padding: `${token.paddingSM}px ${token.paddingMD}px`,
           backgroundColor: token.colorBgContainer,
-          borderBottom: isExpanded ? `1px solid ${token.colorBorder}` : undefined,
+          borderBottom: isExpanded
+            ? `1px solid ${token.colorBorder}`
+            : undefined,
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
@@ -279,7 +286,7 @@ const ToolSessionCardComponent: React.FC<ToolSessionCardProps> = ({
             onChange={(keys) => {
               // keys 是 string | string[]
               const newExpandedKeys = new Set<string>(
-                Array.isArray(keys) ? keys : keys ? [keys] : []
+                Array.isArray(keys) ? keys : keys ? [keys] : [],
               );
               setExpandedTools(newExpandedKeys);
             }}

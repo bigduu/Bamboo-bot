@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useAppStore } from '../../pages/ChatPage/store';
+import React, { useState } from "react";
+import { useAppStore } from "../../pages/ChatPage/store";
 import {
   Card,
   List,
@@ -11,7 +11,7 @@ import {
   Typography,
   Alert,
   theme,
-} from 'antd';
+} from "antd";
 import {
   CheckCircleOutlined,
   SyncOutlined,
@@ -25,7 +25,7 @@ import {
   ToolOutlined,
   LinkOutlined,
   UnorderedListOutlined,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 
 const { Text } = Typography;
 
@@ -33,7 +33,7 @@ const { Text } = Typography;
 export interface TodoItem {
   id: string;
   description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'blocked';
+  status: "pending" | "in_progress" | "completed" | "blocked";
   depends_on: string[];
   notes: string;
   tool_calls_count?: number;
@@ -57,32 +57,32 @@ interface TodoListProps {
 
 // Status configuration
 const statusConfig: Record<
-  TodoItem['status'],
+  TodoItem["status"],
   { icon: React.ReactNode; color: string; text: string; tagColor: string }
 > = {
   pending: {
     icon: <ClockCircleOutlined />,
-    color: '#8c8c8c',
-    text: 'Pending',
-    tagColor: 'default',
+    color: "#8c8c8c",
+    text: "Pending",
+    tagColor: "default",
   },
   in_progress: {
     icon: <SyncOutlined spin />,
-    color: '#1890ff',
-    text: 'In Progress',
-    tagColor: 'processing',
+    color: "#1890ff",
+    text: "In Progress",
+    tagColor: "processing",
   },
   completed: {
     icon: <CheckCircleOutlined />,
-    color: '#52c41a',
-    text: 'Completed',
-    tagColor: 'success',
+    color: "#52c41a",
+    text: "Completed",
+    tagColor: "success",
   },
   blocked: {
     icon: <ExclamationCircleOutlined />,
-    color: '#ff4d4f',
-    text: 'Blocked',
-    tagColor: 'error',
+    color: "#ff4d4f",
+    text: "Blocked",
+    tagColor: "error",
   },
 };
 
@@ -95,7 +95,9 @@ export const TodoList: React.FC<TodoListProps> = ({
   // Get from Zustand store (real-time updates via useAgentEventSubscription)
   const todoListData = useAppStore((state) => state.todoLists[sessionId]);
   const activeItemId = useAppStore((state) => state.activeItems[sessionId]);
-  const evaluationState = useAppStore((state) => state.evaluationStates[sessionId]);
+  const evaluationState = useAppStore(
+    (state) => state.evaluationStates[sessionId],
+  );
 
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [isPinned, setIsPinned] = useState(false);
@@ -111,14 +113,16 @@ export const TodoList: React.FC<TodoListProps> = ({
         title: todoListData.title,
         items: todoListData.items,
         progress: {
-          completed: todoListData.items.filter((i) => i.status === 'completed').length,
+          completed: todoListData.items.filter((i) => i.status === "completed")
+            .length,
           total: todoListData.items.length,
           percentage:
             todoListData.items.length > 0
               ? Math.round(
-                  (todoListData.items.filter((i) => i.status === 'completed').length /
+                  (todoListData.items.filter((i) => i.status === "completed")
+                    .length /
                     todoListData.items.length) *
-                    100
+                    100,
                 )
               : 0,
         },
@@ -157,19 +161,22 @@ export const TodoList: React.FC<TodoListProps> = ({
         borderRadius: 8,
         boxShadow: isEvaluating
           ? `0 0 0 2px ${token.colorPrimaryBorder}`
-          : '0 2px 8px rgba(0, 0, 0, 0.06)',
+          : "0 2px 8px rgba(0, 0, 0, 0.06)",
         opacity: isCollapsed && !isPinned ? 0.9 : 1,
       }}
       styles={{
         body: {
-          padding: isCollapsed ? '12px 16px' : 16,
+          padding: isCollapsed ? "12px 16px" : 16,
         },
       }}
       title={
-        <Space onClick={toggleCollapse} style={{ cursor: 'pointer', width: '100%' }}>
+        <Space
+          onClick={toggleCollapse}
+          style={{ cursor: "pointer", width: "100%" }}
+        >
           <UnorderedListOutlined style={{ color: token.colorPrimary }} />
           <Text strong style={{ fontSize: 15 }}>
-            {title || 'Task List'}
+            {title || "Task List"}
           </Text>
           {isEvaluating && (
             <Tag icon={<SyncOutlined spin />} color="processing">
@@ -180,7 +187,7 @@ export const TodoList: React.FC<TodoListProps> = ({
             <Badge
               count={`${progress.completed}/${progress.total}`}
               style={{
-                backgroundColor: isCompleted ? '#52c41a' : token.colorPrimary,
+                backgroundColor: isCompleted ? "#52c41a" : token.colorPrimary,
               }}
             />
           )}
@@ -191,14 +198,18 @@ export const TodoList: React.FC<TodoListProps> = ({
           {progress.total > 0 && isCollapsed && (
             <Text type="secondary" style={{ fontSize: 13 }}>
               {progress.completed}/{progress.total}
-              {isCompleted && <CheckCircleOutlined style={{ color: '#52c41a', marginLeft: 4 }} />}
+              {isCompleted && (
+                <CheckCircleOutlined
+                  style={{ color: "#52c41a", marginLeft: 4 }}
+                />
+              )}
             </Text>
           )}
-          <Tooltip title={isPinned ? 'Unpin' : 'Pin'}>
+          <Tooltip title={isPinned ? "Unpin" : "Pin"}>
             <span
               onClick={togglePin}
               style={{
-                cursor: 'pointer',
+                cursor: "pointer",
                 color: isPinned ? token.colorPrimary : token.colorTextSecondary,
                 fontSize: 16,
               }}
@@ -210,11 +221,11 @@ export const TodoList: React.FC<TodoListProps> = ({
             <span
               onClick={toggleCollapse}
               style={{
-                cursor: 'pointer',
+                cursor: "pointer",
                 color: token.colorTextSecondary,
                 fontSize: 12,
-                transform: isCollapsed ? 'rotate(-90deg)' : undefined,
-                transition: 'transform 0.2s',
+                transform: isCollapsed ? "rotate(-90deg)" : undefined,
+                transition: "transform 0.2s",
               }}
             >
               {isCollapsed ? <RightOutlined /> : <DownOutlined />}
@@ -243,7 +254,7 @@ export const TodoList: React.FC<TodoListProps> = ({
               <Progress
                 percent={progress.percentage}
                 size="small"
-                status={isCompleted ? 'success' : 'active'}
+                status={isCompleted ? "success" : "active"}
                 format={(percent) => <Text type="secondary">{percent}%</Text>}
               />
             </div>
@@ -260,25 +271,37 @@ export const TodoList: React.FC<TodoListProps> = ({
               return (
                 <List.Item
                   style={{
-                    padding: '12px 0',
-                    borderLeft: isActive ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
+                    padding: "12px 0",
+                    borderLeft: isActive
+                      ? `3px solid ${token.colorPrimary}`
+                      : "3px solid transparent",
                     paddingLeft: isActive ? 12 : 15,
-                    backgroundColor: isActive ? token.colorPrimaryBg : 'transparent',
+                    backgroundColor: isActive
+                      ? token.colorPrimaryBg
+                      : "transparent",
                     borderRadius: 4,
                     marginBottom: 4,
                   }}
                 >
-                  <div style={{ width: '100%' }}>
-                    <Space align="start" style={{ width: '100%' }}>
+                  <div style={{ width: "100%" }}>
+                    <Space align="start" style={{ width: "100%" }}>
                       <Tooltip title={status.text}>
-                        <span style={{ color: status.color, fontSize: 16 }}>{status.icon}</span>
+                        <span style={{ color: status.color, fontSize: 16 }}>
+                          {status.icon}
+                        </span>
                       </Tooltip>
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Text
                           style={{
-                            textDecoration: item.status === 'completed' ? 'line-through' : 'none',
-                            color: item.status === 'completed' ? token.colorTextSecondary : token.colorText,
+                            textDecoration:
+                              item.status === "completed"
+                                ? "line-through"
+                                : "none",
+                            color:
+                              item.status === "completed"
+                                ? token.colorTextSecondary
+                                : token.colorText,
                             fontWeight: isActive ? 500 : 400,
                           }}
                         >
@@ -291,16 +314,21 @@ export const TodoList: React.FC<TodoListProps> = ({
                             <Tag color={status.tagColor}>{status.text}</Tag>
 
                             {/* Tool calls count */}
-                            {item.tool_calls_count !== undefined && item.tool_calls_count > 0 && (
-                              <Tag icon={<ToolOutlined />} color="blue">
-                                {item.tool_calls_count} tools
-                              </Tag>
-                            )}
+                            {item.tool_calls_count !== undefined &&
+                              item.tool_calls_count > 0 && (
+                                <Tag icon={<ToolOutlined />} color="blue">
+                                  {item.tool_calls_count} tools
+                                </Tag>
+                              )}
 
                             {/* Dependencies */}
                             {item.depends_on.length > 0 && (
-                              <Tooltip title={`Depends on: ${item.depends_on.join(', ')}`}>
-                                <Tag icon={<LinkOutlined />}>{item.depends_on.length} deps</Tag>
+                              <Tooltip
+                                title={`Depends on: ${item.depends_on.join(", ")}`}
+                              >
+                                <Tag icon={<LinkOutlined />}>
+                                  {item.depends_on.length} deps
+                                </Tag>
                               </Tooltip>
                             )}
                           </Space>
@@ -311,10 +339,10 @@ export const TodoList: React.FC<TodoListProps> = ({
                           <Text
                             type="secondary"
                             style={{
-                              display: 'block',
+                              display: "block",
                               marginTop: 6,
                               fontSize: 12,
-                              padding: '4px 8px',
+                              padding: "4px 8px",
                               backgroundColor: token.colorFillQuaternary,
                               borderRadius: 4,
                             }}

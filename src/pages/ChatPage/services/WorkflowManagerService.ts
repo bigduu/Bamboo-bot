@@ -39,7 +39,7 @@ export class WorkflowManagerService {
       return workflows.map((workflow: any) => ({
         name: String(workflow.name || ""),
         filename: String(
-          workflow.filename || ((workflow.name || "workflow") + ".md"),
+          workflow.filename || (workflow.name || "workflow") + ".md",
         ),
         size: Number(workflow.size || 0),
         modified_at: workflow.modified_at,
@@ -68,7 +68,7 @@ export class WorkflowManagerService {
       const resolvedName = data?.name ? String(data.name) : name;
       const metadata: WorkflowMetadata = {
         name: resolvedName,
-        filename: String(data?.filename || (resolvedName + ".md")),
+        filename: String(data?.filename || resolvedName + ".md"),
         size: Number(data?.size || 0),
         modified_at: data?.modified_at,
         source: "global",

@@ -1,7 +1,7 @@
-import { theme } from 'antd';
-import { useEffect, useRef } from 'react';
-import mermaid from 'mermaid';
-import { useMermaidSettings } from '../../store/mermaidSettingsStore';
+import { theme } from "antd";
+import { useEffect, useRef } from "react";
+import mermaid from "mermaid";
+import { useMermaidSettings } from "../../store/mermaidSettingsStore";
 
 /**
  * Hook to dynamically update Mermaid theme based on Ant Design theme
@@ -14,7 +14,7 @@ import { useMermaidSettings } from '../../store/mermaidSettingsStore';
 export const useMermaidTheme = () => {
   const { token } = theme.useToken();
   const userSettings = useMermaidSettings();
-  const previousCheckRef = useRef<string>('');
+  const previousCheckRef = useRef<string>("");
 
   useEffect(() => {
     // Create a check string to detect actual changes
@@ -28,26 +28,29 @@ export const useMermaidTheme = () => {
 
     previousCheckRef.current = checkString;
 
-    console.log(`🎨 Updating Mermaid theme: ${userSettings.theme} (isDark: ${isDark})`);
+    console.log(
+      `🎨 Updating Mermaid theme: ${userSettings.theme} (isDark: ${isDark})`,
+    );
 
     // Determine which theme to use
     // If user selected 'default' or 'neutral', we auto-switch based on app theme
     let activeTheme = userSettings.theme;
-    if (userSettings.theme === 'default' || userSettings.theme === 'neutral') {
-      activeTheme = isDark ? 'dark' : userSettings.theme;
+    if (userSettings.theme === "default" || userSettings.theme === "neutral") {
+      activeTheme = isDark ? "dark" : userSettings.theme;
     }
 
     mermaid.initialize({
       startOnLoad: false,
       theme: activeTheme,
-      securityLevel: 'loose',
+      securityLevel: "loose",
       suppressErrorRendering: true,
       fontSize: userSettings.fontSize,
 
       // Apply custom theme variables if provided
-      themeVariables: Object.keys(userSettings.themeVariables).length > 0
-        ? userSettings.themeVariables
-        : undefined,
+      themeVariables:
+        Object.keys(userSettings.themeVariables).length > 0
+          ? userSettings.themeVariables
+          : undefined,
 
       // Flowchart with user settings
       flowchart: {
@@ -97,7 +100,7 @@ export const useMermaidTheme = () => {
         boxTextMargin: 5,
         noteMargin: 10,
         messageMargin: 35,
-        messageAlign: 'center',
+        messageAlign: "center",
       },
 
       timeline: {
@@ -151,7 +154,7 @@ export const useMermaidTheme = () => {
  */
 function isColorDark(color: string): boolean {
   // Handle hex colors
-  if (color.startsWith('#')) {
+  if (color.startsWith("#")) {
     const hex = color.slice(1);
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);

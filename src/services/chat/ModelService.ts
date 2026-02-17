@@ -23,7 +23,9 @@ export class ModelService {
 
   async getModels(): Promise<string[]> {
     try {
-      const data = await apiClient.get<{ data: Array<{ id: string }> }>("models");
+      const data = await apiClient.get<{ data: Array<{ id: string }> }>(
+        "models",
+      );
       return data.data.map((model) => model.id);
     } catch (error) {
       console.error("Failed to fetch models from HTTP API:", error);
@@ -38,7 +40,9 @@ export class ModelService {
         try {
           const body = JSON.parse(error.body || "{}");
           if (body.error?.code === "proxy_auth_required") {
-            throw new ProxyAuthRequiredError(body.error.message || error.message);
+            throw new ProxyAuthRequiredError(
+              body.error.message || error.message,
+            );
           }
         } catch {
           // Ignore parse errors

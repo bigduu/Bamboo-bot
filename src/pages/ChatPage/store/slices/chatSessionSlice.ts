@@ -119,7 +119,9 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
   },
 
   deleteChats: async (chatIds) => {
-    const chatsToDelete = get().chats.filter((chat) => chatIds.includes(chat.id));
+    const chatsToDelete = get().chats.filter((chat) =>
+      chatIds.includes(chat.id),
+    );
     const sessionIds = getAgentSessionIds(chatsToDelete);
 
     for (const sessionId of sessionIds) {
@@ -307,14 +309,18 @@ const getAgentSessionIds = (chats: ChatItem[]): string[] => {
   return [...sessionIds];
 };
 
-const deleteBackendSession = async (sessionId: string | null): Promise<void> => {
+const deleteBackendSession = async (
+  sessionId: string | null,
+): Promise<void> => {
   if (!sessionId) {
     return;
   }
 
   try {
     await agentClient.deleteSession(sessionId);
-    console.log(`[ChatSlice] Successfully deleted backend session ${sessionId}`);
+    console.log(
+      `[ChatSlice] Successfully deleted backend session ${sessionId}`,
+    );
   } catch (error) {
     console.error(
       `[ChatSlice] Failed to delete backend session ${sessionId}:`,

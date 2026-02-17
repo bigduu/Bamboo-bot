@@ -36,8 +36,7 @@ const isSafeWorkflowName = (name: string) => {
 };
 
 const isTauri =
-  typeof window !== "undefined" &&
-  Boolean((window as any).__TAURI_INTERNALS__);
+  typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__);
 
 const SystemSettingsWorkflowsTab: React.FC = () => {
   const { token } = useToken();

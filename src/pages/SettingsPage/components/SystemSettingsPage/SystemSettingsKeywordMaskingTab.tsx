@@ -35,14 +35,24 @@ interface ValidationError {
 }
 
 const keywordExamples = [
-  { value: "literal-token", label: "Mask a literal token", match_type: "exact", pattern: "sk-" },
+  {
+    value: "literal-token",
+    label: "Mask a literal token",
+    match_type: "exact",
+    pattern: "sk-",
+  },
   {
     value: "github",
     label: "Mask GitHub tokens",
     match_type: "regex",
     pattern: "ghp_[A-Za-z0-9]+",
   },
-  { value: "aws", label: "Mask AWS keys", match_type: "regex", pattern: "AKIA[0-9A-Z]{16}" },
+  {
+    value: "aws",
+    label: "Mask AWS keys",
+    match_type: "regex",
+    pattern: "AKIA[0-9A-Z]{16}",
+  },
   {
     value: "email",
     label: "Mask email addresses",
@@ -54,7 +64,7 @@ const keywordExamples = [
 const applyPreviewMasking = (
   text: string,
   pattern: string,
-  matchType: "exact" | "regex"
+  matchType: "exact" | "regex",
 ): { masked: string; error?: string } => {
   if (!pattern) {
     return { masked: text };
@@ -79,7 +89,9 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editPattern, setEditPattern] = useState("");
-  const [editMatchType, setEditMatchType] = useState<"exact" | "regex">("exact");
+  const [editMatchType, setEditMatchType] = useState<"exact" | "regex">(
+    "exact",
+  );
   const [editEnabled, setEditEnabled] = useState(true);
   const [exampleValue, setExampleValue] = useState<string | undefined>();
   const [previewText, setPreviewText] = useState("My token is sk-123");
@@ -93,7 +105,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
     try {
       setLoading(true);
       const response = await invoke<{ entries: KeywordEntry[] }>(
-        "get_keyword_masking_config"
+        "get_keyword_masking_config",
       );
       setEntries(response.entries);
     } catch (error) {
@@ -109,7 +121,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
       // Validate first
       const validationResult = await invoke<void | ValidationError[]>(
         "validate_keyword_entries",
-        { entries: newEntries }
+        { entries: newEntries },
       );
 
       if (Array.isArray(validationResult)) {
@@ -123,14 +135,14 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
       // Save if validation passes
       await invoke<{ entries: KeywordEntry[] }>(
         "update_keyword_masking_config",
-        { entries: newEntries }
+        { entries: newEntries },
       );
       setEntries(newEntries);
       message.success("Keyword masking configuration saved");
       return true;
     } catch (error) {
       message.error(
-        error instanceof Error ? error.message : "Failed to save configuration"
+        error instanceof Error ? error.message : "Failed to save configuration",
       );
       return false;
     }
@@ -143,7 +155,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
       enabled: true,
     };
     const newEntries = [...entries, newEntry];
-    
+
     // Don't save empty entry, just set editing mode
     setEntries(newEntries);
     setEditingIndex(newEntries.length - 1);
@@ -220,9 +232,9 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
     >
       <Space direction="vertical" style={{ width: "100%" }} size="large">
         <Text type="secondary">
-          Configure keywords to be masked before sending to Copilot API. 
-          Use exact match for literal strings or regex for pattern matching.
-          All matches will be replaced with [MASKED].
+          Configure keywords to be masked before sending to Copilot API. Use
+          exact match for literal strings or regex for pattern matching. All
+          matches will be replaced with [MASKED].
         </Text>
 
         <List
@@ -283,7 +295,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
                         onChange={(value) => {
                           setExampleValue(value);
                           const example = keywordExamples.find(
-                            (item) => item.value === value
+                            (item) => item.value === value,
                           );
                           if (!example) return;
                           setEditPattern(example.pattern);

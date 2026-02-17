@@ -73,7 +73,9 @@ export const ModelMappingCard: React.FC = () => {
         const newProvider = config.provider || "copilot";
 
         if (newProvider !== currentProvider && currentProvider !== "") {
-          console.log(`Provider changed from ${currentProvider} to ${newProvider}`);
+          console.log(
+            `Provider changed from ${currentProvider} to ${newProvider}`,
+          );
           setCurrentProvider(newProvider);
           setError(null);
         }
@@ -101,59 +103,67 @@ export const ModelMappingCard: React.FC = () => {
   }, [msgApi]);
 
   // Fetch models with caching
-  const fetchModels = useCallback(async (forceRefresh = false) => {
-    if (!currentProvider) return;
+  const fetchModels = useCallback(
+    async (forceRefresh = false) => {
+      if (!currentProvider) return;
 
-    // Check cache first (unless force refresh)
-    if (!forceRefresh && modelCache[currentProvider]) {
-      const cached = modelCache[currentProvider];
-      const now = Date.now();
+      // Check cache first (unless force refresh)
+      if (!forceRefresh && modelCache[currentProvider]) {
+        const cached = modelCache[currentProvider];
+        const now = Date.now();
 
-      if (now - cached.timestamp < CACHE_EXPIRATION_MS) {
-        console.log(`Using cached models for ${currentProvider}`);
-        setAvailableModels(cached.models);
-        setError(null);
-        return;
-      }
-    }
-
-    setIsLoadingModels(true);
-    setError(null);
-
-    try {
-      let models: string[];
-
-      // For Copilot provider, use the /models endpoint (via modelService)
-      // For other providers, use /bamboo/settings/provider/models
-      if (currentProvider === "copilot") {
-        const { modelService } = await import("../../../../services/chat/ModelService");
-        models = await modelService.getModels();
-      } else {
-        models = await settingsService.fetchProviderModels(currentProvider);
+        if (now - cached.timestamp < CACHE_EXPIRATION_MS) {
+          console.log(`Using cached models for ${currentProvider}`);
+          setAvailableModels(cached.models);
+          setError(null);
+          return;
+        }
       }
 
-      setAvailableModels(models);
+      setIsLoadingModels(true);
+      setError(null);
 
-      // Update cache
-      setModelCache(prev => ({
-        ...prev,
-        [currentProvider]: {
-          models,
-          timestamp: Date.now(),
-        },
-      }));
+      try {
+        let models: string[];
 
-      console.log(`Fetched ${models.length} models for ${currentProvider}`);
-    } catch (error) {
-      console.error("Failed to fetch models:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to load models";
-      setError(errorMessage);
-      msgApi.error("Failed to load models. Please check your provider configuration.");
-      setAvailableModels([]);
-    } finally {
-      setIsLoadingModels(false);
-    }
-  }, [currentProvider, modelCache, msgApi]);
+        // For Copilot provider, use the /models endpoint (via modelService)
+        // For other providers, use /bamboo/settings/provider/models
+        if (currentProvider === "copilot") {
+          const { modelService } = await import(
+            "../../../../services/chat/ModelService"
+          );
+          models = await modelService.getModels();
+        } else {
+          models = await settingsService.fetchProviderModels(currentProvider);
+        }
+
+        setAvailableModels(models);
+
+        // Update cache
+        setModelCache((prev) => ({
+          ...prev,
+          [currentProvider]: {
+            models,
+            timestamp: Date.now(),
+          },
+        }));
+
+        console.log(`Fetched ${models.length} models for ${currentProvider}`);
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to load models";
+        setError(errorMessage);
+        msgApi.error(
+          "Failed to load models. Please check your provider configuration.",
+        );
+        setAvailableModels([]);
+      } finally {
+        setIsLoadingModels(false);
+      }
+    },
+    [currentProvider, modelCache, msgApi],
+  );
 
   // Fetch models when provider changes
   useEffect(() => {
@@ -162,7 +172,10 @@ export const ModelMappingCard: React.FC = () => {
     }
   }, [currentProvider, fetchModels]);
 
-  const handleMappingChange = async (modelType: string, selectedModel: string) => {
+  const handleMappingChange = async (
+    modelType: string,
+    selectedModel: string,
+  ) => {
     // Handle custom input
     if (selectedModel === "__custom__") {
       setCustomModelType(modelType);
@@ -193,7 +206,10 @@ export const ModelMappingCard: React.FC = () => {
       return;
     }
 
-    const newMappings = { ...mappings, [customModelType]: customModelName.trim() };
+    const newMappings = {
+      ...mappings,
+      [customModelType]: customModelName.trim(),
+    };
     setMappings(newMappings);
 
     try {
@@ -219,9 +235,21 @@ export const ModelMappingCard: React.FC = () => {
   };
 
   const modelTypes = [
-    { key: "opus", label: "Opus", description: 'matches models containing "opus"' },
-    { key: "sonnet", label: "Sonnet", description: 'matches models containing "sonnet"' },
-    { key: "haiku", label: "Haiku", description: 'matches models containing "haiku"' },
+    {
+      key: "opus",
+      label: "Opus",
+      description: 'matches models containing "opus"',
+    },
+    {
+      key: "sonnet",
+      label: "Sonnet",
+      description: 'matches models containing "sonnet"',
+    },
+    {
+      key: "haiku",
+      label: "Haiku",
+      description: 'matches models containing "haiku"',
+    },
   ];
 
   const collapseItems = [
@@ -235,8 +263,9 @@ export const ModelMappingCard: React.FC = () => {
           style={{ width: "100%" }}
         >
           <Text type="secondary">
-            Configure which {currentProvider.charAt(0).toUpperCase() + currentProvider.slice(1)} models to use when Claude CLI requests
-            specific models.
+            Configure which{" "}
+            {currentProvider.charAt(0).toUpperCase() + currentProvider.slice(1)}{" "}
+            models to use when Claude CLI requests specific models.
           </Text>
 
           {/* Error Alert with Retry Button */}
@@ -267,48 +296,54 @@ export const ModelMappingCard: React.FC = () => {
           )}
 
           {/* Model Mapping Selections */}
-          {!isLoadingModels && !error && modelTypes.map(({ key, label, description }) => {
-            const isMappingValid = validateMapping(key);
-            const mappedModel = mappings[key];
+          {!isLoadingModels &&
+            !error &&
+            modelTypes.map(({ key, label, description }) => {
+              const isMappingValid = validateMapping(key);
+              const mappedModel = mappings[key];
 
-            return (
-              <Space
-                key={key}
-                direction="vertical"
-                size={token.marginXXS}
-                style={{ width: "100%" }}
-              >
-                <Text type="secondary">
-                  {label} ({description})
-                </Text>
-                <Select
+              return (
+                <Space
+                  key={key}
+                  direction="vertical"
+                  size={token.marginXXS}
                   style={{ width: "100%" }}
-                  value={mappedModel || undefined}
-                  onChange={(value) => handleMappingChange(key, value)}
-                  placeholder={`Select ${label} model`}
-                  loading={isLoadingModels}
-                  disabled={isLoadingModels || availableModels.length === 0}
-                  showSearch
-                  allowClear
-                  optionFilterProp="children"
-                  options={[
-                    ...availableModels.map((m) => ({ label: m, value: m })),
-                    { label: "✏️ Custom model...", value: "__custom__" }
-                  ]}
-                  status={!isMappingValid ? "warning" : undefined}
-                  filterOption={(input, option) =>
-                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
-                  }
-                />
-                {/* Model Validation Warning */}
-                {!isMappingValid && mappedModel && (
-                  <Text type="warning" style={{ fontSize: token.fontSizeSM }}>
-                    ⚠️ Mapped model "{mappedModel}" not found in current provider's available models
+                >
+                  <Text type="secondary">
+                    {label} ({description})
                   </Text>
-                )}
-              </Space>
-            );
-          })}
+                  <Select
+                    style={{ width: "100%" }}
+                    value={mappedModel || undefined}
+                    onChange={(value) => handleMappingChange(key, value)}
+                    placeholder={`Select ${label} model`}
+                    loading={isLoadingModels}
+                    disabled={isLoadingModels || availableModels.length === 0}
+                    showSearch
+                    allowClear
+                    optionFilterProp="children"
+                    options={[
+                      ...availableModels.map((m) => ({ label: m, value: m })),
+                      { label: "✏️ Custom model...", value: "__custom__" },
+                    ]}
+                    status={!isMappingValid ? "warning" : undefined}
+                    filterOption={(input, option) =>
+                      (option?.label ?? "")
+                        .toString()
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                    }
+                  />
+                  {/* Model Validation Warning */}
+                  {!isMappingValid && mappedModel && (
+                    <Text type="warning" style={{ fontSize: token.fontSizeSM }}>
+                      ⚠️ Mapped model "{mappedModel}" not found in current
+                      provider's available models
+                    </Text>
+                  )}
+                </Space>
+              );
+            })}
 
           <Divider style={{ margin: `${token.marginSM} 0` }} />
 
@@ -326,9 +361,14 @@ export const ModelMappingCard: React.FC = () => {
           </Space>
 
           {/* Status Information */}
-          <Space direction="vertical" size={token.marginXXS} style={{ width: "100%" }}>
+          <Space
+            direction="vertical"
+            size={token.marginXXS}
+            style={{ width: "100%" }}
+          >
             <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-              Current Provider: <Text strong>{currentProvider || "Loading..."}</Text>
+              Current Provider:{" "}
+              <Text strong>{currentProvider || "Loading..."}</Text>
             </Text>
             <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
               Available Models: <Text strong>{availableModels.length}</Text>
@@ -339,7 +379,8 @@ export const ModelMappingCard: React.FC = () => {
               )}
             </Text>
             <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-              Stored in: <Text code>~/.bamboo/anthropic-model-mapping.json</Text>
+              Stored in:{" "}
+              <Text code>~/.bamboo/anthropic-model-mapping.json</Text>
             </Text>
           </Space>
         </Space>

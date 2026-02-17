@@ -3,9 +3,15 @@
  */
 
 import type { WorkspaceServiceOptions } from "../../../services/workspace";
-import { WorkspaceService, workspaceService } from "../../../services/workspace";
+import {
+  WorkspaceService,
+  workspaceService,
+} from "../../../services/workspace";
 
-export { WorkspaceService as WorkspaceApiService, workspaceService as workspaceApiService };
+export {
+  WorkspaceService as WorkspaceApiService,
+  workspaceService as workspaceApiService,
+};
 
 export type {
   Workspace as WorkspaceValidationResult,

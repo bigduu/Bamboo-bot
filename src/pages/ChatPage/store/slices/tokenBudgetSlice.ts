@@ -1,5 +1,5 @@
-import { StateCreator } from 'zustand';
-import { TokenUsage } from '../../types/tokenBudget';
+import { StateCreator } from "zustand";
+import { TokenUsage } from "../../types/tokenBudget";
 
 export interface TokenBudgetState {
   // Map of chat ID to token usage
@@ -15,7 +15,7 @@ export interface TokenBudgetActions {
   setTruncationInfo: (
     chatId: string,
     truncationOccurred: boolean,
-    segmentsRemoved: number
+    segmentsRemoved: number,
   ) => void;
   clearTokenUsage: (chatId: string) => void;
 }

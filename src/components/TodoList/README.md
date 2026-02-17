@@ -15,7 +15,7 @@ A React component for displaying and managing AI task lists in chat interfaces.
 ## Usage
 
 ```tsx
-import TodoList from './components/TodoList';
+import TodoList from "./components/TodoList";
 
 function ChatPage() {
   return (
@@ -32,11 +32,11 @@ function ChatPage() {
 
 ## Props
 
-| Prop | Type | Default | Description |
-|------|------|--------|------|
-| `sessionId` | `string` | Required | Session ID |
-| `apiBaseUrl` | `string` | Required | API base URL |
-| `initialCollapsed` | `boolean` | `true` | Whether initially collapsed |
+| Prop               | Type      | Default  | Description                 |
+| ------------------ | --------- | -------- | --------------------------- |
+| `sessionId`        | `string`  | Required | Session ID                  |
+| `apiBaseUrl`       | `string`  | Required | API base URL                |
+| `initialCollapsed` | `boolean` | `true`   | Whether initially collapsed |
 
 ## Backend API
 
@@ -61,7 +61,7 @@ Connect to `/api/v1/stream/{session_id}` to receive real-time updates:
 ```javascript
 eventSource.onmessage = (event) => {
   const data = JSON.parse(event.data);
-  if (data.type === 'todo_list_updated') {
+  if (data.type === "todo_list_updated") {
     // Update UI
   }
 };
@@ -74,12 +74,13 @@ AI can manage task lists through the following tools:
 ### create_todo_list
 
 Create a task list:
+
 ```json
 {
   "title": "Refactor Code",
   "items": [
-    {"id": "1", "description": "Analyze code"},
-    {"id": "2", "description": "Write implementation", "depends_on": ["1"]}
+    { "id": "1", "description": "Analyze code" },
+    { "id": "2", "description": "Write implementation", "depends_on": ["1"] }
   ]
 }
 ```
@@ -87,6 +88,7 @@ Create a task list:
 ### update_todo_item
 
 Update task status:
+
 ```json
 {
   "item_id": "1",
@@ -97,12 +99,12 @@ Update task status:
 
 ## Status Descriptions
 
-| Status | Icon | Description |
-|------|------|------|
-| `pending` | ⭕ | Pending |
-| `in_progress` | 🔄 | In Progress |
-| `completed` | ✅ | Completed |
-| `blocked` | ⚠️ | Blocked |
+| Status        | Icon | Description |
+| ------------- | ---- | ----------- |
+| `pending`     | ⭕   | Pending     |
+| `in_progress` | 🔄   | In Progress |
+| `completed`   | ✅   | Completed   |
+| `blocked`     | ⚠️   | Blocked     |
 
 ## File Structure
 

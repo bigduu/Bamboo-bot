@@ -52,14 +52,18 @@ export class MetricsService {
     return agentApiClient.get<ModelMetrics[]>(`metrics/by-model${query}`);
   }
 
-  async getSessions(query: MetricsSessionQuery = {}): Promise<SessionMetrics[]> {
+  async getSessions(
+    query: MetricsSessionQuery = {},
+  ): Promise<SessionMetrics[]> {
     const queryString = buildQueryString({
       start_date: query.startDate,
       end_date: query.endDate,
       model: query.model,
       limit: query.limit,
     });
-    return agentApiClient.get<SessionMetrics[]>(`metrics/sessions${queryString}`);
+    return agentApiClient.get<SessionMetrics[]>(
+      `metrics/sessions${queryString}`,
+    );
   }
 
   async getSessionDetail(sessionId: string): Promise<SessionDetail | null> {
@@ -81,7 +85,9 @@ export class MetricsService {
       end_date: query.endDate,
       granularity: query.granularity,
     });
-    return agentApiClient.get<DailyOrPeriodMetrics>(`metrics/daily${queryString}`);
+    return agentApiClient.get<DailyOrPeriodMetrics>(
+      `metrics/daily${queryString}`,
+    );
   }
 
   // Forward metrics methods
@@ -131,7 +137,9 @@ export class MetricsService {
   }
 
   // Unified API methods (v2)
-  async getUnifiedSummary(range: MetricsDateRange = {}): Promise<UnifiedSummary> {
+  async getUnifiedSummary(
+    range: MetricsDateRange = {},
+  ): Promise<UnifiedSummary> {
     const query = buildQueryString({
       start_date: range.startDate,
       end_date: range.endDate,
@@ -139,7 +147,9 @@ export class MetricsService {
     return agentApiClient.get<UnifiedSummary>(`metrics/v2/summary${query}`);
   }
 
-  async getUnifiedTimeline(query: MetricsDailyQuery = {}): Promise<UnifiedTimelinePoint[]> {
+  async getUnifiedTimeline(
+    query: MetricsDailyQuery = {},
+  ): Promise<UnifiedTimelinePoint[]> {
     const queryString = buildQueryString({
       days: query.days,
       end_date: query.endDate,

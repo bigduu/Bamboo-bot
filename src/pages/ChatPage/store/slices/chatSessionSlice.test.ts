@@ -38,7 +38,9 @@ const createTestStore = (): StoreApi<ChatSlice> => {
     api: StoreApi<ChatSlice>,
   ) => ChatSlice;
 
-  return createStore<ChatSlice>()((set, get, api) => sliceCreator(set, get, api));
+  return createStore<ChatSlice>()((set, get, api) =>
+    sliceCreator(set, get, api),
+  );
 };
 
 describe("chatSessionSlice deletion", () => {

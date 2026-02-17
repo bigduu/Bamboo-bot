@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 import { Button, Popconfirm, Space, Table, Tag, theme } from "antd";
 import type { TableProps } from "antd";
-import {
-  ServerStatus,
-  type McpServer,
-} from "../../../../../services/mcp";
+import { ServerStatus, type McpServer } from "../../../../../services/mcp";
 import type { McpServerAction } from "../hooks/useMcpSettings";
 
 interface McpServerTableProps {
@@ -17,7 +14,10 @@ interface McpServerTableProps {
   onConnectServer?: (server: McpServer) => Promise<void> | void;
   onDisconnectServer?: (server: McpServer) => Promise<void> | void;
   onRefreshTools?: (server: McpServer) => Promise<void> | void;
-  isServerActionLoading?: (serverId: string, action: McpServerAction) => boolean;
+  isServerActionLoading?: (
+    serverId: string,
+    action: McpServerAction,
+  ) => boolean;
 }
 
 const statusColorMap: Record<ServerStatus, string> = {

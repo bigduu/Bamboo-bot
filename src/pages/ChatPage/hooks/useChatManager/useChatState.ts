@@ -69,7 +69,10 @@ export function useChatState(): UseChatState {
   );
 
   // --- DERIVED STATE ---
-  const baseMessages = useMemo(() => currentChat?.messages || [], [currentChat]);
+  const baseMessages = useMemo(
+    () => currentChat?.messages || [],
+    [currentChat],
+  );
 
   const pinnedChats = useMemo(
     () => chats.filter((chat) => chat.pinned),

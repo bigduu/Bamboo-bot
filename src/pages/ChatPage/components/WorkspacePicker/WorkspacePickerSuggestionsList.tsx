@@ -71,7 +71,11 @@ const WorkspacePickerSuggestionsList: React.FC<
                   height: "auto",
                 }}
               >
-                <Flex justify="space-between" align="center" style={{ width: "100%" }}>
+                <Flex
+                  justify="space-between"
+                  align="center"
+                  style={{ width: "100%" }}
+                >
                   <Space>
                     {getSuggestionIcon(suggestion, token)}
                     <Text strong>{suggestion.name}</Text>

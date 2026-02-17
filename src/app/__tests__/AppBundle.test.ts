@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { execFileSync } from "node:child_process"
-import { describe, expect, it } from "vitest"
+import { execFileSync } from "node:child_process";
+import { describe, expect, it } from "vitest";
 
 const runBundleCheck = () => {
   const script = `
@@ -23,22 +23,22 @@ const code = outputs.filter((item) => item.type === 'chunk').map((item) => item.
 const hasConfigProvider = /(?:\\.|\\b)jsx(?:s|DEV)?\\(\\s*ConfigProvider\\b/.test(code)
 const hasAntApp = /(?:\\.|\\b)jsx(?:s|DEV)?\\(\\s*AntApp\\b/.test(code)
 console.log(JSON.stringify({ hasConfigProvider, hasAntApp }))
-`
+`;
 
   const output = execFileSync("node", ["--input-type=module", "-e", script], {
     cwd: process.cwd(),
     encoding: "utf8",
     env: { ...process.env, NODE_ENV: "development" },
-  })
+  });
 
-  const lines = output.trim().split("\n")
-  return JSON.parse(lines[lines.length - 1] ?? "{}")
-}
+  const lines = output.trim().split("\n");
+  return JSON.parse(lines[lines.length - 1] ?? "{}");
+};
 
 describe("App bundle", () => {
   it("does not leave ConfigProvider or AntApp as free identifiers", () => {
-    const { hasConfigProvider, hasAntApp } = runBundleCheck()
-    expect(hasConfigProvider).toBe(false)
-    expect(hasAntApp).toBe(false)
-  }, 20000)
-})
+    const { hasConfigProvider, hasAntApp } = runBundleCheck();
+    expect(hasConfigProvider).toBe(false);
+    expect(hasAntApp).toBe(false);
+  }, 20000);
+});

@@ -115,11 +115,14 @@ const WorkspacePathModal: React.FC<WorkspacePathModalProps> = ({
           description={
             <div>
               <p>
-                Specify the project root directory associated with the current Chat.
-                The backend will provide file listings based on this directory for @
-                file references.
+                Specify the project root directory associated with the current
+                Chat. The backend will provide file listings based on this
+                directory for @ file references.
               </p>
-              <p>It is recommended to select the root directory containing project source code, such as a Git repository root.</p>
+              <p>
+                It is recommended to select the root directory containing
+                project source code, such as a Git repository root.
+              </p>
             </div>
           }
           type="info"

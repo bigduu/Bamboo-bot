@@ -54,7 +54,7 @@ export function getErrorMessage(error: unknown): string {
 export async function withFallback<T>(
   promise: Promise<T>,
   fallback: T,
-  onError?: (error: ApiError) => void
+  onError?: (error: ApiError) => void,
 ): Promise<T> {
   try {
     return await promise;

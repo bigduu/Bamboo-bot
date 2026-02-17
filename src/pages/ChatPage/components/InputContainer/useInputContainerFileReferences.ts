@@ -56,9 +56,8 @@ export const useInputContainerFileReferences = ({
       setWorkspaceFiles([]);
       setWorkspaceError(null);
       try {
-        const files = await workspaceApiService.listWorkspaceFiles(
-          workspacePath,
-        );
+        const files =
+          await workspaceApiService.listWorkspaceFiles(workspacePath);
         setWorkspaceFiles(files);
         lastWorkspacePathRef.current = workspacePath;
       } catch (error) {
@@ -199,7 +198,9 @@ export const useInputContainerFileReferences = ({
         setWorkspaceError(null);
       } catch (error) {
         const errorMessage =
-          error instanceof Error ? error.message : "Unable to save workspace path";
+          error instanceof Error
+            ? error.message
+            : "Unable to save workspace path";
         messageApi.error(errorMessage);
       } finally {
         setIsSavingWorkspace(false);

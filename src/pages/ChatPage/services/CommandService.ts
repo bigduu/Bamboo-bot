@@ -1,5 +1,5 @@
-import { apiClient } from '../../../services/api';
-import type { CommandItem, CommandListResponse } from '../types/command';
+import { apiClient } from "../../../services/api";
+import type { CommandItem, CommandListResponse } from "../types/command";
 
 export class CommandService {
   private static instance: CommandService;
@@ -19,18 +19,18 @@ export class CommandService {
   async listCommands(forceRefresh = false): Promise<CommandItem[]> {
     const now = Date.now();
 
-    if (!forceRefresh && this.cache && (now - this.cacheTime) < this.CACHE_TTL) {
+    if (!forceRefresh && this.cache && now - this.cacheTime < this.CACHE_TTL) {
       return this.cache;
     }
 
     try {
-      const response = await apiClient.get<CommandListResponse>('commands');
+      const response = await apiClient.get<CommandListResponse>("commands");
       this.cache = response.commands;
       this.cacheTime = now;
-      console.log('[CommandService] Loaded commands:', this.cache.length);
+      console.log("[CommandService] Loaded commands:", this.cache.length);
       return this.cache;
     } catch (error) {
-      console.error('[CommandService] Failed to list commands:', error);
+      console.error("[CommandService] Failed to list commands:", error);
       throw error;
     }
   }
@@ -39,7 +39,10 @@ export class CommandService {
     try {
       return await apiClient.get<any>(`commands/${type}/${id}`);
     } catch (error) {
-      console.error(`[CommandService] Failed to get command ${type}/${id}:`, error);
+      console.error(
+        `[CommandService] Failed to get command ${type}/${id}:`,
+        error,
+      );
       throw error;
     }
   }

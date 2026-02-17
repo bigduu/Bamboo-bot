@@ -15,7 +15,9 @@ interface UseAnthropicModelMappingProps {
 export const useAnthropicModelMapping = ({
   msgApi,
 }: UseAnthropicModelMappingProps) => {
-  const [mapping, setMapping] = useState<AnthropicModelMapping>({ mappings: {} });
+  const [mapping, setMapping] = useState<AnthropicModelMapping>({
+    mappings: {},
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const loadMapping = useCallback(async () => {
@@ -41,12 +43,12 @@ export const useAnthropicModelMapping = ({
         msgApi.error(
           error instanceof Error
             ? error.message
-            : "Failed to save Anthropic model mapping"
+            : "Failed to save Anthropic model mapping",
         );
         throw error;
       }
     },
-    [msgApi]
+    [msgApi],
   );
 
   useEffect(() => {

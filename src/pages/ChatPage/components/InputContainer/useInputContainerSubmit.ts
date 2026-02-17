@@ -41,7 +41,7 @@ export const useInputContainerSubmit = ({
       let composedInput = trimmedInput;
 
       // Handle different command types
-      if (selectedWorkflow?.content && selectedWorkflow.type === 'workflow') {
+      if (selectedWorkflow?.content && selectedWorkflow.type === "workflow") {
         // Workflow: replace token with workflow content
         const token = `/${selectedWorkflow.name}`;
         const hasToken = matchesWorkflowToken(
@@ -54,7 +54,7 @@ export const useInputContainerSubmit = ({
             .filter(Boolean)
             .join("\n\n");
         }
-      } else if (selectedWorkflow?.type === 'skill') {
+      } else if (selectedWorkflow?.type === "skill") {
         // Skill: add explicit selection hint
         const token = `/${selectedWorkflow.name}`;
         const hasToken = matchesWorkflowToken(
@@ -63,12 +63,10 @@ export const useInputContainerSubmit = ({
         );
         if (hasToken) {
           const extraInput = trimmedInput.slice(token.length).trim();
-          const skillHint = `[User explicitly selected skill: ${selectedWorkflow.displayName || selectedWorkflow.name}${selectedWorkflow.category ? ` (Category: ${selectedWorkflow.category})` : ''}]`;
-          composedInput = [skillHint, extraInput]
-            .filter(Boolean)
-            .join("\n\n");
+          const skillHint = `[User explicitly selected skill: ${selectedWorkflow.displayName || selectedWorkflow.name}${selectedWorkflow.category ? ` (Category: ${selectedWorkflow.category})` : ""}]`;
+          composedInput = [skillHint, extraInput].filter(Boolean).join("\n\n");
         }
-      } else if (selectedWorkflow?.type === 'mcp') {
+      } else if (selectedWorkflow?.type === "mcp") {
         // MCP Tool: add explicit selection hint
         const token = `/${selectedWorkflow.name}`;
         const hasToken = matchesWorkflowToken(
@@ -78,9 +76,7 @@ export const useInputContainerSubmit = ({
         if (hasToken) {
           const extraInput = trimmedInput.slice(token.length).trim();
           const mcpHint = `[User explicitly selected MCP tool: ${selectedWorkflow.displayName || selectedWorkflow.name}]`;
-          composedInput = [mcpHint, extraInput]
-            .filter(Boolean)
-            .join("\n\n");
+          composedInput = [mcpHint, extraInput].filter(Boolean).join("\n\n");
         }
       }
 

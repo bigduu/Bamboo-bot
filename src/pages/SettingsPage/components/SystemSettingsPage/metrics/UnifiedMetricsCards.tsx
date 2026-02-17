@@ -1,6 +1,11 @@
 import { Card, Col, Row, Skeleton, Statistic, theme } from "antd";
 
-import type { CombinedSummary, MetricsSummary, SessionMetrics, ForwardMetricsSummary } from "../../../../../services/metrics";
+import type {
+  CombinedSummary,
+  MetricsSummary,
+  SessionMetrics,
+  ForwardMetricsSummary,
+} from "../../../../../services/metrics";
 
 const { useToken } = theme;
 
@@ -36,7 +41,8 @@ const formatDuration = (durationMs: number | null | undefined): string => {
 
 const averageSessionDuration = (sessions: SessionMetrics[]): number => {
   const completed = sessions.filter(
-    (session) => typeof session.duration_ms === "number" && session.duration_ms > 0,
+    (session) =>
+      typeof session.duration_ms === "number" && session.duration_ms > 0,
   );
 
   if (completed.length === 0) {
@@ -148,7 +154,9 @@ const UnifiedMetricsCards: React.FC<UnifiedMetricsCardsProps> = ({
         <Card size="small">
           <Statistic
             title="Avg Session Duration"
-            value={averageDurationMs > 0 ? formatDuration(averageDurationMs) : "-"}
+            value={
+              averageDurationMs > 0 ? formatDuration(averageDurationMs) : "-"
+            }
           />
         </Card>
       </Col>
@@ -188,7 +196,9 @@ const UnifiedMetricsCards: React.FC<UnifiedMetricsCardsProps> = ({
             title="Failed"
             value={forwardSummary?.failed_requests ?? 0}
             precision={0}
-            valueStyle={{ color: forwardSummary?.failed_requests ? "#ff4d4f" : undefined }}
+            valueStyle={{
+              color: forwardSummary?.failed_requests ? "#ff4d4f" : undefined,
+            }}
           />
         </Card>
       </Col>

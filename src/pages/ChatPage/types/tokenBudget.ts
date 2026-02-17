@@ -8,8 +8,8 @@
  * Budget strategy for managing token limits.
  */
 export type BudgetStrategy =
-  | { type: 'window'; size: number }
-  | { type: 'hybrid'; windowSize: number; enableSummarization: boolean };
+  | { type: "window"; size: number }
+  | { type: "hybrid"; windowSize: number; enableSummarization: boolean };
 
 /**
  * Token budget configuration for a conversation.
@@ -59,19 +59,19 @@ export interface PreparedContextInfo {
  */
 export const KNOWN_MODEL_LIMITS: Record<string, number> = {
   // OpenAI models
-  'gpt-4o': 128000,
-  'gpt-4o-mini': 128000,
-  'gpt-4-turbo': 128000,
-  'gpt-4': 8192,
-  'gpt-3.5-turbo': 16385,
+  "gpt-4o": 128000,
+  "gpt-4o-mini": 128000,
+  "gpt-4-turbo": 128000,
+  "gpt-4": 8192,
+  "gpt-3.5-turbo": 16385,
   // Anthropic models
-  'claude-3-5-sonnet': 200000,
-  'claude-3-5-sonnet-20241022': 200000,
-  'claude-3-opus': 200000,
-  'claude-3-sonnet': 200000,
-  'claude-3-haiku': 200000,
+  "claude-3-5-sonnet": 200000,
+  "claude-3-5-sonnet-20241022": 200000,
+  "claude-3-opus": 200000,
+  "claude-3-sonnet": 200000,
+  "claude-3-haiku": 200000,
   // Copilot models
-  'copilot-chat': 128000,
+  "copilot-chat": 128000,
 };
 
 /**
@@ -79,7 +79,7 @@ export const KNOWN_MODEL_LIMITS: Record<string, number> = {
  */
 export function createBudgetForModel(
   maxContextTokens: number,
-  strategy?: BudgetStrategy
+  strategy?: BudgetStrategy,
 ): TokenBudget {
   // Reserve ~25% for output by default
   const maxOutputTokens = Math.min(4096, Math.floor(maxContextTokens / 4));
@@ -87,7 +87,7 @@ export function createBudgetForModel(
     maxContextTokens,
     maxOutputTokens,
     strategy: strategy || {
-      type: 'hybrid',
+      type: "hybrid",
       windowSize: 20,
       enableSummarization: true,
     },
@@ -130,12 +130,14 @@ export function getUsagePercentage(usage: TokenUsage): number {
  * Get the color for the usage percentage.
  * Returns 'success', 'warning', or 'error' for different ranges.
  */
-export function getUsageColor(usage: TokenUsage): 'success' | 'warning' | 'error' | 'default' {
+export function getUsageColor(
+  usage: TokenUsage,
+): "success" | "warning" | "error" | "default" {
   const percentage = getUsagePercentage(usage);
-  if (percentage >= 90) return 'error';
-  if (percentage >= 70) return 'warning';
-  if (percentage >= 50) return 'success';
-  return 'default';
+  if (percentage >= 90) return "error";
+  if (percentage >= 70) return "warning";
+  if (percentage >= 50) return "success";
+  return "default";
 }
 
 /**
