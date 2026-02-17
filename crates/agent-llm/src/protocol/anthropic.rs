@@ -163,8 +163,10 @@ impl ToProvider<AnthropicTool> for ToolSchema {
 // ============================================================================
 
 /// Convert Anthropic response to internal format (for API proxy scenarios)
+#[cfg(test)]
 pub struct AnthropicResponseConverter;
 
+#[cfg(test)]
 impl AnthropicResponseConverter {
     /// Convert Anthropic messages response to internal message format
     pub fn convert_response(response: AnthropicMessagesResponse) -> ProtocolResult<Message> {
@@ -270,12 +272,14 @@ fn extract_text_from_anthropic_blocks(blocks: Vec<AnthropicContentBlock>) -> Pro
 // Extension trait for ergonomic conversion
 // ============================================================================
 
-/// Extension trait for Anthropic conversion
+/// Extension trait for Anthropic conversion (test-only)
+#[cfg(test)]
 pub trait AnthropicExt: Sized {
     fn into_internal(self) -> ProtocolResult<Message>;
     fn to_anthropic(&self) -> ProtocolResult<AnthropicMessage>;
 }
 
+#[cfg(test)]
 impl AnthropicExt for AnthropicMessage {
     fn into_internal(self) -> ProtocolResult<Message> {
         Message::from_provider(self)
@@ -288,6 +292,7 @@ impl AnthropicExt for AnthropicMessage {
     }
 }
 
+#[cfg(test)]
 impl AnthropicExt for Message {
     fn into_internal(self) -> ProtocolResult<Message> {
         Ok(self)

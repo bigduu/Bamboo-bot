@@ -333,14 +333,6 @@ impl Session {
         }
     }
 
-    /// Check if the session has timed out due to inactivity
-    fn is_timed_out(&self) -> bool {
-        // Note: This is a synchronous method, so we can't await the mutex.
-        // For accurate inactivity checking, use is_inactive() instead.
-        // This method provides a conservative estimate using creation time.
-        self.created_at.elapsed() > DEFAULT_SESSION_INACTIVITY_TIMEOUT
-    }
-
     /// Check if the session has been inactive for too long
     async fn is_inactive(&self, max_inactive: Duration) -> bool {
         let last = *self.last_activity.lock().await;

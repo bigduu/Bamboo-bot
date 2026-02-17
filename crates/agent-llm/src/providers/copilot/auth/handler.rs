@@ -148,7 +148,9 @@ pub(crate) struct Endpoints {
 #[derive(Debug, Deserialize)]
 pub(crate) struct AccessTokenResponse {
     pub access_token: Option<String>,
+    #[allow(dead_code)] // Needed for JSON deserialization from GitHub API
     pub token_type: Option<String>,
+    #[allow(dead_code)] // Needed for JSON deserialization from GitHub API
     pub scope: Option<String>,
     pub error: Option<String>,
     #[serde(rename = "error_description")]
