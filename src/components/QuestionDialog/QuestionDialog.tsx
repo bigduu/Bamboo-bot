@@ -1,20 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import {
-  Button,
-  Card,
-  Input,
-  Radio,
-  Space,
-  Typography,
-  message,
-  theme,
-} from "antd";
-import { agentApiClient } from "../../services/api";
-import { useAppStore } from "../../pages/ChatPage/store";
-import styles from "./QuestionDialog.module.css";
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Button, Card, Input, Radio, Space, Typography, message } from 'antd';
+import { agentApiClient } from '../../services/api';
+import { useAppStore } from '../../pages/ChatPage/store';
+import styles from './QuestionDialog.module.css';
 
 const { Text, Title } = Typography;
-const { useToken } = theme;
 
 export interface PendingQuestion {
   has_pending_question: boolean;
@@ -33,11 +23,9 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
   sessionId,
   onResponseSubmitted,
 }) => {
-  const { token } = useToken();
-  const [pendingQuestion, setPendingQuestion] =
-    useState<PendingQuestion | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState<PendingQuestion | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [customInput, setCustomInput] = useState("");
+  const [customInput, setCustomInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [pollingEnabled, setPollingEnabled] = useState(true); // Use state instead of ref
@@ -49,9 +37,7 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
   // Fetch pending question
   const fetchPendingQuestion = useCallback(async () => {
     try {
-      const data = await agentApiClient.get<PendingQuestion>(
-        `respond/${sessionId}/pending`,
-      );
+      const data = await agentApiClient.get<PendingQuestion>(`respond/${sessionId}/pending`);
       if (data.has_pending_question) {
         setPendingQuestion(data);
         emptyCountRef.current = 0; // Reset counter when we have a question
@@ -66,7 +52,7 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
       }
     } catch (err) {
       // Handle 404 - no pending question for this session
-      if (err instanceof Error && err.message.includes("404")) {
+      if (err instanceof Error && err.message.includes('404')) {
         setPendingQuestion(null);
         emptyCountRef.current += 1;
 
@@ -76,7 +62,7 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
         }
         return;
       }
-      console.error("Failed to fetch pending question:", err);
+      console.error('Failed to fetch pending question:', err);
     } finally {
       setIsLoading(false);
     }
@@ -111,11 +97,10 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
 
   // Submit response
   const handleSubmit = async () => {
-    const response =
-      selectedOption === "custom" ? customInput.trim() : selectedOption;
+    const response = selectedOption === 'custom' ? customInput.trim() : selectedOption;
 
     if (!response) {
-      message.warning("Please select an option or enter a custom answer");
+      message.warning('Please select an option or enter a custom answer');
       return;
     }
 
@@ -125,33 +110,24 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
       // Step 1: Submit response to backend
       await agentApiClient.post(`respond/${sessionId}`, { response });
 
-      message.success("Response submitted, AI will continue processing");
+      message.success('Response submitted, AI will continue processing');
       setPendingQuestion(null);
       setSelectedOption(null);
-      setCustomInput("");
+      setCustomInput('');
       emptyCountRef.current = 0; // Reset counter to resume polling
       setPollingEnabled(true); // Re-enable polling in case it was stopped
 
       // Step 2: Restart agent execution
       try {
-        const executeResult = await agentApiClient.post<{
-          status: string;
-          events_url: string;
-        }>(`execute/${sessionId}`);
-        console.log(
-          "[QuestionDialog] Agent execution restarted:",
-          executeResult.status,
-        );
+        const executeResult = await agentApiClient.post<{ status: string; events_url: string }>(`execute/${sessionId}`);
+        console.log('[QuestionDialog] Agent execution restarted:', executeResult.status);
 
         // Set processing flag to activate event subscription
-        if (["started", "already_running"].includes(executeResult.status)) {
+        if (['started', 'already_running'].includes(executeResult.status)) {
           setProcessing(true);
         }
       } catch (execError) {
-        console.error(
-          "[QuestionDialog] Failed to restart agent execution:",
-          execError,
-        );
+        console.error('[QuestionDialog] Failed to restart agent execution:', execError);
         // Don't show error to user - response was saved successfully
         // Agent may resume on next interaction
       }
@@ -159,8 +135,8 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
       // Notify parent (optional)
       onResponseSubmitted?.();
     } catch (err) {
-      console.error("Failed to submit response:", err);
-      message.error(err instanceof Error ? err.message : "Submission failed");
+      console.error('Failed to submit response:', err);
+      message.error(err instanceof Error ? err.message : 'Submission failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -173,75 +149,33 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
   const { question, options, allow_custom } = pendingQuestion;
 
   return (
-    <Card
-      className={styles.questionCard}
-      bordered={true}
-      style={{
-        background: token.colorBgContainer,
-        borderColor: token.colorBorderSecondary,
-      }}
-    >
-      <div
-        className={styles.questionHeader}
-        style={{
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-        }}
-      >
-        <Title
-          level={5}
-          className={styles.questionTitle}
-          style={{
-            color: token.colorPrimary,
-          }}
-        >
+    <Card className={styles.questionCard} bordered={true}>
+      <div className={styles.questionHeader}>
+        <Title level={5} className={styles.questionTitle}>
           🤔 AI Needs Your Decision
         </Title>
       </div>
 
       <div className={styles.questionContent}>
-        <Text
-          className={styles.questionText}
-          style={{
-            color: token.colorText,
-          }}
-        >
-          {question}
-        </Text>
+        <Text className={styles.questionText}>{question}</Text>
 
         <Radio.Group
           className={styles.optionsGroup}
           value={selectedOption}
           onChange={(e) => setSelectedOption(e.target.value)}
         >
-          <Space direction="vertical" style={{ width: "100%" }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
             {options?.map((option, index) => (
-              <Radio
-                key={index}
-                value={option}
-                className={styles.optionItem}
-                style={{
-                  background: token.colorBgContainer,
-                  borderColor: token.colorBorderSecondary,
-                }}
-              >
-                <Text style={{ color: token.colorText }}>{option}</Text>
+              <Radio key={index} value={option} className={styles.optionItem}>
+                <Text>{option}</Text>
               </Radio>
             ))}
 
             {allow_custom && (
-              <Radio
-                value="custom"
-                className={styles.optionItem}
-                style={{
-                  background: token.colorBgContainer,
-                  borderColor: token.colorBorderSecondary,
-                }}
-              >
+              <Radio value="custom" className={styles.optionItem}>
                 <div className={styles.customOption}>
-                  <Text style={{ color: token.colorText }}>
-                    Other (custom input)
-                  </Text>
-                  {selectedOption === "custom" && (
+                  <Text>Other (custom input)</Text>
+                  {selectedOption === 'custom' && (
                     <Input.TextArea
                       className={styles.customInput}
                       placeholder="Enter your answer..."
@@ -258,20 +192,12 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
         </Radio.Group>
       </div>
 
-      <div
-        className={styles.questionFooter}
-        style={{
-          borderTop: `1px solid ${token.colorBorderSecondary}`,
-        }}
-      >
+      <div className={styles.questionFooter}>
         <Button
           type="primary"
           onClick={handleSubmit}
           loading={isSubmitting}
-          disabled={
-            !selectedOption ||
-            (selectedOption === "custom" && !customInput.trim())
-          }
+          disabled={!selectedOption || (selectedOption === 'custom' && !customInput.trim())}
         >
           Confirm Selection
         </Button>

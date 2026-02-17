@@ -21,19 +21,14 @@ import { TokenUsageDisplay } from "../TokenUsageDisplay";
 import "./styles.css";
 import { useChatViewScroll } from "./useChatViewScroll";
 import type { WorkflowDraft } from "../InputContainer";
-import {
-  useChatViewMessages,
-  type RenderableEntry,
-} from "./useChatViewMessages";
+import { useChatViewMessages, type RenderableEntry } from "./useChatViewMessages";
 
 const { useToken } = theme;
 const { useBreakpoint } = Grid;
 
 export const ChatView: React.FC = () => {
   // Load provider configuration on mount
-  const loadProviderConfig = useProviderStore(
-    (state) => state.loadProviderConfig,
-  );
+  const loadProviderConfig = useProviderStore((state) => state.loadProviderConfig);
 
   useEffect(() => {
     loadProviderConfig();
@@ -159,12 +154,9 @@ export const ChatView: React.FC = () => {
   const configTokenUsage = currentChat?.config?.tokenUsage;
   const currentTokenUsage = storeTokenUsage || configTokenUsage || null;
 
-  const storeTruncation = currentChatId
-    ? truncationOccurred[currentChatId]
-    : false;
+  const storeTruncation = currentChatId ? truncationOccurred[currentChatId] : false;
   const configTruncation = currentChat?.config?.truncationOccurred;
-  const currentTruncationOccurred =
-    storeTruncation || configTruncation || false;
+  const currentTruncationOccurred = storeTruncation || configTruncation || false;
 
   const storeSegments = currentChatId ? segmentsRemoved[currentChatId] : 0;
   const configSegments = currentChat?.config?.segmentsRemoved;
@@ -228,7 +220,27 @@ export const ChatView: React.FC = () => {
               width: "100%",
             }}
           >
-            <TodoList sessionId={agentSessionId} initialCollapsed={true} />
+            <TodoList
+              sessionId={agentSessionId}
+              initialCollapsed={true}
+            />
+          </div>
+        )}
+
+        {/* QuestionDialog - show when there's an active agent session */}
+        {agentSessionId && (
+          <div
+            style={{
+              padding: `0 ${getContainerPadding()}px`,
+              paddingTop: getContainerPadding(),
+              maxWidth: getContainerMaxWidth(),
+              margin: "0 auto",
+              width: "100%",
+            }}
+          >
+            <QuestionDialog
+              sessionId={agentSessionId}
+            />
           </div>
         )}
 
@@ -237,9 +249,7 @@ export const ChatView: React.FC = () => {
           <div
             style={{
               padding: `0 ${getContainerPadding()}px`,
-              paddingTop: agentSessionId
-                ? token.paddingXS
-                : getContainerPadding(),
+              paddingTop: agentSessionId ? token.paddingXS : getContainerPadding(),
               maxWidth: getContainerMaxWidth(),
               margin: "0 auto",
               width: "100%",
@@ -319,20 +329,6 @@ export const ChatView: React.FC = () => {
               />
             )}
           </FloatButton.Group>
-        )}
-
-        {/* QuestionDialog - show above input area when there's an active agent session */}
-        {agentSessionId && (
-          <div
-            style={{
-              padding: `0 ${getContainerPadding()}px`,
-              maxWidth: showMessagesView ? getContainerMaxWidth() : "100%",
-              margin: "0 auto",
-              width: "100%",
-            }}
-          >
-            <QuestionDialog sessionId={agentSessionId} />
-          </div>
         )}
 
         <ChatInputArea
