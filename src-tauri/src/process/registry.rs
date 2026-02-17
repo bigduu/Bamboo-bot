@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::process::Child;
+use tokio::sync::Mutex as AsyncMutex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProcessType {
@@ -21,6 +22,17 @@ pub struct ProcessInfo {
     pub model: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct ProcessRegistrationConfig {
+    pub run_id: i64,
+    pub agent_id: i64,
+    pub agent_name: String,
+    pub pid: u32,
+    pub project_path: String,
+    pub task: String,
+    pub model: String,
+}
+
 #[allow(dead_code)]
 pub struct ProcessHandle {
     pub info: ProcessInfo,
@@ -29,14 +41,14 @@ pub struct ProcessHandle {
 }
 
 pub struct ProcessRegistry {
-    processes: Arc<Mutex<HashMap<i64, ProcessHandle>>>,
+    processes: Arc<AsyncMutex<HashMap<i64, ProcessHandle>>>,
     next_id: Arc<Mutex<i64>>,
 }
 
 impl ProcessRegistry {
     pub fn new() -> Self {
         Self {
-            processes: Arc::new(Mutex::new(HashMap::new())),
+            processes: Arc::new(AsyncMutex::new(HashMap::new())),
             next_id: Arc::new(Mutex::new(1000000)),
         }
     }
@@ -48,17 +60,21 @@ impl ProcessRegistry {
         Ok(id)
     }
 
-    pub fn register_process(
+    pub async fn register_process(
         &self,
-        run_id: i64,
-        agent_id: i64,
-        agent_name: String,
-        pid: u32,
-        project_path: String,
-        task: String,
-        model: String,
+        config: ProcessRegistrationConfig,
         child: Child,
     ) -> Result<(), String> {
+        let ProcessRegistrationConfig {
+            run_id,
+            agent_id,
+            agent_name,
+            pid,
+            project_path,
+            task,
+            model,
+        } = config;
+
         let process_info = ProcessInfo {
             run_id,
             process_type: ProcessType::AgentRun {
@@ -72,19 +88,23 @@ impl ProcessRegistry {
             model,
         };
 
-        self.register_process_internal(run_id, process_info, child)
+        self.register_process_internal(run_id, process_info, child).await
     }
 
-    pub fn register_sidecar_process(
+    pub async fn register_sidecar_process(
         &self,
-        run_id: i64,
-        agent_id: i64,
-        agent_name: String,
-        pid: u32,
-        project_path: String,
-        task: String,
-        model: String,
+        config: ProcessRegistrationConfig,
     ) -> Result<(), String> {
+        let ProcessRegistrationConfig {
+            run_id,
+            agent_id,
+            agent_name,
+            pid,
+            project_path,
+            task,
+            model,
+        } = config;
+
         let process_info = ProcessInfo {
             run_id,
             process_type: ProcessType::AgentRun {
@@ -98,7 +118,7 @@ impl ProcessRegistry {
             model,
         };
 
-        let mut processes = self.processes.lock().map_err(|e| e.to_string())?;
+        let mut processes = self.processes.lock().await;
 
         let process_handle = ProcessHandle {
             info: process_info,
@@ -110,7 +130,7 @@ impl ProcessRegistry {
         Ok(())
     }
 
-    pub fn register_claude_session(
+    pub async fn register_claude_session(
         &self,
         session_id: String,
         pid: u32,
@@ -131,7 +151,7 @@ impl ProcessRegistry {
             model,
         };
 
-        let mut processes = self.processes.lock().map_err(|e| e.to_string())?;
+        let mut processes = self.processes.lock().await;
 
         let process_handle = ProcessHandle {
             info: process_info,
@@ -143,13 +163,13 @@ impl ProcessRegistry {
         Ok(run_id)
     }
 
-    fn register_process_internal(
+    async fn register_process_internal(
         &self,
         run_id: i64,
         process_info: ProcessInfo,
         child: Child,
     ) -> Result<(), String> {
-        let mut processes = self.processes.lock().map_err(|e| e.to_string())?;
+        let mut processes = self.processes.lock().await;
 
         let process_handle = ProcessHandle {
             info: process_info,
@@ -161,8 +181,8 @@ impl ProcessRegistry {
         Ok(())
     }
 
-    pub fn get_running_claude_sessions(&self) -> Result<Vec<ProcessInfo>, String> {
-        let processes = self.processes.lock().map_err(|e| e.to_string())?;
+    pub async fn get_running_claude_sessions(&self) -> Result<Vec<ProcessInfo>, String> {
+        let processes = self.processes.lock().await;
         Ok(processes
             .values()
             .filter_map(|handle| match &handle.info.process_type {
@@ -172,11 +192,11 @@ impl ProcessRegistry {
             .collect())
     }
 
-    pub fn get_claude_session_by_id(
+    pub async fn get_claude_session_by_id(
         &self,
         session_id: &str,
     ) -> Result<Option<ProcessInfo>, String> {
-        let processes = self.processes.lock().map_err(|e| e.to_string())?;
+        let processes = self.processes.lock().await;
         Ok(processes
             .values()
             .find(|handle| match &handle.info.process_type {
@@ -186,24 +206,34 @@ impl ProcessRegistry {
             .map(|handle| handle.info.clone()))
     }
 
-    #[allow(dead_code)]
-    pub fn unregister_process(&self, run_id: i64) -> Result<(), String> {
-        let mut processes = self.processes.lock().map_err(|e| e.to_string())?;
+    pub async fn unregister_process(&self, run_id: i64) -> Result<(), String> {
+        let mut processes = self.processes.lock().await;
         processes.remove(&run_id);
         Ok(())
     }
 
+    /// Synchronous version for use in non-async contexts
     #[allow(dead_code)]
-    pub fn get_running_processes(&self) -> Result<Vec<ProcessInfo>, String> {
-        let processes = self.processes.lock().map_err(|e| e.to_string())?;
+    fn unregister_process_sync(&self, run_id: i64) -> Result<(), String> {
+        // Use try_lock to avoid blocking in sync context
+        // If we can't get the lock, that's okay - the process will be cleaned up later
+        if let Ok(mut processes) = self.processes.try_lock() {
+            processes.remove(&run_id);
+        }
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_running_processes(&self) -> Result<Vec<ProcessInfo>, String> {
+        let processes = self.processes.lock().await;
         Ok(processes
             .values()
             .map(|handle| handle.info.clone())
             .collect())
     }
 
-    pub fn get_running_agent_processes(&self) -> Result<Vec<ProcessInfo>, String> {
-        let processes = self.processes.lock().map_err(|e| e.to_string())?;
+    pub async fn get_running_agent_processes(&self) -> Result<Vec<ProcessInfo>, String> {
+        let processes = self.processes.lock().await;
         Ok(processes
             .values()
             .filter_map(|handle| match &handle.info.process_type {
@@ -214,8 +244,8 @@ impl ProcessRegistry {
     }
 
     #[allow(dead_code)]
-    pub fn get_process(&self, run_id: i64) -> Result<Option<ProcessInfo>, String> {
-        let processes = self.processes.lock().map_err(|e| e.to_string())?;
+    pub async fn get_process(&self, run_id: i64) -> Result<Option<ProcessInfo>, String> {
+        let processes = self.processes.lock().await;
         Ok(processes.get(&run_id).map(|handle| handle.info.clone()))
     }
 
@@ -223,7 +253,7 @@ impl ProcessRegistry {
         use log::{error, info, warn};
 
         let (pid, child_arc) = {
-            let processes = self.processes.lock().map_err(|e| e.to_string())?;
+            let processes = self.processes.lock().await;
             if let Some(handle) = processes.get(&run_id) {
                 (handle.info.pid, handle.child.clone())
             } else {
@@ -264,7 +294,7 @@ impl ProcessRegistry {
                 "Attempting fallback kill for process {} (PID: {})",
                 run_id, pid
             );
-            match self.kill_process_by_pid(run_id, pid) {
+            match self.kill_process_by_pid(run_id, pid).await {
                 Ok(true) => return Ok(true),
                 Ok(false) => warn!(
                     "Fallback kill also failed for process {} (PID: {})",
@@ -318,16 +348,16 @@ impl ProcessRegistry {
                 if let Ok(mut child_guard) = child_arc.lock() {
                     *child_guard = None;
                 }
-                let _ = self.kill_process_by_pid(run_id, pid);
+                let _ = self.kill_process_by_pid(run_id, pid).await;
             }
         }
 
-        self.unregister_process(run_id)?;
+        self.unregister_process(run_id).await?;
 
         Ok(true)
     }
 
-    pub fn kill_process_by_pid(&self, run_id: i64, pid: u32) -> Result<bool, String> {
+    pub async fn kill_process_by_pid(&self, run_id: i64, pid: u32) -> Result<bool, String> {
         use log::{error, info, warn};
 
         info!("Attempting to kill process {} by PID {}", run_id, pid);
@@ -344,7 +374,7 @@ impl ProcessRegistry {
             match &term_result {
                 Ok(output) if output.status.success() => {
                     info!("Sent SIGTERM to PID {}", pid);
-                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
                     let check_result = std::process::Command::new("kill")
                         .args(["-0", &pid.to_string()])
@@ -379,7 +409,7 @@ impl ProcessRegistry {
             Ok(output) => {
                 if output.status.success() {
                     info!("Successfully killed process with PID {}", pid);
-                    self.unregister_process(run_id)?;
+                    self.unregister_process(run_id).await?;
                     Ok(true)
                 } else {
                     let error_msg = String::from_utf8_lossy(&output.stderr);
@@ -396,7 +426,7 @@ impl ProcessRegistry {
 
     #[allow(dead_code)]
     pub async fn is_process_running(&self, run_id: i64) -> Result<bool, String> {
-        let processes = self.processes.lock().map_err(|e| e.to_string())?;
+        let processes = self.processes.lock().await;
 
         if let Some(handle) = processes.get(&run_id) {
             let child_arc = handle.child.clone();
@@ -423,8 +453,8 @@ impl ProcessRegistry {
         }
     }
 
-    pub fn append_live_output(&self, run_id: i64, output: &str) -> Result<(), String> {
-        let processes = self.processes.lock().map_err(|e| e.to_string())?;
+    pub async fn append_live_output(&self, run_id: i64, output: &str) -> Result<(), String> {
+        let processes = self.processes.lock().await;
         if let Some(handle) = processes.get(&run_id) {
             let mut live_output = handle.live_output.lock().map_err(|e| e.to_string())?;
             live_output.push_str(output);
@@ -433,8 +463,8 @@ impl ProcessRegistry {
         Ok(())
     }
 
-    pub fn get_live_output(&self, run_id: i64) -> Result<String, String> {
-        let processes = self.processes.lock().map_err(|e| e.to_string())?;
+    pub async fn get_live_output(&self, run_id: i64) -> Result<String, String> {
+        let processes = self.processes.lock().await;
         if let Some(handle) = processes.get(&run_id) {
             let live_output = handle.live_output.lock().map_err(|e| e.to_string())?;
             Ok(live_output.clone())
@@ -446,10 +476,9 @@ impl ProcessRegistry {
     #[allow(dead_code)]
     pub async fn cleanup_finished_processes(&self) -> Result<Vec<i64>, String> {
         let mut finished_runs = Vec::new();
-        let processes_lock = self.processes.clone();
 
         {
-            let processes = processes_lock.lock().map_err(|e| e.to_string())?;
+            let processes = self.processes.lock().await;
             let run_ids: Vec<i64> = processes.keys().cloned().collect();
             drop(processes);
 
@@ -461,7 +490,7 @@ impl ProcessRegistry {
         }
 
         {
-            let mut processes = processes_lock.lock().map_err(|e| e.to_string())?;
+            let mut processes = self.processes.lock().await;
             for run_id in &finished_runs {
                 processes.remove(run_id);
             }
@@ -489,8 +518,8 @@ impl Default for ProcessRegistryState {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_append_and_get_live_output() {
+    #[tokio::test]
+    async fn test_append_and_get_live_output() {
         let registry = ProcessRegistry::new();
         let run_id = registry
             .register_claude_session(
@@ -501,12 +530,13 @@ mod tests {
                 "model".to_string(),
                 Arc::new(Mutex::new(None)),
             )
+            .await
             .unwrap();
 
-        registry.append_live_output(run_id, "line1").unwrap();
-        registry.append_live_output(run_id, "line2").unwrap();
+        registry.append_live_output(run_id, "line1").await.unwrap();
+        registry.append_live_output(run_id, "line2").await.unwrap();
 
-        let output = registry.get_live_output(run_id).unwrap();
+        let output = registry.get_live_output(run_id).await.unwrap();
         assert_eq!(output, "line1\nline2\n");
     }
 }

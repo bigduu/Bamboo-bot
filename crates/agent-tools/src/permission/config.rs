@@ -565,9 +565,9 @@ fn match_pattern_internal(pattern: &str, resource: &str) -> bool {
     }
 
     // Recursive directory pattern: /tmp/**
-    if pattern.ends_with("/**") {
+    if let Some(prefix) = pattern.strip_suffix("/**") {
         // pattern is like "/tmp/**", remove the "/**" to get "/tmp"
-        let prefix = &pattern[..pattern.len() - 3]; // Remove "**" and the preceding "/"
+        // Remove "**" and the preceding "/"
         return resource.starts_with(prefix)
             && (resource.len() == prefix.len()
                 || resource[prefix.len()..].starts_with('/'));

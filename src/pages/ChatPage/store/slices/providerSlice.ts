@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { settingsService } from "../../../../services/config/SettingsService";
+import { settingsService } from "@services/config/SettingsService";
 import type { ProviderConfig, ProviderType } from "../../types/providerConfig";
 
 /**

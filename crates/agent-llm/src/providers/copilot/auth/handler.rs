@@ -1,12 +1,12 @@
 use crate::error::ProxyAuthRequiredError;
 use anyhow::anyhow;
 use lazy_static::lazy_static;
-use log::{error, info};
+use log::error;
 use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{create_dir_all, read_to_string, File},
+    fs::{read_to_string, File},
     io::Write,
     path::PathBuf,
     sync::Arc,
@@ -137,7 +137,7 @@ mod tests {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct Endpoints {
+pub struct Endpoints {
     pub api: Option<String>,
     pub origin_tracker: Option<String>,
     pub proxy: Option<String>,
@@ -148,7 +148,9 @@ pub(crate) struct Endpoints {
 #[derive(Debug, Deserialize)]
 pub(crate) struct AccessTokenResponse {
     pub access_token: Option<String>,
+    #[allow(dead_code)] // Needed for JSON deserialization from GitHub API
     pub token_type: Option<String>,
+    #[allow(dead_code)] // Needed for JSON deserialization from GitHub API
     pub scope: Option<String>,
     pub error: Option<String>,
     #[serde(rename = "error_description")]
@@ -753,10 +755,9 @@ mod retry_tests {
         let access_token = AccessTokenResponse {
             access_token: Some("test-github-token".to_string()),
             token_type: Some("bearer".to_string()),
-            expires_in: Some(3600),
-            interval: None,
             scope: Some("read:user".to_string()),
             error: None,
+            error_description: None,
         };
 
         // This should retry and eventually succeed
@@ -792,10 +793,9 @@ mod retry_tests {
         let access_token = AccessTokenResponse {
             access_token: Some("invalid-token".to_string()),
             token_type: Some("bearer".to_string()),
-            expires_in: Some(3600),
-            interval: None,
             scope: Some("read:user".to_string()),
             error: None,
+            error_description: None,
         };
 
         let result = handler.get_copilot_token(access_token).await;

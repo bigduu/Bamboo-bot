@@ -4,7 +4,7 @@ use agent_core::tools::{
     registry::{RegistryError, SharedTool},
     Tool, ToolSchema,
 };
-use dashmap::{mapref::entry::Entry, DashMap};
+use dashmap::DashMap;
 
 use crate::guide::{ToolGuide, ToolGuideSpec};
 

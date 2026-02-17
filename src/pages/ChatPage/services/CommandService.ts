@@ -1,4 +1,4 @@
-import { apiClient } from "../../../services/api";
+import { apiClient } from "@services/api";
 import type { CommandItem, CommandListResponse } from "../types/command";
 
 export class CommandService {

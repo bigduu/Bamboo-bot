@@ -167,6 +167,9 @@ pub async fn run_server_with_config_and_mode(
     .await
 }
 
+/// Start the agent server in a separate thread
+/// This is a public API kept for potential external use
+#[allow(dead_code)]
 pub fn start_server_in_thread(
     port: u16,
     provider: &str,

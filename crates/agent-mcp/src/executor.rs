@@ -1,8 +1,7 @@
 use agent_core::tools::{ToolCall, ToolError, ToolExecutor, ToolResult, ToolSchema};
 use async_trait::async_trait;
-use serde_json::json;
 use std::sync::Arc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 use crate::error::McpError;
 use crate::manager::McpServerManager;
@@ -165,5 +164,245 @@ impl ToolExecutor for CompositeToolExecutor {
         let mut tools = self.builtin.list_tools();
         tools.extend(self.mcp.list_tools());
         tools
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::McpContentItem;
+    use agent_core::tools::{FunctionCall, FunctionSchema};
+    use mockall::mock;
+    use mockall::predicate::*;
+
+    // Mock McpTransport for testing
+    mock! {
+        pub ToolExecutor {}
+
+        #[async_trait]
+        impl ToolExecutor for ToolExecutor {
+            async fn execute(&self, call: &ToolCall) -> std::result::Result<ToolResult, ToolError>;
+            fn list_tools(&self) -> Vec<ToolSchema>;
+        }
+    }
+
+    fn create_test_tool_call(name: &str, args: &str) -> ToolCall {
+        ToolCall {
+            id: "test-id".to_string(),
+            tool_type: "function".to_string(),
+            function: FunctionCall {
+                name: name.to_string(),
+                arguments: args.to_string(),
+            },
+        }
+    }
+
+    #[test]
+    fn test_format_result_text() {
+        let content = vec![
+            McpContentItem::Text {
+                text: "Hello".to_string(),
+            },
+            McpContentItem::Text {
+                text: "World".to_string(),
+            },
+        ];
+        let result = McpToolExecutor::format_result_content(&content);
+        assert_eq!(result, "Hello\nWorld");
+    }
+
+    #[test]
+    fn test_format_result_image() {
+        let content = vec![McpContentItem::Image {
+            data: "base64imagedata".to_string(),
+            mime_type: "image/png".to_string(),
+        }];
+        let result = McpToolExecutor::format_result_content(&content);
+        assert_eq!(result, "[Image: image/png (15 bytes)]");
+    }
+
+    #[test]
+    fn test_format_result_resource_with_text() {
+        let content = vec![McpContentItem::Resource {
+            resource: crate::types::McpResource {
+                uri: "file:///test.txt".to_string(),
+                mime_type: Some("text/plain".to_string()),
+                text: Some("File content".to_string()),
+                blob: None,
+            },
+        }];
+        let result = McpToolExecutor::format_result_content(&content);
+        assert_eq!(result, "[Resource file:///test.txt]: File content");
+    }
+
+    #[test]
+    fn test_format_result_resource_without_text() {
+        let content = vec![McpContentItem::Resource {
+            resource: crate::types::McpResource {
+                uri: "file:///test.bin".to_string(),
+                mime_type: None,
+                text: None,
+                blob: Some("base64data".to_string()),
+            },
+        }];
+        let result = McpToolExecutor::format_result_content(&content);
+        assert_eq!(result, "[Resource file:///test.bin]");
+    }
+
+    #[test]
+    fn test_format_result_mixed() {
+        let content = vec![
+            McpContentItem::Text {
+                text: "Result:".to_string(),
+            },
+            McpContentItem::Image {
+                data: "img".to_string(),
+                mime_type: "image/png".to_string(),
+            },
+        ];
+        let result = McpToolExecutor::format_result_content(&content);
+        assert!(result.contains("Result:"));
+        assert!(result.contains("[Image:"));
+    }
+
+    #[tokio::test]
+    async fn test_composite_executor_fallback() {
+        let mut mock_builtin = MockToolExecutor::new();
+        let mut mock_mcp = MockToolExecutor::new();
+
+        // Built-in returns NotFound, so it should fall through to MCP
+        mock_builtin
+            .expect_execute()
+            .returning(|_| Err(ToolError::NotFound("not found".to_string())));
+
+        mock_mcp.expect_execute().returning(|_| {
+            Ok(ToolResult {
+                success: true,
+                result: "MCP result".to_string(),
+                display_preference: None,
+            })
+        });
+
+        mock_builtin.expect_list_tools().returning(|| vec![]);
+        mock_mcp.expect_list_tools().returning(|| vec![]);
+
+        let composite = CompositeToolExecutor::new(
+            Arc::new(mock_builtin),
+            Arc::new(mock_mcp),
+        );
+
+        let call = create_test_tool_call("test_tool", "{}");
+        let result = composite.execute(&call).await.unwrap();
+        assert!(result.success);
+        assert_eq!(result.result, "MCP result");
+    }
+
+    #[tokio::test]
+    async fn test_composite_executor_builtin_success() {
+        let mut mock_builtin = MockToolExecutor::new();
+        let mock_mcp = MockToolExecutor::new();
+
+        // Built-in succeeds, MCP should not be called
+        mock_builtin.expect_execute().returning(|_| {
+            Ok(ToolResult {
+                success: true,
+                result: "Built-in result".to_string(),
+                display_preference: None,
+            })
+        });
+
+        mock_builtin.expect_list_tools().returning(|| {
+            vec![ToolSchema {
+                schema_type: "function".to_string(),
+                function: FunctionSchema {
+                    name: "builtin_tool".to_string(),
+                    description: "A built-in tool".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+            }]
+        });
+
+        let composite = CompositeToolExecutor::new(
+            Arc::new(mock_builtin),
+            Arc::new(mock_mcp),
+        );
+
+        let call = create_test_tool_call("test_tool", "{}");
+        let result = composite.execute(&call).await.unwrap();
+        assert!(result.success);
+        assert_eq!(result.result, "Built-in result");
+    }
+
+    #[tokio::test]
+    async fn test_composite_executor_builtin_error() {
+        let mut mock_builtin = MockToolExecutor::new();
+        let mock_mcp = MockToolExecutor::new();
+
+        // Built-in returns error (not NotFound), should propagate
+        mock_builtin.expect_execute().returning(|_| {
+            Err(ToolError::Execution("Built-in error".to_string()))
+        });
+
+        mock_builtin.expect_list_tools().returning(|| {
+            vec![ToolSchema {
+                schema_type: "function".to_string(),
+                function: FunctionSchema {
+                    name: "builtin_tool".to_string(),
+                    description: "A built-in tool".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+            }]
+        });
+
+        let composite = CompositeToolExecutor::new(
+            Arc::new(mock_builtin),
+            Arc::new(mock_mcp),
+        );
+
+        let call = create_test_tool_call("test_tool", "{}");
+        let result = composite.execute(&call).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ToolError::Execution(msg) => assert_eq!(msg, "Built-in error"),
+            _ => panic!("Expected Execution error"),
+        }
+    }
+
+    #[test]
+    fn test_composite_list_tools() {
+        let mut mock_builtin = MockToolExecutor::new();
+        let mut mock_mcp = MockToolExecutor::new();
+
+        mock_builtin.expect_list_tools().returning(|| {
+            vec![ToolSchema {
+                schema_type: "function".to_string(),
+                function: FunctionSchema {
+                    name: "builtin_tool".to_string(),
+                    description: "Built-in tool".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+            }]
+        });
+
+        mock_mcp.expect_list_tools().returning(|| {
+            vec![ToolSchema {
+                schema_type: "function".to_string(),
+                function: FunctionSchema {
+                    name: "mcp_tool".to_string(),
+                    description: "MCP tool".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+            }]
+        });
+
+        let composite = CompositeToolExecutor::new(
+            Arc::new(mock_builtin),
+            Arc::new(mock_mcp),
+        );
+
+        let tools = composite.list_tools();
+        assert_eq!(tools.len(), 2);
+        assert_eq!(tools[0].function.name, "builtin_tool");
+        assert_eq!(tools[1].function.name, "mcp_tool");
     }
 }

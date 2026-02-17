@@ -38,7 +38,7 @@ fn extract_at_path(json_str: &str, path: &str) -> Option<String> {
 
     let mut current = &value;
     for part in parts {
-        if let Some(index) = part.parse::<usize>().ok() {
+        if let Ok(index) = part.parse::<usize>() {
             current = current.get(index)?;
         } else {
             current = current.get(part)?;

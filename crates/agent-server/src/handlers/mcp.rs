@@ -50,12 +50,11 @@ pub async fn list_servers(state: web::Data<AppState>) -> impl Responder {
         .into_iter()
         .filter_map(|id| {
             state.mcp_manager.get_server_info(&id).map(|info| {
-                let config = state
+                let _config = state
                     .mcp_manager
                     .list_servers()
                     .into_iter()
-                    .find(|s| s == &id)
-                    .and_then(|_| Some(id.clone()));
+                    .find(|s| s == &id).map(|_| id.clone());
 
                 ServerInfo {
                     id: id.clone(),
@@ -175,7 +174,7 @@ pub async fn delete_server(
 
 /// Connect/reconnect to MCP server
 pub async fn connect_server(
-    state: web::Data<AppState>,
+    _state: web::Data<AppState>,
     path: web::Path<String>,
 ) -> impl Responder {
     let server_id = path.into_inner();

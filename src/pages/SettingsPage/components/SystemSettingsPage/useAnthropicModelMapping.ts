@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { serviceFactory } from "../../../../services/common/ServiceFactory";
+import { serviceFactory } from "@services/common/ServiceFactory";
 
 interface AnthropicModelMapping {
   mappings: Record<string, string>;

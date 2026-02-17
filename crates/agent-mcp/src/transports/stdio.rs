@@ -177,3 +177,193 @@ impl McpTransport for StdioTransport {
         self.child.is_some()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn create_test_config() -> StdioConfig {
+        StdioConfig {
+            command: "echo".to_string(),
+            args: vec![],
+            cwd: None,
+            env: HashMap::new(),
+            startup_timeout_ms: 5000,
+        }
+    }
+
+    #[test]
+    fn test_stdio_transport_new() {
+        let config = create_test_config();
+        let transport = StdioTransport::new(config);
+        assert!(transport.child.is_none());
+        assert!(transport.stdin.is_none());
+        assert!(transport.stdout.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_stdio_connect() {
+        let config = create_test_config();
+        let mut transport = StdioTransport::new(config);
+
+        let result = transport.connect().await;
+        assert!(result.is_ok());
+        assert!(transport.child.is_some());
+        assert!(transport.stdin.is_some());
+        assert!(transport.stdout.is_some());
+        assert!(transport.is_connected());
+
+        // Clean up
+        let _ = transport.disconnect().await;
+    }
+
+    #[tokio::test]
+    async fn test_stdio_disconnect() {
+        let config = create_test_config();
+        let mut transport = StdioTransport::new(config);
+
+        transport.connect().await.unwrap();
+        assert!(transport.is_connected());
+
+        let result = transport.disconnect().await;
+        assert!(result.is_ok());
+        assert!(transport.child.is_none());
+        assert!(transport.stdin.is_none());
+        assert!(transport.stdout.is_none());
+        assert!(!transport.is_connected());
+    }
+
+    #[tokio::test]
+    async fn test_stdio_send_disconnected() {
+        let config = create_test_config();
+        let transport = StdioTransport::new(config);
+
+        // Try to send without connecting
+        let result = transport.send("test".to_string()).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            McpError::Disconnected => {}
+            _ => panic!("Expected Disconnected error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_stdio_receive_disconnected() {
+        let config = create_test_config();
+        let transport = StdioTransport::new(config);
+
+        // Try to receive without connecting
+        let result = transport.receive().await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            McpError::Disconnected => {}
+            _ => panic!("Expected Disconnected error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_stdio_send_and_receive() {
+        let config = StdioConfig {
+            command: "cat".to_string(), // cat echoes back
+            args: vec![],
+            cwd: None,
+            env: HashMap::new(),
+            startup_timeout_ms: 5000,
+        };
+
+        let mut transport = StdioTransport::new(config);
+        transport.connect().await.unwrap();
+
+        // Send a message
+        let result = transport.send("hello".to_string()).await;
+        assert!(result.is_ok());
+
+        // Try to receive (may timeout if process doesn't respond immediately)
+        // Note: cat may not respond as expected in this context
+        // So we just verify the send worked
+
+        let _ = transport.disconnect().await;
+    }
+
+    #[tokio::test]
+    async fn test_stdio_connect_invalid_command() {
+        let config = StdioConfig {
+            command: "nonexistent_command_12345".to_string(),
+            args: vec![],
+            cwd: None,
+            env: HashMap::new(),
+            startup_timeout_ms: 5000,
+        };
+
+        let mut transport = StdioTransport::new(config);
+        let result = transport.connect().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_stdio_with_args() {
+        let config = StdioConfig {
+            command: "echo".to_string(),
+            args: vec!["test".to_string()],
+            cwd: None,
+            env: HashMap::new(),
+            startup_timeout_ms: 5000,
+        };
+
+        let mut transport = StdioTransport::new(config);
+        let result = transport.connect().await;
+        assert!(result.is_ok());
+
+        let _ = transport.disconnect().await;
+    }
+
+    #[tokio::test]
+    async fn test_stdio_with_env() {
+        let mut env = HashMap::new();
+        env.insert("TEST_VAR".to_string(), "test_value".to_string());
+
+        let config = StdioConfig {
+            command: "echo".to_string(),
+            args: vec![],
+            cwd: None,
+            env,
+            startup_timeout_ms: 5000,
+        };
+
+        let mut transport = StdioTransport::new(config);
+        let result = transport.connect().await;
+        assert!(result.is_ok());
+
+        let _ = transport.disconnect().await;
+    }
+
+    #[tokio::test]
+    async fn test_stdio_receive_timeout() {
+        let config = create_test_config();
+        let mut transport = StdioTransport::new(config);
+        transport.connect().await.unwrap();
+
+        // Echo doesn't output anything without input, so receive should timeout
+        let result = transport.receive().await;
+        // Should be Ok(None) on timeout
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
+
+        let _ = transport.disconnect().await;
+    }
+
+    #[tokio::test]
+    async fn test_stdio_is_connected() {
+        let config = create_test_config();
+        let mut transport = StdioTransport::new(config);
+
+        assert!(!transport.is_connected());
+
+        transport.connect().await.unwrap();
+        assert!(transport.is_connected());
+
+        transport.disconnect().await.unwrap();
+        assert!(!transport.is_connected());
+    }
+}

@@ -39,7 +39,7 @@ impl FromProvider<OpenAIChatMessage> for Message {
             .map(|calls| {
                 calls
                     .into_iter()
-                    .map(|tc| ToolCall::from_provider(tc))
+                    .map(ToolCall::from_provider)
                     .collect()
             })
             .transpose()?;
@@ -158,12 +158,14 @@ fn convert_internal_role_to_openai(role: &Role) -> OpenAIRole {
 // Extension trait for ergonomic conversion
 // ============================================================================
 
-/// Extension trait for converting types with .into_internal() and .to_openai()
+/// Extension trait for converting types with .into_internal() and .to_openai() (test-only)
+#[cfg(test)]
 pub trait OpenAIExt: Sized {
     fn into_internal(self) -> ProtocolResult<Message>;
     fn to_openai(&self) -> ProtocolResult<OpenAIChatMessage>;
 }
 
+#[cfg(test)]
 impl OpenAIExt for OpenAIChatMessage {
     fn into_internal(self) -> ProtocolResult<Message> {
         Message::from_provider(self)
@@ -174,6 +176,7 @@ impl OpenAIExt for OpenAIChatMessage {
     }
 }
 
+#[cfg(test)]
 impl OpenAIExt for Message {
     fn into_internal(self) -> ProtocolResult<Message> {
         Ok(self)

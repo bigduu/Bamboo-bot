@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 
 /// Todo item status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum TodoItemStatus {
     #[serde(rename = "pending")]
+    #[default]
     Pending,
     #[serde(rename = "in_progress")]
     InProgress,
@@ -16,11 +18,6 @@ pub enum TodoItemStatus {
     Blocked,
 }
 
-impl Default for TodoItemStatus {
-    fn default() -> Self {
-        TodoItemStatus::Pending
-    }
-}
 
 /// Todo item
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -5,7 +5,7 @@ use agent_metrics::{
     aggregate_monthly, aggregate_weekly, DailyMetrics, ForwardEndpointMetrics,
     ForwardMetricsFilter, ForwardMetricsSummary, ForwardRequestMetrics, MetricsCollector,
     MetricsDateFilter, MetricsError, MetricsStorage, MetricsSummary, ModelMetrics, PeriodMetrics,
-    SessionDetail, SessionMetrics, SessionMetricsFilter, SqliteMetricsStorage, TokenUsage,
+    SessionDetail, SessionMetrics, SessionMetricsFilter, SqliteMetricsStorage,
 };
 use chrono::NaiveDate;
 

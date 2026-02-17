@@ -140,7 +140,7 @@ impl MetricsWorker {
                         round_id,
                         meta.occurred_at,
                         *status,
-                        usage.clone(),
+                        *usage,
                         error.clone(),
                     )
                     .await?;
@@ -238,7 +238,7 @@ impl MetricsWorker {
                         meta.occurred_at,
                         Some(*status_code),
                         *status,
-                        usage.clone(),
+                        *usage,
                         error.clone(),
                     )
                     .await?;

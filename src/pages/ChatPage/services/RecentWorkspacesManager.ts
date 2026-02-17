@@ -2,11 +2,8 @@
  * @deprecated RecentWorkspacesManager has been unified. Use WorkspaceService from 'src/services/workspace' instead.
  */
 
-import type { WorkspaceServiceOptions } from "../../../services/workspace";
-import {
-  WorkspaceService,
-  workspaceService,
-} from "../../../services/workspace";
+import type { WorkspaceServiceOptions } from "@services/workspace";
+import { WorkspaceService, workspaceService } from "@services/workspace";
 
 export {
   WorkspaceService as RecentWorkspacesManager,
@@ -18,7 +15,7 @@ export type {
   WorkspaceMetadata,
   WorkspaceServiceOptions as RecentWorkspacesManagerOptions,
   Workspace,
-} from "../../../services/workspace";
+} from "@services/workspace";
 
 // Helper function for creating manager with options
 export function useRecentWorkspacesManager(options?: WorkspaceServiceOptions) {

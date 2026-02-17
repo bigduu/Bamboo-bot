@@ -5,17 +5,56 @@ import type {
   AssistantToolResultMessage,
 } from "../../types/chat";
 import { streamingMessageBus } from "../../utils/streamingMessageBus";
+import type OpenAI from "openai";
+
+interface OpenAIToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+interface OpenAIToolCallDelta {
+  index: number;
+  id?: string;
+  function?: {
+    name?: string;
+    arguments?: string;
+  };
+}
+
+interface OpenAIStreamChunk {
+  choices?: Array<{
+    delta?: {
+      content?: string;
+      tool_calls?: OpenAIToolCallDelta[];
+    };
+  }>;
+}
+
+interface OpenAIFinalMessage {
+  content?: string | null;
+  tool_calls?: OpenAIToolCall[];
+}
 
 interface StreamOpenAIWithToolsParams {
   chatId: string;
-  client: any;
-  tools: any[];
+  client: OpenAI;
+  tools: OpenAI.Chat.Completions.ChatCompletionTool[];
   model: string;
-  openaiMessages: any[];
+  openaiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
   controller: AbortController;
   streamingMessageIdRef: React.MutableRefObject<string | null>;
   streamingContentRef: React.MutableRefObject<string>;
-  addMessage: (chatId: string, message: any) => Promise<void>;
+  addMessage: (
+    chatId: string,
+    message:
+      | AssistantTextMessage
+      | AssistantToolCallMessage
+      | AssistantToolResultMessage,
+  ) => Promise<void>;
 }
 
 export const streamOpenAIWithTools = async ({
@@ -57,7 +96,7 @@ export const streamOpenAIWithTools = async ({
     let sawToolCalls = false;
     let sawContent = false;
 
-    for await (const chunk of stream as any) {
+    for await (const chunk of stream as AsyncIterable<OpenAIStreamChunk>) {
       const choice = chunk?.choices?.[0];
       const delta = choice?.delta;
       if (!delta) {
@@ -66,7 +105,7 @@ export const streamOpenAIWithTools = async ({
 
       if (delta.tool_calls) {
         sawToolCalls = true;
-        delta.tool_calls.forEach((call: any) => {
+        delta.tool_calls.forEach((call) => {
           const existing = toolCallsMap.get(call.index) ?? {
             id: call.id ?? "",
             name: "",
@@ -97,7 +136,7 @@ export const streamOpenAIWithTools = async ({
       }
     }
 
-    let finalMessage: any = null;
+    let finalMessage: OpenAIFinalMessage | null = null;
     try {
       finalMessage = await stream.finalMessage();
     } catch {}
@@ -106,7 +145,7 @@ export const streamOpenAIWithTools = async ({
       .filter((call) => call.name)
       .map((call) => ({
         id: call.id || `call_${crypto.randomUUID()}`,
-        type: "function",
+        type: "function" as const,
         function: {
           name: call.name,
           arguments: call.arguments,
@@ -118,9 +157,9 @@ export const streamOpenAIWithTools = async ({
       Array.isArray(finalMessage?.tool_calls) &&
       finalMessage.tool_calls.length > 0
     ) {
-      streamedToolCalls = finalMessage.tool_calls.map((call: any) => ({
+      streamedToolCalls = finalMessage.tool_calls.map((call) => ({
         id: call.id || `call_${crypto.randomUUID()}`,
-        type: "function",
+        type: "function" as const,
         function: {
           name: call.function?.name ?? "",
           arguments: call.function?.arguments ?? "",
@@ -191,7 +230,7 @@ export const streamOpenAIWithTools = async ({
 
     const toolService = ToolService.getInstance();
     for (const call of streamedToolCalls) {
-      let args: Record<string, any> = {};
+      let args: Record<string, unknown> = {};
       try {
         args = JSON.parse(call.function.arguments || "{}");
       } catch {}

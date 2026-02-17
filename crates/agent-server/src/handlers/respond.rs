@@ -2,7 +2,7 @@ use actix_web::{web, HttpResponse, Result};
 use serde::Deserialize;
 
 use crate::state::AppState;
-use agent_core::{Message, Role};
+use agent_core::Message;
 
 #[derive(Debug, Deserialize)]
 pub struct RespondRequest {
@@ -22,7 +22,7 @@ pub async fn submit_response(
     log::info!("[{}] Received user response: {}", session_id, user_response);
 
     // Try to get session from memory first, then from storage
-    let mut session = {
+    let session = {
         let sessions = state.sessions.read().await;
         sessions.get(&session_id).cloned()
     };

@@ -1,4 +1,4 @@
-import { apiClient, isApiError } from "../../../services/api";
+import { apiClient, isApiError } from "@services/api";
 
 export interface WorkflowMetadata {
   name: string;

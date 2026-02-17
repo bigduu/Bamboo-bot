@@ -165,8 +165,8 @@ const buildTitleContext = (messages: Message[]): string => {
         if ("content" in message && typeof message.content === "string") {
           return message.content.trim();
         }
-        if ("displayText" in (message as any)) {
-          const displayText = (message as any).displayText;
+        if ("displayText" in message) {
+          const displayText = message.displayText;
           if (typeof displayText === "string") {
             return displayText.trim();
           }

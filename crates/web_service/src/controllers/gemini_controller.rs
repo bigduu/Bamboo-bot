@@ -2,8 +2,9 @@ use crate::services::gemini_model_mapping_service::resolve_model;
 use crate::{error::AppError, server::AppState};
 use actix_web::{get, post, web, HttpResponse};
 use agent_core::Message;
+use agent_core::tools::ToolSchema;
 use agent_llm::protocol::gemini::{
-    GeminiCandidate, GeminiContent, GeminiPart, GeminiRequest, GeminiResponse,
+    GeminiCandidate, GeminiContent, GeminiFunctionCall, GeminiPart, GeminiRequest, GeminiResponse,
 };
 use agent_llm::protocol::FromProvider;
 use agent_llm::LLMChunk;
@@ -57,10 +58,13 @@ pub async fn generate_content(
     // 1. Convert Gemini format → Message
     let internal_messages = convert_gemini_to_messages(&request.contents)?;
 
-    // 2. Get provider
+    // 2. Convert tools if present
+    let internal_tools = convert_gemini_tools(&request.tools)?;
+
+    // 3. Get provider
     let provider = state.get_provider().await;
 
-    // 3. Call provider with mapped model
+    // 4. Call provider with mapped model
     let model_override = if resolution.mapped_model.is_empty() {
         None
     } else {
@@ -68,18 +72,20 @@ pub async fn generate_content(
     };
 
     let mut stream = provider
-        .chat_stream(&internal_messages, &[], None, model_override)
+        .chat_stream(&internal_messages, &internal_tools, None, model_override)
         .await
         .map_err(|e| AppError::InternalError(anyhow!("Provider error: {}", e)))?;
 
-    // 4. Collect response
+    // 5. Collect response
     let mut full_content = String::new();
+    let mut tool_calls: Option<Vec<agent_core::tools::ToolCall>> = None;
+
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(LLMChunk::Token(token)) => full_content.push_str(&token),
             Ok(LLMChunk::Done) => break,
-            Ok(LLMChunk::ToolCalls(_)) => {
-                // TODO: Handle tool calls
+            Ok(LLMChunk::ToolCalls(calls)) => {
+                tool_calls = Some(calls);
             }
             Err(e) => {
                 return Err(AppError::InternalError(anyhow!(
@@ -90,16 +96,46 @@ pub async fn generate_content(
         }
     }
 
-    // 5. Convert back to Gemini format
+    // 6. Convert back to Gemini format
+    let mut parts = vec![GeminiPart {
+        text: if full_content.is_empty() && tool_calls.is_none() {
+            Some(String::new())
+        } else if full_content.is_empty() {
+            None
+        } else {
+            Some(full_content)
+        },
+        function_call: None,
+        function_response: None,
+    }];
+
+    // Add tool calls as function_call parts
+    if let Some(calls) = tool_calls {
+        // Remove empty text part if we have tool calls and no text
+        if parts[0].text.as_ref().map_or(true, |t| t.is_empty()) {
+            parts.clear();
+        }
+
+        for tc in calls {
+            let args: serde_json::Value = serde_json::from_str(&tc.function.arguments)
+                .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+
+            parts.push(GeminiPart {
+                text: None,
+                function_call: Some(GeminiFunctionCall {
+                    name: tc.function.name,
+                    args,
+                }),
+                function_response: None,
+            });
+        }
+    }
+
     let gemini_response = GeminiResponse {
         candidates: vec![GeminiCandidate {
             content: GeminiContent {
                 role: "model".to_string(),
-                parts: vec![GeminiPart {
-                    text: Some(full_content),
-                    function_call: None,
-                    function_response: None,
-                }],
+                parts,
             },
             finish_reason: Some("STOP".to_string()),
         }],
@@ -143,7 +179,10 @@ pub async fn stream_generate_content(
     // 1. Convert Gemini format → Message
     let internal_messages = convert_gemini_to_messages(&request.contents)?;
 
-    // 2. Get provider and create stream
+    // 2. Convert tools if present
+    let internal_tools = convert_gemini_tools(&request.tools)?;
+
+    // 3. Get provider and create stream
     let model_override = if resolution.mapped_model.is_empty() {
         None
     } else {
@@ -153,11 +192,11 @@ pub async fn stream_generate_content(
     let mut stream = state
         .get_provider()
         .await
-        .chat_stream(&internal_messages, &[], None, model_override)
+        .chat_stream(&internal_messages, &internal_tools, None, model_override)
         .await
         .map_err(|e| AppError::InternalError(anyhow!("Provider error: {}", e)))?;
 
-    // 3. Create SSE stream
+    // 4. Create SSE stream
     let gemini_stream = async_stream::stream! {
         while let Some(chunk) = stream.next().await {
             match chunk {
@@ -179,8 +218,7 @@ pub async fn stream_generate_content(
                     let json = match serde_json::to_string(&gemini_chunk) {
                         Ok(s) => s,
                         Err(e) => {
-                            yield Err(actix_web::Error::from(std::io::Error::new(
-                                std::io::ErrorKind::Other,
+                            yield Err(actix_web::Error::from(std::io::Error::other(
                                 format!("JSON error: {}", e),
                             )));
                             continue;
@@ -188,6 +226,42 @@ pub async fn stream_generate_content(
                     };
 
                     yield Ok::<_, actix_web::Error>(Bytes::from(format!("data: {}\n\n", json)));
+                }
+                Ok(LLMChunk::ToolCalls(tool_calls)) => {
+                    // Convert tool calls to Gemini function_call parts
+                    for tc in tool_calls {
+                        let args: serde_json::Value = serde_json::from_str(&tc.function.arguments)
+                            .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+
+                        let gemini_chunk = GeminiResponse {
+                            candidates: vec![GeminiCandidate {
+                                content: GeminiContent {
+                                    role: "model".to_string(),
+                                    parts: vec![GeminiPart {
+                                        text: None,
+                                        function_call: Some(GeminiFunctionCall {
+                                            name: tc.function.name,
+                                            args,
+                                        }),
+                                        function_response: None,
+                                    }],
+                                },
+                                finish_reason: None,
+                            }],
+                        };
+
+                        let json = match serde_json::to_string(&gemini_chunk) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                yield Err(actix_web::Error::from(std::io::Error::other(
+                                    format!("JSON error: {}", e),
+                                )));
+                                continue;
+                            }
+                        };
+
+                        yield Ok::<_, actix_web::Error>(Bytes::from(format!("data: {}\n\n", json)));
+                    }
                 }
                 Ok(LLMChunk::Done) => {
                     // Send final chunk
@@ -204,12 +278,8 @@ pub async fn stream_generate_content(
                     yield Ok::<_, actix_web::Error>(Bytes::from(format!("data: {}\n\n", json)));
                     break;
                 }
-                Ok(LLMChunk::ToolCalls(_)) => {
-                    // TODO: Handle tool calls in streaming
-                }
                 Err(e) => {
-                    yield Err(actix_web::Error::from(std::io::Error::new(
-                        std::io::ErrorKind::Other,
+                    yield Err(actix_web::Error::from(std::io::Error::other(
                         format!("Stream error: {}", e),
                     )));
                     break;
@@ -267,4 +337,33 @@ fn convert_gemini_to_messages(
             })
         })
         .collect()
+}
+
+/// Helper: Convert Gemini tools to internal ToolSchemas
+fn convert_gemini_tools(
+    tools: &Option<Vec<agent_llm::protocol::gemini::GeminiTool>>,
+) -> Result<Vec<ToolSchema>, AppError> {
+    match tools {
+        Some(tools) => {
+            // Gemini groups all functions in one tool, we need to extract them
+            let mut all_schemas = Vec::new();
+
+            for tool in tools {
+                for func_decl in &tool.function_declarations {
+                    let schema = ToolSchema {
+                        schema_type: "function".to_string(),
+                        function: agent_core::tools::FunctionSchema {
+                            name: func_decl.name.clone(),
+                            description: func_decl.description.clone().unwrap_or_default(),
+                            parameters: func_decl.parameters.clone(),
+                        },
+                    };
+                    all_schemas.push(schema);
+                }
+            }
+
+            Ok(all_schemas)
+        }
+        None => Ok(vec![]),
+    }
 }

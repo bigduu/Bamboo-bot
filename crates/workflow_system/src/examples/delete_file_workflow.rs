@@ -74,7 +74,7 @@ impl Workflow for DeleteFileWorkflow {
         }
 
         // Check if file exists
-        if !fs::metadata(path).await.is_ok() {
+        if fs::metadata(path).await.is_err() {
             return Err(WorkflowError::InvalidParameters(format!(
                 "File does not exist: {}",
                 path

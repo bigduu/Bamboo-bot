@@ -243,26 +243,7 @@ impl McpProtocolClient {
         )?;
 
         Ok(McpCallResult {
-            content: result
-                .content
-                .into_iter()
-                .map(|item| match item {
-                    McpContentItem::Text { text } => crate::types::McpContentItem::Text { text },
-                    McpContentItem::Image { data, mime_type } => {
-                        crate::types::McpContentItem::Image { data, mime_type }
-                    }
-                    McpContentItem::Resource { resource } => {
-                        crate::types::McpContentItem::Resource {
-                            resource: crate::types::McpResource {
-                                uri: resource.uri,
-                                mime_type: resource.mime_type,
-                                text: resource.text,
-                                blob: resource.blob,
-                            },
-                        }
-                    }
-                })
-                .collect(),
+            content: result.content,
             is_error: result.is_error,
         })
     }
@@ -275,5 +256,160 @@ impl McpProtocolClient {
     pub async fn try_receive_notification(&self) -> Option<JsonRpcNotification> {
         let mut rx = self.notification_rx.write().await;
         rx.try_recv().ok()
+    }
+
+    pub async fn is_connected(&self) -> bool {
+        let transport = self.transport.read().await;
+        transport.is_connected()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+
+    // Mock transport for testing
+    struct MockTransport {
+        connected: bool,
+        messages_sent: Arc<RwLock<Vec<String>>>,
+        messages_to_receive: Arc<RwLock<Vec<String>>>,
+    }
+
+    impl MockTransport {
+        fn new() -> Self {
+            Self {
+                connected: false,
+                messages_sent: Arc::new(RwLock::new(Vec::new())),
+                messages_to_receive: Arc::new(RwLock::new(Vec::new())),
+            }
+        }
+
+        fn with_response(message: String) -> Self {
+            let messages = Arc::new(RwLock::new(vec![message]));
+            Self {
+                connected: false,
+                messages_sent: Arc::new(RwLock::new(Vec::new())),
+                messages_to_receive: messages,
+            }
+        }
+    }
+
+    #[async_trait]
+    impl McpTransport for MockTransport {
+        async fn connect(&mut self) -> Result<()> {
+            self.connected = true;
+            Ok(())
+        }
+
+        async fn disconnect(&mut self) -> Result<()> {
+            self.connected = false;
+            Ok(())
+        }
+
+        async fn send(&self, message: String) -> Result<()> {
+            let mut sent = self.messages_sent.write().await;
+            sent.push(message);
+            Ok(())
+        }
+
+        async fn receive(&self) -> Result<Option<String>> {
+            let mut messages = self.messages_to_receive.write().await;
+            if messages.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(messages.remove(0)))
+            }
+        }
+
+        fn is_connected(&self) -> bool {
+            self.connected
+        }
+    }
+
+    #[tokio::test]
+    async fn test_client_new() {
+        let transport = Box::new(MockTransport::new());
+        let client = McpProtocolClient::new(transport);
+        assert!(client.message_handler.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_client_connect() {
+        let transport = Box::new(MockTransport::new());
+        let mut client = McpProtocolClient::new(transport);
+
+        let result = client.connect().await;
+        assert!(result.is_ok());
+        assert!(client.message_handler.is_some());
+        assert!(client.is_connected().await);
+    }
+
+    #[tokio::test]
+    async fn test_client_disconnect() {
+        let transport = Box::new(MockTransport::new());
+        let mut client = McpProtocolClient::new(transport);
+
+        client.connect().await.unwrap();
+        assert!(client.is_connected().await);
+
+        let result = client.disconnect().await;
+        assert!(result.is_ok());
+        assert!(!client.is_connected().await);
+    }
+
+    #[tokio::test]
+    async fn test_client_is_connected() {
+        let transport = Box::new(MockTransport::new());
+        let mut client = McpProtocolClient::new(transport);
+
+        assert!(!client.is_connected().await);
+        client.connect().await.unwrap();
+        assert!(client.is_connected().await);
+    }
+
+    #[test]
+    fn test_json_rpc_request_new() {
+        let request = JsonRpcRequest::new(1, "test/method", Some(serde_json::json!({"key": "value"})));
+        assert_eq!(request.jsonrpc, "2.0");
+        assert_eq!(request.id, 1);
+        assert_eq!(request.method, "test/method");
+        assert!(request.params.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_send_request_timeout() {
+        let transport = Box::new(MockTransport::new()); // Won't respond
+        let client = McpProtocolClient::new(transport);
+
+        let result = client.send_request("test", None, 100).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            McpError::Timeout(_) => {}
+            _ => panic!("Expected Timeout error"),
+        }
+    }
+
+    #[test]
+    fn test_pending_request() {
+        let (tx, rx) = oneshot::channel();
+        let _pending = PendingRequest { sender: tx };
+
+        // Send a response
+        let response = JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            id: 1,
+            result: Some(serde_json::json!({"status": "ok"})),
+            error: None,
+        };
+
+        // Use a separate sender since tx was moved into pending
+        let (tx2, rx2): (oneshot::Sender<Result<JsonRpcResponse>>, _) = oneshot::channel();
+        tx2.send(Ok(response)).unwrap();
+
+        // Receive it
+        let result = rx2.blocking_recv().unwrap().unwrap();
+        assert_eq!(result.id, 1);
+        assert!(result.result.is_some());
     }
 }

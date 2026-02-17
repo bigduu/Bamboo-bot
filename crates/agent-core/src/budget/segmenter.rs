@@ -56,7 +56,7 @@ impl MessageSegment {
     pub fn contains_tool_call(&self, tool_call_id: &str) -> bool {
         self.messages.iter().any(|m| {
             m.role == Role::Assistant
-                && m.tool_calls.as_ref().map_or(false, |tc| {
+                && m.tool_calls.as_ref().is_some_and(|tc| {
                     tc.iter().any(|c| c.id == tool_call_id)
                 })
         })

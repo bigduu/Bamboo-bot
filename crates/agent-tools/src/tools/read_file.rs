@@ -13,9 +13,9 @@ impl ReadFileTool {
 
     /// Expand ~ to home directory
     fn expand_path(path: &str) -> String {
-        if path.starts_with("~/") {
+        if let Some(stripped) = path.strip_prefix("~/") {
             if let Some(home) = dirs::home_dir() {
-                return home.join(&path[2..]).to_string_lossy().to_string();
+                return home.join(stripped).to_string_lossy().to_string();
             }
         }
         path.to_string()
@@ -89,6 +89,7 @@ impl Tool for ReadFileTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir_in;
     use tokio::fs;
 
     #[tokio::test]
@@ -135,14 +136,22 @@ mod tests {
         // Test that ~ gets expanded to home directory
         let tool = ReadFileTool::new();
 
-        // Create a file in home directory
         let home = dirs::home_dir().expect("Home dir should exist");
-        let test_file = home.join(".test_read_file_tilde.txt");
+        let dir = tempdir_in(env!("CARGO_MANIFEST_DIR")).expect("tempdir should be creatable");
+        let test_file = dir.path().join(".test_read_file_tilde.txt");
+
+        // Create a file under the user's home dir (but inside the repo), so the sandbox can write
+        // to it and we still exercise tilde expansion.
         fs::write(&test_file, "tilde test content").await.unwrap();
+
+        let relative = test_file
+            .strip_prefix(&home)
+            .expect("test file should be under home directory");
+        let tilde_path = format!("~/{}", relative.to_string_lossy());
 
         // Read using ~
         let result = tool
-            .execute(json!({"path": "~/.test_read_file_tilde.txt"}))
+            .execute(json!({"path": tilde_path}))
             .await
             .unwrap();
 

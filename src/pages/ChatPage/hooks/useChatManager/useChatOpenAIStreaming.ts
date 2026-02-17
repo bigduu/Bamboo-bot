@@ -3,11 +3,12 @@ import { App as AntApp } from "antd";
 import { skillService } from "../../services/SkillService";
 import { getOpenAIClient } from "../../services/openaiClient";
 import { useAppStore } from "../../store";
-import type { Message, UserMessage } from "../../types/chat";
+import type { ChatItem, Message, UserMessage } from "../../types/chat";
 import type { ImageFile } from "../../utils/imageUtils";
 import { streamingMessageBus } from "../../utils/streamingMessageBus";
 import { buildRequestMessages } from "./openAiMessageMapping";
 import { streamOpenAIWithTools } from "./openAiStreamingRunner";
+import type OpenAI from "openai";
 
 export interface UseChatOpenAIStreaming {
   sendMessage: (content: string, images?: ImageFile[]) => Promise<void>;
@@ -15,8 +16,8 @@ export interface UseChatOpenAIStreaming {
 }
 
 interface UseChatOpenAIStreamingDeps {
-  currentChat: any | null;
-  addMessage: (chatId: string, message: any) => Promise<void>;
+  currentChat: ChatItem | null;
+  addMessage: (chatId: string, message: Message) => Promise<void>;
   setProcessing: (isProcessing: boolean) => void;
 }
 
@@ -25,7 +26,9 @@ export function useChatOpenAIStreaming(
 ): UseChatOpenAIStreaming {
   const { modal, message: appMessage } = AntApp.useApp();
   const abortRef = useRef<AbortController | null>(null);
-  const toolsCacheRef = useRef<any[] | null>(null);
+  const toolsCacheRef = useRef<
+    OpenAI.Chat.Completions.ChatCompletionTool[] | null
+  >(null);
   const streamingMessageIdRef = useRef<string | null>(null);
   const streamingContentRef = useRef<string>("");
   const selectedModel = useAppStore((state) => state.selectedModel);
@@ -40,17 +43,27 @@ export function useChatOpenAIStreaming(
     abortRef.current?.abort();
   }, []);
 
-  const resolveTools = useCallback(async (chatId?: string) => {
-    if (toolsCacheRef.current) return toolsCacheRef.current;
-    try {
-      const toolDefs = await skillService.getFilteredTools(chatId);
-      toolsCacheRef.current = toolDefs;
-      return toolDefs;
-    } catch (e) {
-      console.log("[useChatOpenAIStreaming] Failed to get filtered tools:", e);
-    }
-    return [];
-  }, []);
+  const resolveTools = useCallback(
+    async (
+      chatId?: string,
+    ): Promise<OpenAI.Chat.Completions.ChatCompletionTool[]> => {
+      if (toolsCacheRef.current) return toolsCacheRef.current;
+      try {
+        const toolDefs = await skillService.getFilteredTools(chatId);
+        const typedToolDefs =
+          toolDefs as OpenAI.Chat.Completions.ChatCompletionTool[];
+        toolsCacheRef.current = typedToolDefs;
+        return typedToolDefs;
+      } catch (e) {
+        console.log(
+          "[useChatOpenAIStreaming] Failed to get filtered tools:",
+          e,
+        );
+      }
+      return [];
+    },
+    [],
+  );
 
   const buildMessages = useCallback(
     (messages: Message[]) =>
@@ -131,7 +144,7 @@ export function useChatOpenAIStreaming(
         }
         streamingMessageIdRef.current = null;
         streamingContentRef.current = "";
-        if ((error as any).name === "AbortError") {
+        if (error instanceof Error && error.name === "AbortError") {
           appMessage.info("Request cancelled");
         } else {
           console.error(

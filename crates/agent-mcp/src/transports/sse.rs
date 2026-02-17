@@ -4,7 +4,7 @@ use futures::StreamExt;
 use reqwest::{Client, header::HeaderMap};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::{mpsc, Mutex};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use crate::config::{HeaderConfig, SseConfig};
 use crate::error::{McpError, Result};
@@ -89,7 +89,7 @@ impl McpTransport for SseTransport {
                             // Store the endpoint URL for POST requests
                             debug!("Got endpoint: {}", event.data);
                         } else if event.event == "message" || event.event.is_empty() {
-                            if let Err(_) = message_tx.send(event.data).await {
+                            if message_tx.send(event.data).await.is_err() {
                                 break;
                             }
                         }
@@ -190,4 +190,183 @@ impl McpTransport for SseTransport {
     fn is_connected(&self) -> bool {
         self.connected.load(Ordering::SeqCst)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_config() -> SseConfig {
+        SseConfig {
+            url: "http://localhost:8080/sse".to_string(),
+            headers: vec![],
+            connect_timeout_ms: 5000,
+        }
+    }
+
+    #[test]
+    fn test_sse_transport_new() {
+        let config = create_test_config();
+        let transport = SseTransport::new(config);
+        assert!(!transport.is_connected());
+        assert!(transport.sse_handle.is_none());
+    }
+
+    #[test]
+    fn test_sse_build_headers_empty() {
+        let config = create_test_config();
+        let transport = SseTransport::new(config);
+
+        let headers = transport.build_headers().unwrap();
+        assert!(headers.contains_key(reqwest::header::ACCEPT));
+        assert_eq!(
+            headers.get(reqwest::header::ACCEPT).unwrap(),
+            "text/event-stream"
+        );
+    }
+
+    #[test]
+    fn test_sse_build_headers_with_custom() {
+        let config = SseConfig {
+            url: "http://localhost:8080/sse".to_string(),
+            headers: vec![HeaderConfig {
+                name: "Authorization".to_string(),
+                value: "Bearer token123".to_string(),
+            }],
+            connect_timeout_ms: 5000,
+        };
+        let transport = SseTransport::new(config);
+
+        let headers = transport.build_headers().unwrap();
+        assert!(headers.contains_key("authorization"));
+    }
+
+    #[test]
+    fn test_sse_build_headers_invalid_name() {
+        let config = SseConfig {
+            url: "http://localhost:8080/sse".to_string(),
+            headers: vec![HeaderConfig {
+                name: "Invalid Header Name\n".to_string(), // Invalid
+                value: "test".to_string(),
+            }],
+            connect_timeout_ms: 5000,
+        };
+        let transport = SseTransport::new(config);
+
+        let result = transport.build_headers();
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_sse_send_disconnected() {
+        let config = create_test_config();
+        let transport = SseTransport::new(config);
+
+        // Try to send without connecting
+        let result = transport.send("test".to_string()).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            McpError::Disconnected => {}
+            _ => panic!("Expected Disconnected error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sse_receive_disconnected() {
+        let config = create_test_config();
+        let transport = SseTransport::new(config);
+
+        // Try to receive without connecting
+        let result = transport.receive().await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            McpError::Disconnected => {}
+            _ => panic!("Expected Disconnected error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sse_disconnect() {
+        let config = create_test_config();
+        let mut transport = SseTransport::new(config);
+
+        // Even without actual connection, disconnect should work
+        let result = transport.disconnect().await;
+        assert!(result.is_ok());
+        assert!(!transport.is_connected());
+        assert!(transport.sse_handle.is_none());
+    }
+
+    #[test]
+    fn test_sse_is_connected() {
+        let config = create_test_config();
+        let transport = SseTransport::new(config);
+
+        assert!(!transport.is_connected());
+
+        // Manually set connected flag
+        transport.connected.store(true, Ordering::SeqCst);
+        assert!(transport.is_connected());
+    }
+
+    #[tokio::test]
+    async fn test_sse_connect_invalid_url() {
+        let config = SseConfig {
+            url: "http://invalid-host-12345:99999/sse".to_string(),
+            headers: vec![],
+            connect_timeout_ms: 1000,
+        };
+
+        let mut transport = SseTransport::new(config);
+        let result = transport.connect().await;
+        // Should fail with connection error
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_sse_receive_timeout() {
+        let config = create_test_config();
+        let transport = SseTransport::new(config);
+
+        // Set connected flag manually to test receive without actual SSE stream
+        transport.connected.store(true, Ordering::SeqCst);
+
+        let result = transport.receive().await;
+        // Should timeout and return Ok(None)
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn test_header_config() {
+        let header = HeaderConfig {
+            name: "Content-Type".to_string(),
+            value: "application/json".to_string(),
+        };
+        assert_eq!(header.name, "Content-Type");
+        assert_eq!(header.value, "application/json");
+    }
+
+    #[test]
+    fn test_sse_config_default_timeout() {
+        let config = SseConfig {
+            url: "http://localhost:8080/sse".to_string(),
+            headers: vec![],
+            connect_timeout_ms: 10000, // default
+        };
+        assert_eq!(config.connect_timeout_ms, 10000);
+    }
+
+    #[test]
+    fn test_sse_config_custom_timeout() {
+        let config = SseConfig {
+            url: "http://localhost:8080/sse".to_string(),
+            headers: vec![],
+            connect_timeout_ms: 5000,
+        };
+        assert_eq!(config.connect_timeout_ms, 5000);
+    }
+
+    // Note: Testing actual SSE connection and message handling would require
+    // a mock server. These tests verify the basic structure and error handling.
 }

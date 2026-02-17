@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-import { getBackendBaseUrl } from "../../../shared/utils/backendBaseUrl";
+import { getBackendBaseUrl } from "@shared/utils/backendBaseUrl";
 
 let client: OpenAI | null = null;
 let currentBaseUrl: string | null = null;

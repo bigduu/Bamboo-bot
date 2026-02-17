@@ -29,7 +29,7 @@ pub struct CompleteAuthRequest {
 pub async fn start_copilot_auth(
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, AppError> {
-    use agent_llm::providers::CopilotProvider;
+    
     use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
     use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
     use std::sync::Arc;
@@ -208,37 +208,31 @@ pub async fn get_copilot_auth_status(
 
     // Try to load cached token
     if copilot_token_path.exists() {
-        match fs::read_to_string(&copilot_token_path) {
-            Ok(content) => {
-                match serde_json::from_str::<serde_json::Value>(&content) {
-                    Ok(token_data) => {
-                        if let Some(expires_at) = token_data.get("expires_at").and_then(|v| v.as_u64()) {
-                            let now = std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs();
+        if let Ok(content) = fs::read_to_string(&copilot_token_path) {
+            if let Ok(token_data) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(expires_at) = token_data.get("expires_at").and_then(|v| v.as_u64()) {
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs();
 
-                            if expires_at.saturating_sub(60) > now {
-                                let remaining = expires_at.saturating_sub(now);
-                                return Ok(HttpResponse::Ok().json(AuthStatus {
-                                    authenticated: true,
-                                    message: Some(format!(
-                                        "Token expires in {} minutes",
-                                        remaining / 60
-                                    )),
-                                }));
-                            } else {
-                                return Ok(HttpResponse::Ok().json(AuthStatus {
-                                    authenticated: false,
-                                    message: Some("Token expired".to_string()),
-                                }));
-                            }
-                        }
+                    if expires_at.saturating_sub(60) > now {
+                        let remaining = expires_at.saturating_sub(now);
+                        return Ok(HttpResponse::Ok().json(AuthStatus {
+                            authenticated: true,
+                            message: Some(format!(
+                                "Token expires in {} minutes",
+                                remaining / 60
+                            )),
+                        }));
+                    } else {
+                        return Ok(HttpResponse::Ok().json(AuthStatus {
+                            authenticated: false,
+                            message: Some("Token expired".to_string()),
+                        }));
                     }
-                    Err(_) => {}
                 }
             }
-            Err(_) => {}
         }
     }
 

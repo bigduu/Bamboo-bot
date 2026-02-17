@@ -22,12 +22,11 @@
     "@tauri-apps/plugin-fs": "~2",
     "@types/markdown-it": "^14.1.2",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "@xstate/react": "^6.0.0",
     "antd": "^5.24.7",
     "date-fns": "^4.1.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
-    "jspdf": "^3.0.1",
+    "jspdf": "^4.1.0",
     "markdown-it": "^14.1.0",
     "mermaid": "^11.9.0",
     "openai": "^5.10.2",
@@ -41,7 +40,6 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "uuid": "^11.1.0",
-    "xstate": "^5.21.0",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

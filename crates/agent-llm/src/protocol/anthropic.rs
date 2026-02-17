@@ -2,9 +2,12 @@
 
 use crate::providers::anthropic::api_types::*;
 use crate::protocol::{FromProvider, ProtocolError, ProtocolResult, ToProvider};
-use agent_core::tools::{FunctionCall, FunctionSchema, ToolCall, ToolSchema};
+use agent_core::tools::{FunctionSchema, ToolSchema};
 use agent_core::{Message, Role};
 use serde_json::Value;
+
+#[cfg(test)]
+use agent_core::tools::{FunctionCall, ToolCall};
 
 /// Anthropic protocol converter.
 pub struct AnthropicProtocol;
@@ -163,8 +166,10 @@ impl ToProvider<AnthropicTool> for ToolSchema {
 // ============================================================================
 
 /// Convert Anthropic response to internal format (for API proxy scenarios)
+#[cfg(test)]
 pub struct AnthropicResponseConverter;
 
+#[cfg(test)]
 impl AnthropicResponseConverter {
     /// Convert Anthropic messages response to internal message format
     pub fn convert_response(response: AnthropicMessagesResponse) -> ProtocolResult<Message> {
@@ -270,12 +275,14 @@ fn extract_text_from_anthropic_blocks(blocks: Vec<AnthropicContentBlock>) -> Pro
 // Extension trait for ergonomic conversion
 // ============================================================================
 
-/// Extension trait for Anthropic conversion
+/// Extension trait for Anthropic conversion (test-only)
+#[cfg(test)]
 pub trait AnthropicExt: Sized {
     fn into_internal(self) -> ProtocolResult<Message>;
     fn to_anthropic(&self) -> ProtocolResult<AnthropicMessage>;
 }
 
+#[cfg(test)]
 impl AnthropicExt for AnthropicMessage {
     fn into_internal(self) -> ProtocolResult<Message> {
         Message::from_provider(self)
@@ -288,6 +295,7 @@ impl AnthropicExt for AnthropicMessage {
     }
 }
 
+#[cfg(test)]
 impl AnthropicExt for Message {
     fn into_internal(self) -> ProtocolResult<Message> {
         Ok(self)

@@ -109,7 +109,7 @@ impl ModelLimitsRegistry {
         let path = self
             .config_path
             .clone()
-            .unwrap_or_else(|| get_default_config_path());
+            .unwrap_or_else(get_default_config_path);
 
         if !path.exists() {
             return Ok(());
@@ -199,7 +199,7 @@ impl ModelLimitsRegistry {
         let path = self
             .config_path
             .clone()
-            .unwrap_or_else(|| get_default_config_path());
+            .unwrap_or_else(get_default_config_path);
 
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {

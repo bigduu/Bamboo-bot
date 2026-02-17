@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { mockFetchResponse } from "../../../test/helpers";
+import { mockFetchResponse } from "@test/helpers";
 import { MetricsService } from "../MetricsService";
 
 describe("MetricsService", () => {

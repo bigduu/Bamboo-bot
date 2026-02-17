@@ -2,11 +2,8 @@
  * @deprecated WorkspaceApiService has been unified. Use WorkspaceService from 'src/services/workspace' instead.
  */
 
-import type { WorkspaceServiceOptions } from "../../../services/workspace";
-import {
-  WorkspaceService,
-  workspaceService,
-} from "../../../services/workspace";
+import type { WorkspaceServiceOptions } from "@services/workspace";
+import { WorkspaceService, workspaceService } from "@services/workspace";
 
 export {
   WorkspaceService as WorkspaceApiService,
@@ -25,7 +22,7 @@ export type {
   ApiResponse,
   WorkspaceServiceOptions as WorkspaceApiServiceOptions,
   Workspace,
-} from "../../../services/workspace";
+} from "@services/workspace";
 
 // Helper function for creating service with options
 export function useWorkspaceApiService(options?: WorkspaceServiceOptions) {

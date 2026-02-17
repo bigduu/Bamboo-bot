@@ -3,11 +3,9 @@
 
 use std::sync::Arc;
 use agent_core::{AgentEvent, Session, TodoItemStatus};
-use agent_core::todo::TodoList;
 use agent_llm::LLMProvider;
-use agent_core::tools::{ToolCall, ToolResult, ToolSchema, FunctionSchema};
+use agent_core::tools::{ToolSchema, FunctionSchema};
 use tokio::sync::mpsc;
-use chrono::Utc;
 use serde_json::json;
 
 use crate::todo_context::TodoLoopContext;

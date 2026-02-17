@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button, Card, Input, Space, Typography, Alert, theme } from "antd";
-import { serviceFactory } from "../../../../services/common/ServiceFactory";
+import { serviceFactory } from "@services/common/ServiceFactory";
 
 const { Text } = Typography;
 const { useToken } = theme;

@@ -5,6 +5,7 @@ import {
   ContextSummaryInfo,
   TodoList,
   TodoListDelta,
+  AgentEvent,
 } from "../services/chat/AgentService";
 import { useAppStore } from "../pages/ChatPage/store";
 import { streamingMessageBus } from "../pages/ChatPage/utils/streamingMessageBus";
@@ -137,12 +138,19 @@ export function useAgentEventSubscription() {
             });
           },
 
-          onToolComplete: (toolCallId: string, result: any) => {
+          onToolComplete: (
+            toolCallId: string,
+            result: AgentEvent["result"],
+          ) => {
             const toolCall = toolCallsInProgress.get(toolCallId);
             toolCallsInProgress.delete(toolCallId);
 
-            const toolName = toolCall?.name || result?.tool_name || "unknown";
-            const displayPreference = result?.display_preference || "Default";
+            const toolName = toolCall?.name || "unknown";
+            const displayPreference =
+              (result?.display_preference as
+                | "Default"
+                | "Collapsible"
+                | "Hidden") || "Default";
 
             void addMessage(chatId, {
               id: crypto.randomUUID(),
@@ -378,7 +386,7 @@ export function useAgentEventSubscription() {
         controller,
       )
       .catch((error) => {
-        if ((error as any).name !== "AbortError") {
+        if (error instanceof Error && error.name !== "AbortError") {
           console.error(
             "[useAgentEventSubscription] Subscription error:",
             error,

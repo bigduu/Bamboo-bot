@@ -131,7 +131,7 @@ pub async fn daily(
     state: web::Data<AppState>,
     query: web::Query<MetricsDailyQuery>,
 ) -> impl Responder {
-    let days = query.days.unwrap_or(30).max(1).min(365);
+    let days = query.days.unwrap_or(30).clamp(1, 365);
     let granularity = query.granularity.as_deref().unwrap_or("daily");
 
     match granularity {
@@ -238,9 +238,9 @@ pub async fn v2_unified_summary(
 
     match (chat_result, forward_result) {
         (Ok(chat), Ok(forward)) => {
-            let total_requests = chat.total_sessions as u64 + forward.total_requests;
+            let total_requests = chat.total_sessions + forward.total_requests;
             let total_tokens = chat.total_tokens.total_tokens + forward.total_tokens.total_tokens;
-            let total_success = (chat.total_sessions - chat.active_sessions) as u64
+            let total_success = (chat.total_sessions - chat.active_sessions)
                 + forward.successful_requests;
             let total_errors = forward.failed_requests;
             let success_rate = if total_requests > 0 {
@@ -272,7 +272,7 @@ pub async fn v2_unified_timeline(
     state: web::Data<AppState>,
     query: web::Query<MetricsDailyQuery>,
 ) -> impl Responder {
-    let days = query.days.unwrap_or(30).max(1).min(365);
+    let days = query.days.unwrap_or(30).clamp(1, 365);
 
     let chat_result = state.metrics_service.daily(days, query.end_date).await;
     let forward_result = state

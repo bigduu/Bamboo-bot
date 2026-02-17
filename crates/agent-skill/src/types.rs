@@ -9,18 +9,15 @@ pub type SkillId = String;
 /// Visibility level for a skill
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum SkillVisibility {
     /// Visible to all users
+    #[default]
     Public,
     /// Private to the creator
     Private,
 }
 
-impl Default for SkillVisibility {
-    fn default() -> Self {
-        Self::Public
-    }
-}
 
 /// Complete definition of a skill
 #[derive(Debug, Clone, Serialize, Deserialize)]

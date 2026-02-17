@@ -3,8 +3,10 @@ use serde::{Deserialize, Serialize};
 /// Controls how parallel branches should be waited for
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ParallelWait {
     /// Wait for all branches to complete
+    #[default]
     All,
     /// Wait for any branch to complete (first to finish)
     Any,
@@ -12,11 +14,6 @@ pub enum ParallelWait {
     N(usize),
 }
 
-impl Default for ParallelWait {
-    fn default() -> Self {
-        ParallelWait::All
-    }
-}
 
 #[cfg(test)]
 mod tests {

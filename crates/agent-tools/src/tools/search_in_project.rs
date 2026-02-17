@@ -2,7 +2,6 @@ use agent_core::tools::{Tool, ToolError, ToolResult};
 use async_trait::async_trait;
 use regex::Regex;
 use serde_json::json;
-use std::path::Path;
 use tokio::fs;
 
 /// Tool for searching text across all files in a project

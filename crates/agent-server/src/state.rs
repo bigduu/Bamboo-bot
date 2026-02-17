@@ -28,18 +28,6 @@ pub enum AgentStatus {
     Error(String),
 }
 
-impl AgentStatus {
-    pub fn as_str(&self) -> &str {
-        match self {
-            AgentStatus::Pending => "pending",
-            AgentStatus::Running => "running",
-            AgentStatus::Completed => "completed",
-            AgentStatus::Cancelled => "cancelled",
-            AgentStatus::Error(_) => "error",
-        }
-    }
-}
-
 /// Runner that manages agent execution for a session
 /// Supports multiple subscribers via broadcast channel
 #[derive(Clone)]
@@ -51,6 +39,12 @@ pub struct AgentRunner {
     pub completed_at: Option<DateTime<Utc>>,
     /// Last token budget event to replay for new subscribers
     pub last_budget_event: Option<AgentEvent>,
+}
+
+impl Default for AgentRunner {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AgentRunner {
@@ -257,6 +251,7 @@ impl AppState {
     }
 
     /// Shutdown all MCP servers gracefully
+    #[allow(dead_code)]
     pub async fn shutdown(&self) {
         log::info!("Shutting down MCP servers...");
         self.mcp_manager.shutdown_all().await;
@@ -278,6 +273,7 @@ impl AppState {
     }
 }
 
+#[cfg(test)]
 fn merge_base_and_enhancement(base_prompt: &str, enhance_prompt: Option<&str>) -> String {
     let mut merged = base_prompt.to_string();
 
@@ -292,6 +288,7 @@ fn merge_base_and_enhancement(base_prompt: &str, enhance_prompt: Option<&str>) -
     merged
 }
 
+#[cfg(test)]
 fn merge_workspace_context(base_prompt: &str, workspace_path: Option<&str>) -> String {
     let mut merged = base_prompt.to_string();
 
@@ -301,7 +298,7 @@ fn merge_workspace_context(base_prompt: &str, workspace_path: Option<&str>) -> S
     {
         merged.push_str("\n\nWorkspace path: ");
         merged.push_str(workspace_path);
-        merged.push_str("\n");
+        merged.push('\n');
         merged.push_str(WORKSPACE_PROMPT_GUIDANCE);
     }
 
@@ -312,12 +309,12 @@ fn bamboo_dir() -> PathBuf {
     std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::temp_dir())
+        .unwrap_or_else(std::env::temp_dir)
         .join(".bamboo")
 }
 
 /// Load MCP configuration from file
-async fn load_mcp_config(app_data_root: &PathBuf) -> agent_mcp::McpConfig {
+async fn load_mcp_config(app_data_root: &std::path::Path) -> agent_mcp::McpConfig {
     let config_path = app_data_root.join("mcp.json");
 
     if !config_path.exists() {
@@ -347,6 +344,7 @@ async fn load_mcp_config(app_data_root: &PathBuf) -> agent_mcp::McpConfig {
 }
 
 /// Start SSE stream sender
+#[cfg(test)]
 pub fn spawn_sse_sender(
     mut rx: mpsc::Receiver<AgentEvent>,
     tx: mpsc::Sender<actix_web::web::Bytes>,

@@ -126,7 +126,7 @@ fn build_enhanced_system_prompt(
     {
         merged_prompt.push_str("\n\nWorkspace path: ");
         merged_prompt.push_str(workspace_path);
-        merged_prompt.push_str("\n");
+        merged_prompt.push('\n');
         merged_prompt.push_str(crate::state::WORKSPACE_PROMPT_GUIDANCE);
     }
 

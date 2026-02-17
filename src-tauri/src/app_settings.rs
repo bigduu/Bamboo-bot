@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 // Re-export path functions from chat_core for consistency
 pub use chat_core::paths::{bamboo_dir, config_json_path, keyword_masking_json_path};

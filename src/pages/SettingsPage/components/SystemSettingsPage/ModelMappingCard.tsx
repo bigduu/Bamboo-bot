@@ -13,9 +13,9 @@ import {
   Input,
   Modal,
 } from "antd";
-import { ReloadOutlined, PlusOutlined } from "@ant-design/icons";
-import { serviceFactory } from "../../../../services/common/ServiceFactory";
-import { settingsService } from "../../../../services/config/SettingsService";
+import { ReloadOutlined } from "@ant-design/icons";
+import { serviceFactory } from "@services/common/ServiceFactory";
+import { settingsService } from "@services/config/SettingsService";
 
 const { Text } = Typography;
 const { useToken } = theme;

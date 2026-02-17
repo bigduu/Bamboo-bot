@@ -220,22 +220,6 @@ impl GitWriteTool {
             .map_err(|e| format!("Invalid UTF-8 in branch name: {}", e))
     }
 
-    /// Check if there are uncommitted changes
-    async fn has_uncommitted_changes(&self, cwd: &str) -> Result<bool, String> {
-        let output = Command::new("git")
-            .args(["status", "--porcelain"])
-            .current_dir(cwd)
-            .output()
-            .await
-            .map_err(|e| format!("Failed to check git status: {}", e))?;
-
-        if !output.status.success() {
-            return Err("Failed to check git status".to_string());
-        }
-
-        Ok(!output.stdout.is_empty())
-    }
-
     /// Execute git commit
     async fn git_commit(
         &self,

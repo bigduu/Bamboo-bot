@@ -9,7 +9,7 @@ import {
   type PeriodMetrics,
   type SessionDetail,
   type SessionMetrics,
-} from "../../../../../services/metrics";
+} from "@services/metrics";
 
 export interface MetricsFilters {
   startDate?: string;

@@ -54,7 +54,7 @@ pub trait ToProviderBatch<T>: Sized {
 impl FromProviderBatch<crate::api::models::ChatMessage> for Message {
     fn from_provider_batch(values: Vec<crate::api::models::ChatMessage>) -> ProtocolResult<Vec<Self>> {
         values.into_iter()
-            .map(|v| Self::from_provider(v))
+            .map(Self::from_provider)
             .collect()
     }
 }
