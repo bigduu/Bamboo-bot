@@ -47,7 +47,10 @@ export interface UtilityService {
   /**
    * Set proxy auth credentials
    */
-  setProxyAuth(auth: { username: string; password: string }): Promise<ApiSuccessResponse>;
+  setProxyAuth(auth: {
+    username: string;
+    password: string;
+  }): Promise<ApiSuccessResponse>;
 
   /**
    * Get proxy auth status (returns whether proxy auth is configured, without password)
@@ -70,7 +73,9 @@ export interface UtilityService {
   /**
    * Set Anthropic model mapping
    */
-  setAnthropicModelMapping(mapping: AnthropicModelMapping): Promise<AnthropicModelMapping>;
+  setAnthropicModelMapping(
+    mapping: AnthropicModelMapping,
+  ): Promise<AnthropicModelMapping>;
 
   /**
    * Reset Bamboo config (delete config.json)
@@ -85,7 +90,10 @@ export interface UtilityService {
   /**
    * Generic invoke method for custom commands
    */
-  invoke<T = unknown>(command: string, args?: Record<string, unknown>): Promise<T>;
+  invoke<T = unknown>(
+    command: string,
+    args?: Record<string, unknown>,
+  ): Promise<T>;
 }
 
 class HttpUtilityService implements Partial<UtilityService> {

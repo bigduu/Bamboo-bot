@@ -203,7 +203,9 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
           const updatedMsg = { ...msg };
           Object.keys(updates).forEach((key) => {
             if (Object.prototype.hasOwnProperty.call(updatedMsg, key)) {
-              (updatedMsg as any)[key] = (updates as any)[key];
+              (updatedMsg as Record<string, unknown>)[key] = (
+                updates as Record<string, unknown>
+              )[key];
             }
           });
           return updatedMsg;

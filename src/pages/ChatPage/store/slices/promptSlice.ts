@@ -44,7 +44,7 @@ export const createPromptSlice: StateCreator<AppState, [], [], PromptSlice> = (
     let prompts: UserSystemPrompt[] = [];
     try {
       const presets = await systemPromptService.getSystemPromptPresets();
-      prompts = presets.map((p: any) => ({
+      prompts = presets.map((p: UserSystemPrompt) => ({
         id: p.id,
         name: p.name,
         content: p.content,

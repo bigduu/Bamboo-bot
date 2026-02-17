@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
 import { App as AntApp } from "antd";
 import { AgentClient } from "../../services/AgentService";
-import type { UserMessage } from "../../types/chat";
+import type { ChatItem, Message, UserMessage } from "../../types/chat";
 import type { ImageFile } from "../../utils/imageUtils";
 import { streamingMessageBus } from "../../utils/streamingMessageBus";
 import { useAppStore } from "../../store";
-import { getSystemPromptEnhancementText } from "../../../../shared/utils/systemPromptEnhancement";
+import { getSystemPromptEnhancementText } from "@shared/utils/systemPromptEnhancement";
 import { useActiveModel } from "../useActiveModel";
 
 export interface UseMessageStreaming {
@@ -15,10 +15,10 @@ export interface UseMessageStreaming {
 }
 
 interface UseMessageStreamingDeps {
-  currentChat: any | null;
-  addMessage: (chatId: string, message: any) => Promise<void>;
+  currentChat: ChatItem | null;
+  addMessage: (chatId: string, message: Message) => Promise<void>;
   setProcessing: (isProcessing: boolean) => void;
-  updateChat: (chatId: string, updates: any) => void;
+  updateChat: (chatId: string, updates: Partial<ChatItem>) => void;
 }
 
 /**
@@ -194,7 +194,7 @@ export function useMessageStreaming(
         streamingMessageIdRef.current = null;
         streamingContentRef.current = "";
 
-        if ((error as any).name === "AbortError") {
+        if (error instanceof Error && error.name === "AbortError") {
           appMessage.info("Request cancelled");
         } else {
           console.error("[useChatStreaming] Failed to send message:", error);

@@ -88,10 +88,18 @@ describe("useMessageStreaming", () => {
     const deps = {
       currentChat: {
         id: "chat-1",
+        title: "Test Chat",
+        createdAt: Date.now(),
+        messages: [],
         config: {
           systemPromptId: "general_assistant",
           baseSystemPrompt: "",
           lastUsedEnhancedPrompt: null,
+        },
+        currentInteraction: {
+          machineState: "idle",
+          streamingMessageId: null,
+          streamingContent: null,
         },
       },
       addMessage: vi.fn(),
@@ -119,10 +127,18 @@ describe("useMessageStreaming", () => {
     const deps = {
       currentChat: {
         id: "chat-1",
+        title: "Test Chat",
+        createdAt: Date.now(),
+        messages: [],
         config: {
           systemPromptId: "general_assistant",
           baseSystemPrompt: "",
           lastUsedEnhancedPrompt: null,
+        },
+        currentInteraction: {
+          machineState: "idle",
+          streamingMessageId: null,
+          streamingContent: null,
         },
       },
       addMessage: vi.fn(async () => undefined),
@@ -154,11 +170,19 @@ describe("useMessageStreaming", () => {
     const deps = {
       currentChat: {
         id: "chat-1",
+        title: "Test Chat",
+        createdAt: Date.now(),
+        messages: [],
         config: {
           systemPromptId: "general_assistant",
           baseSystemPrompt: "Base prompt",
           workspacePath: "/tmp/workspace",
           lastUsedEnhancedPrompt: null,
+        },
+        currentInteraction: {
+          machineState: "idle",
+          streamingMessageId: null,
+          streamingContent: null,
         },
       },
       addMessage: vi.fn(async () => undefined),

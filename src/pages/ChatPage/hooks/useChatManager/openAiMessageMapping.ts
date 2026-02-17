@@ -4,15 +4,16 @@ import type {
   UserMessage,
 } from "../../types/chat";
 import { getEffectiveSystemPrompt } from "../../../../shared/utils/systemPromptEnhancement";
+import type OpenAI from "openai";
 
 export const buildUserContent = (message: UserMessage) => {
   if (!message.images || message.images.length === 0) {
     return message.content;
   }
   return [
-    { type: "text", text: message.content },
+    { type: "text" as const, text: message.content },
     ...message.images.map((img) => ({
-      type: "image_url",
+      type: "image_url" as const,
       image_url: {
         url: img.base64,
       },
@@ -20,7 +21,9 @@ export const buildUserContent = (message: UserMessage) => {
   ];
 };
 
-export const mapMessageToOpenAI = (message: Message) => {
+export const mapMessageToOpenAI = (
+  message: Message,
+): OpenAI.Chat.Completions.ChatCompletionMessageParam | null => {
   if (message.role === "system") {
     return null;
   }
@@ -49,7 +52,7 @@ export const mapMessageToOpenAI = (message: Message) => {
         content: "",
         tool_calls: message.toolCalls.map((call) => ({
           id: call.toolCallId,
-          type: "function",
+          type: "function" as const,
           function: {
             name: call.toolName,
             arguments: JSON.stringify(call.parameters ?? {}),
@@ -78,12 +81,13 @@ export const buildRequestMessages = (
   messages: Message[],
   baseSystemPrompt: string,
   workspacePath?: string,
-) => {
+): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
   const systemPrompt = getEffectiveSystemPrompt(
     baseSystemPrompt || "",
     workspacePath,
   );
-  const openaiMessages: any[] = [];
+  const openaiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+    [];
   if (systemPrompt) {
     openaiMessages.push({
       role: "system",

@@ -3,7 +3,7 @@ import {
   modelService,
   ProxyAuthRequiredError,
 } from "../../services/ModelService";
-import { configService } from "../../../../services/config";
+import { configService } from "@services/config";
 import type { AppState } from "../";
 
 const SELECTED_MODEL_LS_KEY = "bamboo_selected_model_id";
