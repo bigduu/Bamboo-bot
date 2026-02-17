@@ -160,29 +160,7 @@ pub struct McpToolCallRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpToolCallResult {
-    pub content: Vec<McpContentItem>,
+    pub content: Vec<crate::types::McpContentItem>,
     #[serde(default)]
     pub is_error: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum McpContentItem {
-    #[serde(rename = "text")]
-    Text { text: String },
-    #[serde(rename = "image")]
-    Image { data: String, mime_type: String },
-    #[serde(rename = "resource")]
-    Resource { resource: McpResourceInfo },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpResourceInfo {
-    pub uri: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mime_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub blob: Option<String>,
 }

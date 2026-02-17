@@ -243,26 +243,7 @@ impl McpProtocolClient {
         )?;
 
         Ok(McpCallResult {
-            content: result
-                .content
-                .into_iter()
-                .map(|item| match item {
-                    McpContentItem::Text { text } => crate::types::McpContentItem::Text { text },
-                    McpContentItem::Image { data, mime_type } => {
-                        crate::types::McpContentItem::Image { data, mime_type }
-                    }
-                    McpContentItem::Resource { resource } => {
-                        crate::types::McpContentItem::Resource {
-                            resource: crate::types::McpResource {
-                                uri: resource.uri,
-                                mime_type: resource.mime_type,
-                                text: resource.text,
-                                blob: resource.blob,
-                            },
-                        }
-                    }
-                })
-                .collect(),
+            content: result.content,
             is_error: result.is_error,
         })
     }

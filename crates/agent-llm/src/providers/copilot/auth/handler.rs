@@ -137,7 +137,7 @@ mod tests {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct Endpoints {
+pub struct Endpoints {
     pub api: Option<String>,
     pub origin_tracker: Option<String>,
     pub proxy: Option<String>,
