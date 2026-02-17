@@ -1,0 +1,107 @@
+.command-selector-container {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+.command-selector-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  transition: background-color 0.2s;
+}
+
+.command-selector-item:last-child {
+  border-bottom: none;
+}
+
+.command-selector-item.selected {
+  background-color: rgba(22, 119, 255, 0.08);
+}
+
+.command-selector-item:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.command-selector-item.selected:hover {
+  background-color: rgba(22, 119, 255, 0.12);
+}
+
+.command-selector-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.command-selector-item-name {
+  font-weight: 600;
+  font-family: monospace;
+  font-size: 13px;
+  color: #1677ff;
+  flex-shrink: 0;
+}
+
+.command-selector-item-description {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 13px;
+  margin-top: 4px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.command-selector-item-category {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.command-selector-item-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.command-selector-item-tags .ant-tag {
+  margin: 0;
+  font-size: 11px;
+  padding: 0 4px;
+  line-height: 18px;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .command-selector-item {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .command-selector-item:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+
+  .command-selector-item.selected {
+    background-color: rgba(22, 119, 255, 0.15);
+  }
+
+  .command-selector-item.selected:hover {
+    background-color: rgba(22, 119, 255, 0.2);
+  }
+
+  .command-selector-item-description {
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .command-selector-item-category {
+    color: rgba(255, 255, 255, 0.45);
+  }
+}
