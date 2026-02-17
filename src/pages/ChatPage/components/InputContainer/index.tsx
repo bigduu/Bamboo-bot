@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import React, { useState, useMemo, useEffect, lazy, Suspense, useRef } from "react";
 import { Space, theme, Tag, Alert, message as antdMessage, Spin } from "antd";
+import type { TextAreaRef } from "antd/es/input/TextArea";
 import { ToolOutlined, RobotOutlined } from "@ant-design/icons";
 import { MessageInput } from "../MessageInput";
 import InputPreview from "./InputPreview";
@@ -7,7 +8,7 @@ import { useMessageStreaming } from "../../hooks/useChatManager/useMessageStream
 import { selectCurrentChat, useAppStore } from "../../store";
 import { useSystemPrompt } from "../../hooks/useSystemPrompt";
 import { useChatInputHistory } from "../../hooks/useChatInputHistory";
-import { useInputContainerWorkflow } from "./useInputContainerWorkflow";
+import { useInputContainerCommand } from "./useInputContainerCommand";
 import { useInputContainerFileReferences } from "./useInputContainerFileReferences";
 import { useInputContainerAttachments } from "./useInputContainerAttachments";
 import { useInputContainerSubmit } from "./useInputContainerSubmit";
@@ -16,7 +17,7 @@ import { getInputContainerPlaceholder } from "./inputContainerPlaceholder";
 import { useActiveModel } from "../../hooks/useActiveModel";
 
 const FilePreview = lazy(() => import("../FilePreview"));
-const WorkflowSelector = lazy(() => import("../WorkflowSelector"));
+const CommandSelector = lazy(() => import("../CommandSelector"));
 const WorkspacePathModal = lazy(() => import("../WorkspacePathModal"));
 const FileReferenceSelector = lazy(() => import("../FileReferenceSelector"));
 
@@ -35,6 +36,9 @@ export type WorkflowDraft = {
   name: string;
   content: string;
   createdAt: string;
+  type?: 'workflow' | 'skill' | 'mcp';  // Add command type
+  displayName?: string;  // Add display name for better prompts
+  category?: string;  // Add category for skills
 };
 
 interface InputContainerProps {
@@ -48,6 +52,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
 }) => {
   const [content, setContent] = useState("");
   const [referenceText, setReferenceText] = useState<string | null>(null);
+  const textAreaRef = useRef<TextAreaRef>(null);  // Add ref for cursor position
   const { token } = useToken();
   const currentChatId = useAppStore((state) => state.currentChatId);
   const currentChat = useAppStore(selectCurrentChat);
@@ -127,11 +132,13 @@ export const InputContainer: React.FC<InputContainerProps> = ({
     handleClearAttachments,
   } = useInputContainerAttachments();
 
-  const workflowState = useInputContainerWorkflow({
+  const commandState = useInputContainerCommand({
     setContent,
     onWorkflowDraftChange,
     acknowledgeManualInput,
     currentChatId,
+    textAreaRef,
+    content,
   });
 
   const fileReferenceState = useInputContainerFileReferences({
@@ -146,19 +153,19 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   const { setShowFileSelector } = fileReferenceState;
 
   useEffect(() => {
-    if (workflowState.showWorkflowSelector) {
+    if (commandState.showCommandSelector) {
       setShowFileSelector(false);
     }
-  }, [workflowState.showWorkflowSelector, setShowFileSelector]);
+  }, [commandState.showCommandSelector, setShowFileSelector]);
 
   const { handleSubmit } = useInputContainerSubmit({
     attachments,
-    selectedWorkflow: workflowState.selectedWorkflow,
-    matchesWorkflowToken: workflowState.matchesWorkflowToken,
+    selectedWorkflow: commandState.selectedCommand,
+    matchesWorkflowToken: commandState.matchesCommandToken,
     fileReferences: fileReferenceState.fileReferences,
     sendMessage,
     recordEntry,
-    clearWorkflowDraft: workflowState.clearWorkflowDraft,
+    clearWorkflowDraft: commandState.clearCommandDraft,
     setContent,
     setReferenceText,
     setAttachments,
@@ -285,12 +292,13 @@ export const InputContainer: React.FC<InputContainerProps> = ({
       )}
       <MessageInput
         value={content}
-        onChange={workflowState.handleInputChange}
+        onChange={commandState.handleInputChange}
         onSubmit={handleSubmit}
         placeholder={placeholder}
         allowImages={true}
         disabled={!activeModel}
-        isWorkflowSelectorVisible={workflowState.showWorkflowSelector}
+        isWorkflowSelectorVisible={commandState.showCommandSelector}
+        textAreaRef={textAreaRef}
         validateMessage={(message) => {
           if (isRestrictConversation && autoToolPrefix) {
             const trimmed = message.trim();
@@ -304,7 +312,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
           return { isValid: true };
         }}
         onAttachmentsAdded={handleAttachmentsAdded}
-        onWorkflowCommandChange={workflowState.handleWorkflowCommandChange}
+        onWorkflowCommandChange={commandState.handleCommandChange}
         onFileReferenceChange={fileReferenceState.handleFileReferenceChange}
         onFileReferenceButtonClick={
           fileReferenceState.handleFileReferenceButtonClick
@@ -321,12 +329,12 @@ export const InputContainer: React.FC<InputContainerProps> = ({
       />
 
       <Suspense fallback={null}>
-        <WorkflowSelector
-          visible={workflowState.showWorkflowSelector}
-          onSelect={workflowState.handleWorkflowSelect}
-          onCancel={workflowState.handleWorkflowSelectorCancel}
-          onAutoComplete={workflowState.handleAutoComplete}
-          searchText={workflowState.workflowSearchText}
+        <CommandSelector
+          visible={commandState.showCommandSelector}
+          onSelect={commandState.handleCommandSelect}
+          onCancel={commandState.handleCommandSelectorCancel}
+          onAutoComplete={commandState.handleAutoComplete}
+          searchText={commandState.commandSearchText}
         />
       </Suspense>
 

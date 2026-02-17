@@ -1,6 +1,7 @@
 pub mod agent_controller;
 pub mod anthropic;
 pub use anthropic::*;
+pub mod command_controller;
 pub mod copilot_auth_controller;
 pub mod gemini_controller;
 pub mod settings_controller;

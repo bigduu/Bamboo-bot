@@ -66,6 +66,9 @@ const MessageInputField: React.FC<MessageInputFieldProps> = ({
             color: token.colorText,
             fontSize: token.fontSize,
             lineHeight: 1.5,
+            fontFamily: "inherit",  // Ensure same font-family as TextArea
+            fontWeight: 400,  // Match TextArea's default font-weight
+            letterSpacing: "normal",  // Ensure consistent letter spacing
             transform: "translate(0, 0)",
           }}
         >
@@ -75,7 +78,9 @@ const MessageInputField: React.FC<MessageInputFieldProps> = ({
               style = {
                 backgroundColor: token.colorPrimaryBg,
                 color: token.colorPrimary,
-                fontWeight: 500,
+                fontWeight: 400,  // Must match TextArea's font-weight to prevent cursor misalignment
+                textDecoration: "underline",
+                textDecorationStyle: "dotted",
               };
             } else if (segment.type === "file") {
               style = {

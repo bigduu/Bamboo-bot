@@ -14,7 +14,7 @@ use crate::controllers::anthropic as anthropic_controller;
 use crate::controllers::copilot_auth_controller;
 use crate::controllers::gemini_controller;
 use crate::controllers::{
-    agent_controller, settings_controller, openai_controller,
+    agent_controller, command_controller, settings_controller, openai_controller,
     skill_controller, tools_controller, workspace_controller,
 };
 use crate::model_config_helper::get_default_model_from_config;
@@ -96,6 +96,7 @@ pub fn app_config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/v1")
             .configure(agent_controller::config)
+            .configure(command_controller::config)
             .configure(openai_controller::config)
             .configure(settings_controller::config)
             .configure(skill_controller::config)
