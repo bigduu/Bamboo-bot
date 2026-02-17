@@ -2,9 +2,12 @@
 
 use crate::providers::anthropic::api_types::*;
 use crate::protocol::{FromProvider, ProtocolError, ProtocolResult, ToProvider};
-use agent_core::tools::{FunctionCall, FunctionSchema, ToolCall, ToolSchema};
+use agent_core::tools::{FunctionSchema, ToolSchema};
 use agent_core::{Message, Role};
 use serde_json::Value;
+
+#[cfg(test)]
+use agent_core::tools::{FunctionCall, ToolCall};
 
 /// Anthropic protocol converter.
 pub struct AnthropicProtocol;
