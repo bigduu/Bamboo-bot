@@ -7,15 +7,13 @@ use agent_llm::api::models::{
     ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamChunk, ChatMessage, Content,
     ContentPart, FunctionCall, ImageUrl, Role, StreamToolCall, Tool, ToolCall, ToolChoice, Usage,
 };
-use agent_llm::protocol::{FromProvider, ToProvider};
-use agent_llm::ProxyAuthRequiredError;
+use agent_llm::protocol::FromProvider;
 use agent_server::state::AppState as AgentAppState;
 use async_stream::stream;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use tokio::sync::mpsc;
 
 #[derive(Deserialize)]
 struct AnthropicMessagesRequest {
@@ -235,7 +233,7 @@ pub async fn messages(
         let max_tokens = openai_request.parameters.get("max_tokens").and_then(|v| v.as_u64()).map(|v| v as u32);
 
         // Start streaming
-        let mut stream_result = provider
+        let stream_result = provider
             .chat_stream(
                 &internal_messages,
                 &internal_tools,
@@ -432,7 +430,7 @@ pub async fn complete(
         let max_tokens = openai_request.parameters.get("max_tokens").and_then(|v| v.as_u64()).map(|v| v as u32);
 
         // Start streaming
-        let mut stream_result = provider
+        let stream_result = provider
             .chat_stream(
                 &internal_messages,
                 &internal_tools,
@@ -847,9 +845,7 @@ fn convert_messages_request(
 
     apply_reasoning_mapping(&mut parameters);
 
-    let tools = match request.tools {
-        Some(tools) => Some(
-            tools
+    let tools = request.tools.map(|tools| tools
                 .into_iter()
                 .map(|tool| Tool {
                     tool_type: "function".to_string(),
@@ -859,10 +855,7 @@ fn convert_messages_request(
                         parameters: tool.input_schema,
                     },
                 })
-                .collect(),
-        ),
-        None => None,
-    };
+                .collect());
 
     let tool_choice = match request.tool_choice {
         Some(choice) => Some(map_tool_choice(choice)?),

@@ -3,18 +3,15 @@ use serde::{Deserialize, Serialize};
 /// Match type for keyword masking
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum MatchType {
     /// Exact string match (substring search)
+    #[default]
     Exact,
     /// Regex pattern match
     Regex,
 }
 
-impl Default for MatchType {
-    fn default() -> Self {
-        MatchType::Exact
-    }
-}
 
 /// A single keyword masking entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,19 +61,13 @@ impl KeywordEntry {
 
 /// Configuration for global keyword masking
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct KeywordMaskingConfig {
     /// List of keyword masking entries
     #[serde(default)]
     pub entries: Vec<KeywordEntry>,
 }
 
-impl Default for KeywordMaskingConfig {
-    fn default() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
-}
 
 impl KeywordMaskingConfig {
     /// Create a new empty config

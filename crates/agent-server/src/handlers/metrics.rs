@@ -238,9 +238,9 @@ pub async fn v2_unified_summary(
 
     match (chat_result, forward_result) {
         (Ok(chat), Ok(forward)) => {
-            let total_requests = chat.total_sessions as u64 + forward.total_requests;
+            let total_requests = chat.total_sessions + forward.total_requests;
             let total_tokens = chat.total_tokens.total_tokens + forward.total_tokens.total_tokens;
-            let total_success = (chat.total_sessions - chat.active_sessions) as u64
+            let total_success = (chat.total_sessions - chat.active_sessions)
                 + forward.successful_requests;
             let total_errors = forward.failed_requests;
             let success_rate = if total_requests > 0 {

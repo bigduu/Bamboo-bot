@@ -18,13 +18,13 @@ use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
-use std::net::IpAddr;
-use std::time::Duration;
 
 /// HTTP method
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
+#[derive(Default)]
 pub enum HttpMethod {
+    #[default]
     Get,
     Post,
     Put,
@@ -50,11 +50,6 @@ impl HttpMethod {
     }
 }
 
-impl Default for HttpMethod {
-    fn default() -> Self {
-        HttpMethod::Get
-    }
-}
 
 /// Arguments for HTTP request
 #[derive(Debug, Clone, Serialize, Deserialize)]

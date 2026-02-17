@@ -63,7 +63,7 @@ impl CopilotProvider {
         app_data_dir: PathBuf,
         headless_auth: bool,
     ) -> Self {
-        use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+        use reqwest_middleware::ClientBuilder;
         use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
         use std::sync::Arc;
         use std::time::Duration;
@@ -281,7 +281,7 @@ impl LLMProvider for CopilotProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|e| LLMError::Http(e))?;
+            .map_err(LLMError::Http)?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -326,7 +326,7 @@ impl LLMProvider for CopilotProvider {
             .headers(headers)
             .send()
             .await
-            .map_err(|e| LLMError::Http(e))?;
+            .map_err(LLMError::Http)?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -358,7 +358,7 @@ impl LLMProvider for CopilotProvider {
         let models: ModelResponse = response
             .json()
             .await
-            .map_err(|e| LLMError::Http(e))?;
+            .map_err(LLMError::Http)?;
 
         // Deduplicate model IDs to avoid duplicates in the list
         let mut model_ids: Vec<String> = models.data.into_iter().map(|m| m.id).collect();

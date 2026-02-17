@@ -39,7 +39,7 @@ impl FromProvider<OpenAIChatMessage> for Message {
             .map(|calls| {
                 calls
                     .into_iter()
-                    .map(|tc| ToolCall::from_provider(tc))
+                    .map(ToolCall::from_provider)
                     .collect()
             })
             .transpose()?;

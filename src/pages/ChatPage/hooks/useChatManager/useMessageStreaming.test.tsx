@@ -15,7 +15,7 @@ const mockAgentHealthCheck = vi.fn();
 const mockStoreState = {
   agentAvailability: null as boolean | null,
   startAgentHealthCheck: vi.fn(),
-  checkAgentAvailability: vi.fn<[], Promise<boolean>>(),
+  checkAgentAvailability: vi.fn<() => Promise<boolean>>(),
   setAgentAvailability: vi.fn(),
 };
 

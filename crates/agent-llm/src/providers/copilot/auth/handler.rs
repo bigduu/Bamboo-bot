@@ -1,12 +1,12 @@
 use crate::error::ProxyAuthRequiredError;
 use anyhow::anyhow;
 use lazy_static::lazy_static;
-use log::{error, info};
+use log::error;
 use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{create_dir_all, read_to_string, File},
+    fs::{read_to_string, File},
     io::Write,
     path::PathBuf,
     sync::Arc,
@@ -753,10 +753,9 @@ mod retry_tests {
         let access_token = AccessTokenResponse {
             access_token: Some("test-github-token".to_string()),
             token_type: Some("bearer".to_string()),
-            expires_in: Some(3600),
-            interval: None,
             scope: Some("read:user".to_string()),
             error: None,
+            error_description: None,
         };
 
         // This should retry and eventually succeed
@@ -792,10 +791,9 @@ mod retry_tests {
         let access_token = AccessTokenResponse {
             access_token: Some("invalid-token".to_string()),
             token_type: Some("bearer".to_string()),
-            expires_in: Some(3600),
-            interval: None,
             scope: Some("read:user".to_string()),
             error: None,
+            error_description: None,
         };
 
         let result = handler.get_copilot_token(access_token).await;

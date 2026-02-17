@@ -203,10 +203,10 @@ pub async fn run_agent_loop_with_config(
         let tool_schemas = resolve_available_tool_schemas(&config, tools.as_ref());
 
         // Token budget preparation
-        let budget = resolve_token_budget(&session, &config, &model_name);
+        let budget = resolve_token_budget(session, &config, &model_name);
         let counter = HeuristicTokenCounter::default();
 
-        let prepared_context = match prepare_hybrid_context(&session, &budget, &counter) {
+        let prepared_context = match prepare_hybrid_context(session, &budget, &counter) {
             Ok(ctx) => ctx,
             Err(e) => {
                 let agent_error = AgentError::Budget(e.to_string());

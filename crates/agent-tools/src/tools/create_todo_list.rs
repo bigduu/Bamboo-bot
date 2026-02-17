@@ -146,12 +146,12 @@ impl Tool for CreateTodoListTool {
         let formatted = Self::format_todo_list(&todo_list);
 
         // Return the todo list as JSON so it can be stored in session
-        let result_json = serde_json::to_string(&todo_list)
+        let _result_json = serde_json::to_string(&todo_list)
             .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(ToolResult {
             success: true,
-            result: format!("{}", formatted),
+            result: formatted.to_string(),
             display_preference: None,
         })
     }

@@ -133,7 +133,7 @@ impl GlobSearchTool {
             .unwrap_or_else(|| {
                 // Default to current directory, but still validate it
                 std::env::current_dir()
-                    .and_then(|p| std::fs::canonicalize(p))
+                    .and_then(std::fs::canonicalize)
                     .expect("Failed to get current directory")
             });
 

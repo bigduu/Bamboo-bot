@@ -179,8 +179,7 @@ pub async fn stream_generate_content(
                     let json = match serde_json::to_string(&gemini_chunk) {
                         Ok(s) => s,
                         Err(e) => {
-                            yield Err(actix_web::Error::from(std::io::Error::new(
-                                std::io::ErrorKind::Other,
+                            yield Err(actix_web::Error::from(std::io::Error::other(
                                 format!("JSON error: {}", e),
                             )));
                             continue;
@@ -208,8 +207,7 @@ pub async fn stream_generate_content(
                     // TODO: Handle tool calls in streaming
                 }
                 Err(e) => {
-                    yield Err(actix_web::Error::from(std::io::Error::new(
-                        std::io::ErrorKind::Other,
+                    yield Err(actix_web::Error::from(std::io::Error::other(
                         format!("Stream error: {}", e),
                     )));
                     break;

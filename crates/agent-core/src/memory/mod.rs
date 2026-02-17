@@ -82,7 +82,7 @@ impl ExternalMemory {
         let mut entries = tokio::fs::read_dir(&self.notes_dir).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "md") {
+            if path.extension().is_some_and(|ext| ext == "md") {
                 if let Some(stem) = path.file_stem() {
                     sessions.push(stem.to_string_lossy().to_string());
                 }

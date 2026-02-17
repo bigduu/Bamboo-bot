@@ -154,7 +154,7 @@ impl TodoLoopContext {
 
         // Set new active item
         self.active_item_id = Some(item_id.to_string());
-        if let Some(item) = self.items.iter_mut().find(|i| &i.id == item_id) {
+        if let Some(item) = self.items.iter_mut().find(|i| i.id == item_id) {
             item.status = TodoItemStatus::InProgress;
             item.started_at_round = Some(self.current_round);
         }
@@ -165,7 +165,7 @@ impl TodoLoopContext {
 
     /// Update item status manually
     pub fn update_item_status(&mut self, item_id: &str, status: TodoItemStatus) {
-        if let Some(item) = self.items.iter_mut().find(|i| &i.id == item_id) {
+        if let Some(item) = self.items.iter_mut().find(|i| i.id == item_id) {
             item.status = status.clone();
 
             match &status {
@@ -292,7 +292,7 @@ impl TodoLoopContext {
 
         if let Some(ref active_id) = self.active_item_id.clone() {
             // First, determine what action to take (avoid borrow issues)
-            let action = self.items.iter().find(|i| &i.id == active_id).map(|item| {
+            let action = self.items.iter().find(|i| &i.id == active_id).and_then(|item| {
                 if result.success {
                     if self.should_mark_completed(item) {
                         Some(TodoItemStatus::Completed)
@@ -304,7 +304,7 @@ impl TodoLoopContext {
                 } else {
                     None
                 }
-            }).flatten();
+            });
 
             // Then apply the action
             if let Some(new_status) = action {

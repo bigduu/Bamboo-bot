@@ -74,7 +74,7 @@ impl ToolOutputManager {
 
         // Result is too large - truncate and store as artifact
         let truncated = self.truncate_to_token_limit(&result, self.max_inline_tokens);
-        let truncated_token_count = self.counter.count_text(&truncated);
+        let _truncated_token_count = self.counter.count_text(&truncated);
 
         // Store full result as artifact
         let artifact = self.store_artifact(tool_call_id, &result, token_count).await?;
@@ -160,10 +160,10 @@ impl ToolOutputManager {
         let mut entries = tokio::fs::read_dir(&self.artifacts_dir).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "txt") {
+            if path.extension().is_some_and(|ext| ext == "txt") {
                 if let Some(stem) = path.file_stem() {
                     let id = stem.to_string_lossy().to_string();
-                    let metadata = tokio::fs::metadata(&path).await?;
+                    let _metadata = tokio::fs::metadata(&path).await?;
 
                     artifacts.push(ArtifactRef {
                         id,

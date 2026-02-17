@@ -1,8 +1,7 @@
 use crate::{error::AppError, server::AppState};
 use actix_web::{get, post, web, HttpResponse};
 use agent_llm::api::models::{ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamChunk};
-use agent_llm::protocol::{FromProvider, ToProvider};
-use agent_llm::ProxyAuthRequiredError;
+use agent_llm::protocol::FromProvider;
 use agent_server::state::AppState as AgentAppState;
 use bytes::Bytes;
 use futures_util::StreamExt;
@@ -41,8 +40,7 @@ struct CopilotTokenConfig {
 fn has_valid_auth(app_data_dir: &Path) -> bool {
     // Check for COPILOT_API_KEY environment variable first
     if std::env::var("COPILOT_API_KEY")
-        .ok()
-        .and_then(|k| Some(!k.trim().is_empty()))
+        .ok().map(|k| !k.trim().is_empty())
         .unwrap_or(false)
     {
         log::info!("COPILOT_API_KEY is set, auth available");

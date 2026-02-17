@@ -43,13 +43,13 @@ fn clean_empty_proxy_fields(mut config: Value) -> Value {
     if let Some(obj) = config.as_object_mut() {
         // Remove empty http_proxy
         if let Some(http_proxy) = obj.get("http_proxy") {
-            if http_proxy.as_str().map_or(true, |s| s.is_empty()) {
+            if http_proxy.as_str().is_none_or(|s| s.is_empty()) {
                 obj.remove("http_proxy");
             }
         }
         // Remove empty https_proxy
         if let Some(https_proxy) = obj.get("https_proxy") {
-            if https_proxy.as_str().map_or(true, |s| s.is_empty()) {
+            if https_proxy.as_str().is_none_or(|s| s.is_empty()) {
                 obj.remove("https_proxy");
             }
         }
@@ -389,7 +389,7 @@ pub async fn get_provider_config(
 ) -> Result<HttpResponse, AppError> {
     let path = config_path(&app_state);
 
-    let mut config_value = match fs::read_to_string(&path).await {
+    let config_value = match fs::read_to_string(&path).await {
         Ok(content) => {
             let mut config: Value = serde_json::from_str(&content)?;
             decrypt_proxy_auth(&mut config);

@@ -4,7 +4,7 @@ use futures::StreamExt;
 use reqwest::{Client, header::HeaderMap};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::{mpsc, Mutex};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use crate::config::{HeaderConfig, SseConfig};
 use crate::error::{McpError, Result};

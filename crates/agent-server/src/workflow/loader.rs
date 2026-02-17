@@ -108,7 +108,7 @@ fn normalize_definition(definition: &mut Value) {
         return;
     };
 
-    if let Some(composition) = mapping.get_mut(&yaml_key("composition")) {
+    if let Some(composition) = mapping.get_mut(yaml_key("composition")) {
         normalize_expr(composition);
     }
 }
@@ -119,7 +119,7 @@ fn normalize_expr(expr: &mut Value) {
     };
 
     let expression_type = mapping
-        .get(&yaml_key("type"))
+        .get(yaml_key("type"))
         .and_then(Value::as_str)
         .unwrap_or_default();
 
@@ -154,7 +154,7 @@ fn normalize_call(mapping: &mut Mapping) {
 
 fn normalize_children(mapping: &mut Mapping, field: &str) {
     if let Some(children) = mapping
-        .get_mut(&yaml_key(field))
+        .get_mut(yaml_key(field))
         .and_then(Value::as_sequence_mut)
     {
         for child in children {
@@ -164,7 +164,7 @@ fn normalize_children(mapping: &mut Mapping, field: &str) {
 }
 
 fn normalize_child(mapping: &mut Mapping, field: &str) {
-    if let Some(child) = mapping.get_mut(&yaml_key(field)) {
+    if let Some(child) = mapping.get_mut(yaml_key(field)) {
         normalize_expr(child);
     }
 }

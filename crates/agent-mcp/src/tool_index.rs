@@ -1,6 +1,5 @@
 use crate::types::{McpTool, ToolAlias};
 use dashmap::DashMap;
-use std::sync::Arc;
 
 /// Maps tool aliases to their original server/tool names
 pub struct ToolIndex {

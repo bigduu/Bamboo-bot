@@ -1269,10 +1269,7 @@ fn load_tool_calls(connection: &Connection, round_id: &str) -> MetricsResult<Vec
     while let Some(row) = rows.next()? {
         let started_at = parse_timestamp(row.get::<_, String>(2)?)?;
         let completed_at = parse_optional_timestamp(row.get::<_, Option<String>>(3)?)?;
-        let success = match row.get::<_, Option<i64>>(4)? {
-            Some(value) => Some(value > 0),
-            None => None,
-        };
+        let success = row.get::<_, Option<i64>>(4)?.map(|value| value > 0);
 
         tools.push(ToolCallMetrics {
             tool_call_id: row.get(0)?,

@@ -1,8 +1,7 @@
 use agent_core::tools::{ToolCall, ToolError, ToolExecutor, ToolResult, ToolSchema};
 use async_trait::async_trait;
-use serde_json::json;
 use std::sync::Arc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 use crate::error::McpError;
 use crate::manager::McpServerManager;

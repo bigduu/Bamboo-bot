@@ -53,6 +53,12 @@ pub struct AgentRunner {
     pub last_budget_event: Option<AgentEvent>,
 }
 
+impl Default for AgentRunner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AgentRunner {
     pub fn new() -> Self {
         let (event_sender, _) = broadcast::channel(1000);
@@ -301,7 +307,7 @@ fn merge_workspace_context(base_prompt: &str, workspace_path: Option<&str>) -> S
     {
         merged.push_str("\n\nWorkspace path: ");
         merged.push_str(workspace_path);
-        merged.push_str("\n");
+        merged.push('\n');
         merged.push_str(WORKSPACE_PROMPT_GUIDANCE);
     }
 
@@ -312,7 +318,7 @@ fn bamboo_dir() -> PathBuf {
     std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::temp_dir())
+        .unwrap_or_else(std::env::temp_dir)
         .join(".bamboo")
 }
 
