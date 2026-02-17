@@ -1,7 +1,7 @@
 import { Card, Empty, Skeleton, Typography } from "antd";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
-import type { ModelMetrics } from "../../../../../services/metrics";
+import type { ModelMetrics } from "@services/metrics";
 
 const { Text } = Typography;
 

@@ -4,7 +4,7 @@ import {
   type McpServer,
   type McpServerConfig,
   type McpToolInfo,
-} from "../../../../../services/mcp";
+} from "@services/mcp";
 
 export type McpServerAction = "connect" | "disconnect" | "refresh" | "delete";
 

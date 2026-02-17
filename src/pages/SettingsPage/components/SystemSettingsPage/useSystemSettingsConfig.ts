@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   serviceFactory,
   type BambooConfig,
-} from "../../../../services/common/ServiceFactory";
+} from "@services/common/ServiceFactory";
 
 const cloneJson = (value: BambooConfig) => {
   try {

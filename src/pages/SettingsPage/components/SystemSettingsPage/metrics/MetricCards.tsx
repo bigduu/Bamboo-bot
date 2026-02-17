@@ -1,9 +1,6 @@
 import { Card, Col, Row, Skeleton, Statistic, theme } from "antd";
 
-import type {
-  MetricsSummary,
-  SessionMetrics,
-} from "../../../../../services/metrics";
+import type { MetricsSummary, SessionMetrics } from "@services/metrics";
 
 const { useToken } = theme;
 

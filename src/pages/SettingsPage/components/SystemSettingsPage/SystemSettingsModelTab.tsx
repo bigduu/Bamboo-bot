@@ -1,5 +1,15 @@
 import React from "react";
-import { Button, Card, Flex, Input, Select, Space, Spin, Typography, theme } from "antd";
+import {
+  Button,
+  Card,
+  Flex,
+  Input,
+  Select,
+  Space,
+  Spin,
+  Typography,
+  theme,
+} from "antd";
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -37,7 +47,11 @@ const SystemSettingsModelTab: React.FC<SystemSettingsModelTabProps> = ({
   return (
     <Flex vertical gap={tabGap}>
       <Card size="small">
-        <Space direction="vertical" size={token.marginXS} style={{ width: "100%" }}>
+        <Space
+          direction="vertical"
+          size={token.marginXS}
+          style={{ width: "100%" }}
+        >
           <Text strong>Select Model</Text>
           {isLoadingModels ? (
             <div style={{ textAlign: "center", padding: token.paddingMD }}>

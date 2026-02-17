@@ -29,7 +29,7 @@ import {
   settingsService,
   type CopilotAuthStatus,
   type DeviceCodeInfo,
-} from "../../../../services/config/SettingsService";
+} from "@services/config/SettingsService";
 import type {
   ProviderConfig,
   ProviderType,

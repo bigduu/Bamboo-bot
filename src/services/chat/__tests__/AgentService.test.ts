@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AgentClient } from "../AgentService";
-import { mockFetchError, mockFetchResponse } from "../../../test/helpers";
+import { mockFetchError, mockFetchResponse } from "@test/helpers";
 
 describe("AgentClient", () => {
   let fetchMock: ReturnType<typeof vi.fn>;

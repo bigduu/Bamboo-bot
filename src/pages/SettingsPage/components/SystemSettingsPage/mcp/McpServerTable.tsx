@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Button, Popconfirm, Space, Table, Tag, theme } from "antd";
 import type { TableProps } from "antd";
-import { ServerStatus, type McpServer } from "../../../../../services/mcp";
+import { ServerStatus, type McpServer } from "@services/mcp";
 import type { McpServerAction } from "../hooks/useMcpSettings";
 
 interface McpServerTableProps {

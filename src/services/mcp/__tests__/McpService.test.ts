@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { mockFetchResponse } from "../../../test/helpers";
+import { mockFetchResponse } from "@test/helpers";
 import { mcpService } from "../McpService";
 import { ServerStatus, type McpServerConfig } from "../types";
 
