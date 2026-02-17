@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { settingsService } from '../../../../services/config/SettingsService';
-import type { ProviderConfig, ProviderType } from '../../types/providerConfig';
+import { create } from "zustand";
+import { settingsService } from "../../../../services/config/SettingsService";
+import type { ProviderConfig, ProviderType } from "../../types/providerConfig";
 
 /**
  * Provider State
@@ -32,9 +32,9 @@ interface ProviderState {
 
 export const useProviderStore = create<ProviderState>((set, get) => ({
   // Initial state
-  currentProvider: 'copilot',
+  currentProvider: "copilot",
   providerConfig: {
-    provider: 'copilot',
+    provider: "copilot",
     providers: {},
   },
   isLoading: false,
@@ -56,7 +56,10 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
       });
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to load provider config',
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to load provider config",
         isLoading: false,
       });
     }
@@ -80,14 +83,15 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
   // Get the active model for current provider
   getActiveModel: () => {
     const state = get();
-    const providerConfig = state.providerConfig.providers[state.currentProvider];
+    const providerConfig =
+      state.providerConfig.providers[state.currentProvider];
 
     if (!providerConfig) {
       return undefined;
     }
 
     // Return the model if it exists
-    if ('model' in providerConfig && providerConfig.model) {
+    if ("model" in providerConfig && providerConfig.model) {
       return providerConfig.model;
     }
 

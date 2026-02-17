@@ -12,7 +12,10 @@ interface ModelDistributionProps {
 
 const PIE_COLORS = ["#1677ff", "#52c41a", "#fa8c16", "#722ed1", "#13c2c2"];
 
-const ModelDistribution: React.FC<ModelDistributionProps> = ({ data, loading }) => {
+const ModelDistribution: React.FC<ModelDistributionProps> = ({
+  data,
+  loading,
+}) => {
   if (loading) {
     return (
       <Card size="small" title="Model Distribution">

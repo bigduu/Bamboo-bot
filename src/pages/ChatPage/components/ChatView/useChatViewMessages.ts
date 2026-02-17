@@ -1,9 +1,18 @@
 import { useCallback, useMemo } from "react";
-import type { Message, AssistantToolCallMessage, AssistantToolResultMessage } from "../../types/chat";
+import type {
+  Message,
+  AssistantToolCallMessage,
+  AssistantToolResultMessage,
+} from "../../types/chat";
 import type { ChatItem } from "../../types/chat";
 import type { ToolSessionItem } from "../ToolSessionCard";
 
-export type MessageType = "text" | "plan" | "question" | "tool_call" | "tool_result";
+export type MessageType =
+  | "text"
+  | "plan"
+  | "question"
+  | "tool_call"
+  | "tool_result";
 
 export type RenderableEntry =
   | {
@@ -54,21 +63,29 @@ function isToolMessage(message: Message): boolean {
 /**
  * Check if a message is a tool call
  */
-function isToolCallMessage(message: Message): message is AssistantToolCallMessage {
+function isToolCallMessage(
+  message: Message,
+): message is AssistantToolCallMessage {
   return message.role === "assistant" && (message as any).type === "tool_call";
 }
 
 /**
  * Check if a message is a tool result
  */
-function isToolResultMessage(message: Message): message is AssistantToolResultMessage {
-  return message.role === "assistant" && (message as any).type === "tool_result";
+function isToolResultMessage(
+  message: Message,
+): message is AssistantToolResultMessage {
+  return (
+    message.role === "assistant" && (message as any).type === "tool_result"
+  );
 }
 
 /**
  * Group consecutive tool messages into sessions
  */
-function groupToolMessages(messages: Message[]): Array<Message | ToolSessionItem[]> {
+function groupToolMessages(
+  messages: Message[],
+): Array<Message | ToolSessionItem[]> {
   const result: Array<Message | ToolSessionItem[]> = [];
   let currentToolSession: ToolSessionItem[] = [];
 
@@ -80,7 +97,7 @@ function groupToolMessages(messages: Message[]): Array<Message | ToolSessionItem
       } else if (isToolResultMessage(message)) {
         // Find the matching call by toolCallId and add result
         const matchingCallIndex = currentToolSession.findIndex(
-          (item) => item.call.toolCalls[0]?.toolCallId === message.toolCallId
+          (item) => item.call.toolCalls[0]?.toolCallId === message.toolCallId,
         );
         if (matchingCallIndex !== -1) {
           currentToolSession[matchingCallIndex].result = message;

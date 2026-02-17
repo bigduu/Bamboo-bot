@@ -1,22 +1,23 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 import {
   AgentClient,
   TokenBudgetUsage,
   ContextSummaryInfo,
   TodoList,
   TodoListDelta,
-} from '../services/chat/AgentService';
-import { useAppStore } from '../pages/ChatPage/store';
-import { streamingMessageBus } from '../pages/ChatPage/utils/streamingMessageBus';
-import { message } from 'antd';
+} from "../services/chat/AgentService";
+import { useAppStore } from "../pages/ChatPage/store";
+import { streamingMessageBus } from "../pages/ChatPage/utils/streamingMessageBus";
+import { message } from "antd";
 
 /**
  * Hook to maintain a persistent subscription to agent events for the current chat
  * This ensures messages stream in real-time even after clarification responses
  */
 export function useAgentEventSubscription() {
-  const currentChat = useAppStore((state) =>
-    state.chats.find((chat) => chat.id === state.currentChatId) || null
+  const currentChat = useAppStore(
+    (state) =>
+      state.chats.find((chat) => chat.id === state.currentChatId) || null,
   );
   const addMessage = useAppStore((state) => state.addMessage);
   const isProcessing = useAppStore((state) => state.isProcessing);
@@ -27,12 +28,14 @@ export function useAgentEventSubscription() {
   const setTodoList = useAppStore((state) => state.setTodoList);
   const updateTodoListDelta = useAppStore((state) => state.updateTodoListDelta);
   const setEvaluationState = useAppStore((state) => state.setEvaluationState);
-  const clearEvaluationState = useAppStore((state) => state.clearEvaluationState);
+  const clearEvaluationState = useAppStore(
+    (state) => state.clearEvaluationState,
+  );
 
   const agentClientRef = useRef(new AgentClient());
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingMessageIdRef = useRef<string | null>(null);
-  const streamingContentRef = useRef<string>('');
+  const streamingContentRef = useRef<string>("");
 
   // Initialize token usage from chat config (for page refresh recovery)
   useEffect(() => {
@@ -47,7 +50,12 @@ export function useAgentEventSubscription() {
         setTruncationInfo(chatId, configTruncation, configSegments);
       }
     }
-  }, [currentChat?.id, currentChat?.config?.tokenUsage, updateTokenUsage, setTruncationInfo]);
+  }, [
+    currentChat?.id,
+    currentChat?.config?.tokenUsage,
+    updateTokenUsage,
+    setTruncationInfo,
+  ]);
 
   useEffect(() => {
     const agentSessionId = currentChat?.config?.agentSessionId;
@@ -73,13 +81,13 @@ export function useAgentEventSubscription() {
 
     const streamingMessageId = `streaming-${chatId}`;
     streamingMessageIdRef.current = streamingMessageId;
-    streamingContentRef.current = '';
+    streamingContentRef.current = "";
 
     // Initialize streaming message
     streamingMessageBus.publish({
       chatId,
       messageId: streamingMessageId,
-      content: '',
+      content: "",
     });
 
     // Track tool calls in progress
@@ -88,261 +96,302 @@ export function useAgentEventSubscription() {
       { name: string; args: Record<string, unknown> }
     >();
 
-    console.log('[useAgentEventSubscription] Starting subscription for session:', agentSessionId);
+    console.log(
+      "[useAgentEventSubscription] Starting subscription for session:",
+      agentSessionId,
+    );
 
     // Subscribe to events
-    agentClientRef.current.subscribeToEvents(
-      agentSessionId,
-      {
-        onToken: (tokenContent: string) => {
-          streamingContentRef.current += tokenContent;
-          streamingMessageBus.publish({
-            chatId,
-            messageId: streamingMessageId,
-            content: streamingContentRef.current,
-          });
-        },
-
-        onToolStart: (
-          toolCallId: string,
-          toolName: string,
-          args: Record<string, unknown>,
-        ) => {
-          toolCallsInProgress.set(toolCallId, { name: toolName, args });
-
-          void addMessage(chatId, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            type: 'tool_call',
-            toolCalls: [
-              {
-                toolCallId,
-                toolName,
-                parameters: args || {},
-              },
-            ],
-            createdAt: new Date().toISOString(),
-          });
-        },
-
-        onToolComplete: (toolCallId: string, result: any) => {
-          const toolCall = toolCallsInProgress.get(toolCallId);
-          toolCallsInProgress.delete(toolCallId);
-
-          const toolName = toolCall?.name || result?.tool_name || 'unknown';
-          const displayPreference = result?.display_preference || 'Default';
-
-          void addMessage(chatId, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            type: 'tool_result',
-            toolName,
-            toolCallId,
-            result: {
-              tool_name: toolName,
-              result: result?.result ?? '',
-              display_preference: displayPreference,
-            },
-            isError: !result?.success,
-            createdAt: new Date().toISOString(),
-          });
-        },
-
-        onToolError: (toolCallId: string, error: string) => {
-          const toolCall = toolCallsInProgress.get(toolCallId);
-          toolCallsInProgress.delete(toolCallId);
-
-          const toolName = toolCall?.name || 'unknown';
-
-          void addMessage(chatId, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            type: 'tool_result',
-            toolName,
-            toolCallId,
-            result: {
-              tool_name: toolName,
-              result: error,
-              display_preference: 'Default',
-            },
-            isError: true,
-            createdAt: new Date().toISOString(),
-          });
-        },
-
-        onTokenBudgetUpdated: (usage: TokenBudgetUsage) => {
-          console.log('[useAgentEventSubscription] Token budget updated:', usage);
-
-          const tokenUsage = {
-            systemTokens: usage.system_tokens,
-            summaryTokens: usage.summary_tokens,
-            windowTokens: usage.window_tokens,
-            totalTokens: usage.total_tokens,
-            budgetLimit: usage.budget_limit,
-          };
-
-          // Update token usage in store (for real-time display)
-          updateTokenUsage(chatId, tokenUsage);
-
-          // Update truncation info in store
-          setTruncationInfo(chatId, usage.truncation_occurred, usage.segments_removed);
-
-          // Persist to chat config (for page refresh recovery)
-          // Note: This will cause a re-render but should NOT cause re-subscription
-          // because currentChat?.config?.agentSessionId hasn't changed
-          updateChat(chatId, {
-            config: {
-              ...currentChat?.config,
-              tokenUsage,
-              truncationOccurred: usage.truncation_occurred,
-              segmentsRemoved: usage.segments_removed,
-            },
-          });
-        },
-
-        onContextSummarized: (summaryInfo: ContextSummaryInfo) => {
-          console.log('[useAgentEventSubscription] Context summarized:', summaryInfo);
-
-          // Show notification to user
-          message.info(
-            `Conversation summarized: ${summaryInfo.messages_summarized} messages compressed, ` +
-            `saved ${summaryInfo.tokens_saved.toLocaleString()} tokens`,
-            5
-          );
-        },
-
-        onTodoListUpdated: (todoList: TodoList) => {
-          console.log('[useAgentEventSubscription] Todo list updated:', todoList);
-          // Use agentSessionId (from todoList.session_id) as key, matching TodoList component
-          const sessionId = todoList.session_id;
-          if (sessionId) {
-            setTodoList(sessionId, todoList);
-          }
-        },
-
-        onTodoListItemProgress: (delta: TodoListDelta) => {
-          console.log('[useAgentEventSubscription] Todo list item progress:', delta);
-          // Use session_id from delta, matching TodoList component
-          const sessionId = delta.session_id;
-          if (sessionId) {
-            updateTodoListDelta(sessionId, delta);
-          }
-        },
-
-        onTodoListCompleted: (sessionId: string, totalRounds: number, totalToolCalls: number) => {
-          console.log('[useAgentEventSubscription] Todo list completed:', { sessionId, totalRounds, totalToolCalls });
-          // Show completion notification
-          message.success(
-            `All tasks completed! Total rounds: ${totalRounds}, Tool calls: ${totalToolCalls}`,
-            3
-          );
-        },
-
-        onTodoEvaluationStarted: (sessionId: string, itemsCount: number) => {
-          console.log('[useAgentEventSubscription] Todo evaluation started:', { sessionId, itemsCount });
-
-          // Set evaluating state
-          setEvaluationState(sessionId, {
-            isEvaluating: true,
-            reasoning: null,
-            timestamp: Date.now(),
-          });
-
-          // Show evaluation started notification
-          message.info(
-            `🤖 Evaluating ${itemsCount} task(s)...`,
-            2
-          );
-        },
-
-        onTodoEvaluationCompleted: (sessionId: string, updatesCount: number, reasoning: string) => {
-          console.log('[useAgentEventSubscription] Todo evaluation completed:', { sessionId, updatesCount, reasoning });
-
-          // Set completed state with reasoning
-          setEvaluationState(sessionId, {
-            isEvaluating: false,
-            reasoning: reasoning,
-            timestamp: Date.now(),
-          });
-
-          // Clear evaluation state after 5 seconds
-          setTimeout(() => {
-            clearEvaluationState(sessionId);
-          }, 5000);
-
-          // Show evaluation result
-          if (updatesCount > 0) {
-            message.success(
-              `✅ Evaluation complete: ${updatesCount} task(s) updated. ${reasoning}`,
-              4
-            );
-          } else {
-            message.info(
-              `📋 Evaluation complete: No updates needed`,
-              2
-            );
-          }
-        },
-
-        onComplete: async () => {
-          console.log('[useAgentEventSubscription] Agent execution completed');
-
-          // Save final assistant message if there's content
-          if (streamingContentRef.current) {
-            await addMessage(chatId, {
-              id: `assistant-${Date.now()}`,
-              role: 'assistant',
-              type: 'text',
+    agentClientRef.current
+      .subscribeToEvents(
+        agentSessionId,
+        {
+          onToken: (tokenContent: string) => {
+            streamingContentRef.current += tokenContent;
+            streamingMessageBus.publish({
+              chatId,
+              messageId: streamingMessageId,
               content: streamingContentRef.current,
+            });
+          },
+
+          onToolStart: (
+            toolCallId: string,
+            toolName: string,
+            args: Record<string, unknown>,
+          ) => {
+            toolCallsInProgress.set(toolCallId, { name: toolName, args });
+
+            void addMessage(chatId, {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              type: "tool_call",
+              toolCalls: [
+                {
+                  toolCallId,
+                  toolName,
+                  parameters: args || {},
+                },
+              ],
               createdAt: new Date().toISOString(),
-              metadata: {
-                sessionId: agentSessionId,
-                model: 'agent',
+            });
+          },
+
+          onToolComplete: (toolCallId: string, result: any) => {
+            const toolCall = toolCallsInProgress.get(toolCallId);
+            toolCallsInProgress.delete(toolCallId);
+
+            const toolName = toolCall?.name || result?.tool_name || "unknown";
+            const displayPreference = result?.display_preference || "Default";
+
+            void addMessage(chatId, {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              type: "tool_result",
+              toolName,
+              toolCallId,
+              result: {
+                tool_name: toolName,
+                result: result?.result ?? "",
+                display_preference: displayPreference,
+              },
+              isError: !result?.success,
+              createdAt: new Date().toISOString(),
+            });
+          },
+
+          onToolError: (toolCallId: string, error: string) => {
+            const toolCall = toolCallsInProgress.get(toolCallId);
+            toolCallsInProgress.delete(toolCallId);
+
+            const toolName = toolCall?.name || "unknown";
+
+            void addMessage(chatId, {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              type: "tool_result",
+              toolName,
+              toolCallId,
+              result: {
+                tool_name: toolName,
+                result: error,
+                display_preference: "Default",
+              },
+              isError: true,
+              createdAt: new Date().toISOString(),
+            });
+          },
+
+          onTokenBudgetUpdated: (usage: TokenBudgetUsage) => {
+            console.log(
+              "[useAgentEventSubscription] Token budget updated:",
+              usage,
+            );
+
+            const tokenUsage = {
+              systemTokens: usage.system_tokens,
+              summaryTokens: usage.summary_tokens,
+              windowTokens: usage.window_tokens,
+              totalTokens: usage.total_tokens,
+              budgetLimit: usage.budget_limit,
+            };
+
+            // Update token usage in store (for real-time display)
+            updateTokenUsage(chatId, tokenUsage);
+
+            // Update truncation info in store
+            setTruncationInfo(
+              chatId,
+              usage.truncation_occurred,
+              usage.segments_removed,
+            );
+
+            // Persist to chat config (for page refresh recovery)
+            // Note: This will cause a re-render but should NOT cause re-subscription
+            // because currentChat?.config?.agentSessionId hasn't changed
+            updateChat(chatId, {
+              config: {
+                ...currentChat?.config,
+                tokenUsage,
+                truncationOccurred: usage.truncation_occurred,
+                segmentsRemoved: usage.segments_removed,
               },
             });
-          }
+          },
 
-          // Clean up streaming state
-          streamingMessageBus.clear(chatId, streamingMessageId);
-          streamingMessageIdRef.current = null;
-          streamingContentRef.current = '';
-          abortControllerRef.current = null;  // Clear ref to allow re-subscription
-          setProcessing(false);
+          onContextSummarized: (summaryInfo: ContextSummaryInfo) => {
+            console.log(
+              "[useAgentEventSubscription] Context summarized:",
+              summaryInfo,
+            );
+
+            // Show notification to user
+            message.info(
+              `Conversation summarized: ${summaryInfo.messages_summarized} messages compressed, ` +
+                `saved ${summaryInfo.tokens_saved.toLocaleString()} tokens`,
+              5,
+            );
+          },
+
+          onTodoListUpdated: (todoList: TodoList) => {
+            console.log(
+              "[useAgentEventSubscription] Todo list updated:",
+              todoList,
+            );
+            // Use agentSessionId (from todoList.session_id) as key, matching TodoList component
+            const sessionId = todoList.session_id;
+            if (sessionId) {
+              setTodoList(sessionId, todoList);
+            }
+          },
+
+          onTodoListItemProgress: (delta: TodoListDelta) => {
+            console.log(
+              "[useAgentEventSubscription] Todo list item progress:",
+              delta,
+            );
+            // Use session_id from delta, matching TodoList component
+            const sessionId = delta.session_id;
+            if (sessionId) {
+              updateTodoListDelta(sessionId, delta);
+            }
+          },
+
+          onTodoListCompleted: (
+            sessionId: string,
+            totalRounds: number,
+            totalToolCalls: number,
+          ) => {
+            console.log("[useAgentEventSubscription] Todo list completed:", {
+              sessionId,
+              totalRounds,
+              totalToolCalls,
+            });
+            // Show completion notification
+            message.success(
+              `All tasks completed! Total rounds: ${totalRounds}, Tool calls: ${totalToolCalls}`,
+              3,
+            );
+          },
+
+          onTodoEvaluationStarted: (sessionId: string, itemsCount: number) => {
+            console.log(
+              "[useAgentEventSubscription] Todo evaluation started:",
+              { sessionId, itemsCount },
+            );
+
+            // Set evaluating state
+            setEvaluationState(sessionId, {
+              isEvaluating: true,
+              reasoning: null,
+              timestamp: Date.now(),
+            });
+
+            // Show evaluation started notification
+            message.info(`🤖 Evaluating ${itemsCount} task(s)...`, 2);
+          },
+
+          onTodoEvaluationCompleted: (
+            sessionId: string,
+            updatesCount: number,
+            reasoning: string,
+          ) => {
+            console.log(
+              "[useAgentEventSubscription] Todo evaluation completed:",
+              { sessionId, updatesCount, reasoning },
+            );
+
+            // Set completed state with reasoning
+            setEvaluationState(sessionId, {
+              isEvaluating: false,
+              reasoning: reasoning,
+              timestamp: Date.now(),
+            });
+
+            // Clear evaluation state after 5 seconds
+            setTimeout(() => {
+              clearEvaluationState(sessionId);
+            }, 5000);
+
+            // Show evaluation result
+            if (updatesCount > 0) {
+              message.success(
+                `✅ Evaluation complete: ${updatesCount} task(s) updated. ${reasoning}`,
+                4,
+              );
+            } else {
+              message.info(`📋 Evaluation complete: No updates needed`, 2);
+            }
+          },
+
+          onComplete: async () => {
+            console.log(
+              "[useAgentEventSubscription] Agent execution completed",
+            );
+
+            // Save final assistant message if there's content
+            if (streamingContentRef.current) {
+              await addMessage(chatId, {
+                id: `assistant-${Date.now()}`,
+                role: "assistant",
+                type: "text",
+                content: streamingContentRef.current,
+                createdAt: new Date().toISOString(),
+                metadata: {
+                  sessionId: agentSessionId,
+                  model: "agent",
+                },
+              });
+            }
+
+            // Clean up streaming state
+            streamingMessageBus.clear(chatId, streamingMessageId);
+            streamingMessageIdRef.current = null;
+            streamingContentRef.current = "";
+            abortControllerRef.current = null; // Clear ref to allow re-subscription
+            setProcessing(false);
+          },
+
+          onError: async (errorMessage: string) => {
+            console.error(
+              "[useAgentEventSubscription] Agent error:",
+              errorMessage,
+            );
+
+            await addMessage(chatId, {
+              id: `error-${Date.now()}`,
+              role: "assistant",
+              type: "text",
+              content: `❌ **Error**: ${errorMessage}`,
+              createdAt: new Date().toISOString(),
+              finishReason: "error",
+            });
+
+            // Clean up streaming state
+            streamingMessageBus.clear(chatId, streamingMessageId);
+            streamingMessageIdRef.current = null;
+            streamingContentRef.current = "";
+            abortControllerRef.current = null; // Clear ref to allow re-subscription
+            setProcessing(false);
+          },
         },
-
-        onError: async (errorMessage: string) => {
-          console.error('[useAgentEventSubscription] Agent error:', errorMessage);
-
-          await addMessage(chatId, {
-            id: `error-${Date.now()}`,
-            role: 'assistant',
-            type: 'text',
-            content: `❌ **Error**: ${errorMessage}`,
-            createdAt: new Date().toISOString(),
-            finishReason: 'error',
-          });
-
-          // Clean up streaming state
-          streamingMessageBus.clear(chatId, streamingMessageId);
-          streamingMessageIdRef.current = null;
-          streamingContentRef.current = '';
-          abortControllerRef.current = null;  // Clear ref to allow re-subscription
+        controller,
+      )
+      .catch((error) => {
+        if ((error as any).name !== "AbortError") {
+          console.error(
+            "[useAgentEventSubscription] Subscription error:",
+            error,
+          );
+          // Clear ref to allow retry
+          abortControllerRef.current = null;
+          // Reset processing state so user can retry
           setProcessing(false);
-        },
-      },
-      controller,
-    ).catch((error) => {
-      if ((error as any).name !== 'AbortError') {
-        console.error('[useAgentEventSubscription] Subscription error:', error);
-        // Clear ref to allow retry
-        abortControllerRef.current = null;
-        // Reset processing state so user can retry
-        setProcessing(false);
-      }
-    });
+        }
+      });
 
     return () => {
-      console.log('[useAgentEventSubscription] Cleaning up subscription');
+      console.log("[useAgentEventSubscription] Cleaning up subscription");
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
@@ -351,7 +400,7 @@ export function useAgentEventSubscription() {
         streamingMessageBus.clear(chatId, streamingMessageIdRef.current);
       }
       streamingMessageIdRef.current = null;
-      streamingContentRef.current = '';
+      streamingContentRef.current = "";
     };
   }, [
     currentChat?.config?.agentSessionId,

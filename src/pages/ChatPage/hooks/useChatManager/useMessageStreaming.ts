@@ -26,7 +26,9 @@ interface UseMessageStreamingDeps {
  *
  * Agent-only flow using the local agent endpoints (localhost:8080).
  */
-export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageStreaming {
+export function useMessageStreaming(
+  deps: UseMessageStreamingDeps,
+): UseMessageStreaming {
   const { modal, message: appMessage } = AntApp.useApp();
   const abortRef = useRef<AbortController | null>(null);
   const streamingMessageIdRef = useRef<string | null>(null);
@@ -57,7 +59,10 @@ export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageSt
     const sessionId = deps.currentChat?.config?.agentSessionId;
     if (sessionId) {
       agentClientRef.current.stopGeneration(sessionId).catch((error) => {
-        console.error('[useMessageStreaming] Failed to stop generation:', error);
+        console.error(
+          "[useMessageStreaming] Failed to stop generation:",
+          error,
+        );
       });
     }
   }, [deps.currentChat?.config?.agentSessionId]);
@@ -80,7 +85,7 @@ export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageSt
         const rawWorkspacePath = deps.currentChat?.config?.workspacePath || "";
         const workspacePath = rawWorkspacePath
           .trim()
-          .replace(/\/+$/, "")  // Remove trailing slashes (Unix/Windows)
+          .replace(/\/+$/, "") // Remove trailing slashes (Unix/Windows)
           .replace(/\\+$/, ""); // Remove trailing backslashes (Windows)
 
         // Step 1: Send message to Agent
@@ -150,7 +155,9 @@ export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageSt
 
       // Check if active model is loaded
       if (!activeModel) {
-        appMessage.error("Model configuration not loaded. Please wait or reload the page.");
+        appMessage.error(
+          "Model configuration not loaded. Please wait or reload the page.",
+        );
         return;
       }
 
@@ -194,7 +201,7 @@ export function useMessageStreaming(deps: UseMessageStreamingDeps): UseMessageSt
           appMessage.error("Failed to send message. Please try again.");
           setAgentAvailability(false);
         }
-        deps.setProcessing(false);  // Only set false on error
+        deps.setProcessing(false); // Only set false on error
       } finally {
         abortRef.current = null;
         if (streamingMessageIdRef.current) {

@@ -25,7 +25,10 @@ export interface UtilityService {
   /**
    * Get proxy auth status (returns whether proxy auth is configured, without password)
    */
-  getProxyAuthStatus(): Promise<{ configured: boolean; username: string | null }>;
+  getProxyAuthStatus(): Promise<{
+    configured: boolean;
+    username: string | null;
+  }>;
 
   /**
    * Clear proxy auth credentials
@@ -72,11 +75,17 @@ class HttpUtilityService implements Partial<UtilityService> {
     return apiClient.post("bamboo/config", config);
   }
 
-  async setProxyAuth(auth: { username: string; password: string }): Promise<any> {
+  async setProxyAuth(auth: {
+    username: string;
+    password: string;
+  }): Promise<any> {
     return apiClient.post("bamboo/proxy-auth", auth);
   }
 
-  async getProxyAuthStatus(): Promise<{ configured: boolean; username: string | null }> {
+  async getProxyAuthStatus(): Promise<{
+    configured: boolean;
+    username: string | null;
+  }> {
     try {
       return await apiClient.get("bamboo/proxy-auth/status");
     } catch (error) {
@@ -172,8 +181,10 @@ export class ServiceFactory {
         this.httpUtilityService.setProxyAuth(auth),
       getProxyAuthStatus: () => this.httpUtilityService.getProxyAuthStatus(),
       clearProxyAuth: () => this.httpUtilityService.clearProxyAuth(),
-      getAnthropicModelMapping: () => this.httpUtilityService.getAnthropicModelMapping(),
-      setAnthropicModelMapping: (mapping: any) => this.httpUtilityService.setAnthropicModelMapping(mapping),
+      getAnthropicModelMapping: () =>
+        this.httpUtilityService.getAnthropicModelMapping(),
+      setAnthropicModelMapping: (mapping: any) =>
+        this.httpUtilityService.setAnthropicModelMapping(mapping),
       resetBambooConfig: () => this.httpUtilityService.resetBambooConfig(),
       resetSetupStatus: () => this.tauriUtilityService.resetSetupStatus(),
     };
@@ -192,11 +203,17 @@ export class ServiceFactory {
     return this.getUtilityService().setBambooConfig(config);
   }
 
-  async setProxyAuth(auth: { username: string; password: string }): Promise<any> {
+  async setProxyAuth(auth: {
+    username: string;
+    password: string;
+  }): Promise<any> {
     return this.getUtilityService().setProxyAuth(auth);
   }
 
-  async getProxyAuthStatus(): Promise<{ configured: boolean; username: string | null }> {
+  async getProxyAuthStatus(): Promise<{
+    configured: boolean;
+    username: string | null;
+  }> {
     return this.getUtilityService().getProxyAuthStatus();
   }
 

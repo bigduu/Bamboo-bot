@@ -1,7 +1,11 @@
-import { StateCreator } from 'zustand';
+import { StateCreator } from "zustand";
 
 // Todo item status
-export type TodoItemStatus = 'pending' | 'in_progress' | 'completed' | 'blocked';
+export type TodoItemStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "blocked";
 
 // Todo item
 export interface TodoItem {
@@ -123,7 +127,7 @@ export const createTodoListSlice: StateCreator<
               status: delta.status,
               tool_calls_count: delta.tool_calls_count,
             }
-          : item
+          : item,
       );
 
       return {
@@ -141,7 +145,7 @@ export const createTodoListSlice: StateCreator<
         },
         activeItems: {
           ...state.activeItems,
-          [sessionId]: delta.status === 'in_progress' ? delta.item_id : null,
+          [sessionId]: delta.status === "in_progress" ? delta.item_id : null,
         },
       };
     }),
@@ -152,7 +156,8 @@ export const createTodoListSlice: StateCreator<
       const { [sessionId]: _, ...remainingTodoLists } = state.todoLists;
       const { [sessionId]: __, ...remainingVersions } = state.todoListVersions;
       const { [sessionId]: ___, ...remainingActive } = state.activeItems;
-      const { [sessionId]: ____, ...remainingEvaluations } = state.evaluationStates;
+      const { [sessionId]: ____, ...remainingEvaluations } =
+        state.evaluationStates;
       return {
         todoLists: remainingTodoLists,
         todoListVersions: remainingVersions,
@@ -178,7 +183,8 @@ export const createTodoListSlice: StateCreator<
   // Clear evaluation state (NEW)
   clearEvaluationState: (sessionId) =>
     set((state) => {
-      const { [sessionId]: _, ...remainingEvaluations } = state.evaluationStates;
+      const { [sessionId]: _, ...remainingEvaluations } =
+        state.evaluationStates;
       return {
         evaluationStates: remainingEvaluations,
       };

@@ -24,8 +24,9 @@ export const useInputContainerCommand = ({
 }: UseInputContainerCommandProps) => {
   const [showCommandSelector, setShowCommandSelector] = useState(false);
   const [commandSearchText, setCommandSearchText] = useState("");
-  const [selectedCommand, setSelectedCommand] =
-    useState<WorkflowDraft | null>(null);
+  const [selectedCommand, setSelectedCommand] = useState<WorkflowDraft | null>(
+    null,
+  );
 
   useEffect(() => {
     setSelectedCommand(null);
@@ -75,10 +76,7 @@ export const useInputContainerCommand = ({
       ) {
         clearCommandDraft();
       }
-      if (
-        selectedCommand &&
-        matchesCommandToken(value, selectedCommand.name)
-      ) {
+      if (selectedCommand && matchesCommandToken(value, selectedCommand.name)) {
         updateCommandDraftPreview(value, selectedCommand);
       }
       setContent(value);
@@ -93,13 +91,10 @@ export const useInputContainerCommand = ({
     ],
   );
 
-  const handleCommandChange = useCallback(
-    (info: WorkflowCommandInfo) => {
-      setShowCommandSelector(info.isTriggerActive);
-      setCommandSearchText(info.isTriggerActive ? info.searchText : "");
-    },
-    [],
-  );
+  const handleCommandChange = useCallback((info: WorkflowCommandInfo) => {
+    setShowCommandSelector(info.isTriggerActive);
+    setCommandSearchText(info.isTriggerActive ? info.searchText : "");
+  }, []);
 
   const applyCommandDraft = useCallback(
     async (command: CommandItem) => {
@@ -124,7 +119,7 @@ export const useInputContainerCommand = ({
         const after = content.substring(cursorPosition);
         newValue = `${before}/${command.name} ${after}`;
         newCursorPos = `${before}/${command.name} `.length;
-      } else if (content.trim() === '') {
+      } else if (content.trim() === "") {
         // Case 2: Empty input, just set the command
         newValue = `/${command.name} `;
         newCursorPos = newValue.length;
@@ -150,13 +145,13 @@ export const useInputContainerCommand = ({
 
       // Only workflows need to load and preview content
       // Skills and MCP tools don't need content preview
-      if (command.type !== 'workflow') {
+      if (command.type !== "workflow") {
         // For skills and MCP: just mark the selection, no content preview
         // But we store the command info for use in submit
         const draft: WorkflowDraft = {
           id: `command-draft-${command.id}`,
           name: command.name,
-          content: '',  // No content preview for skills/mcp
+          content: "", // No content preview for skills/mcp
           createdAt: new Date().toISOString(),
           type: command.type,
           displayName: command.displayName,
@@ -173,11 +168,14 @@ export const useInputContainerCommand = ({
       try {
         // Extract the real ID (remove type prefix from command.id)
         // command.id format: "workflow-xxx"
-        const realId = command.id.startsWith('workflow-')
-          ? command.id.slice('workflow-'.length)
+        const realId = command.id.startsWith("workflow-")
+          ? command.id.slice("workflow-".length)
           : command.id;
 
-        const fullCommand = await commandService.getCommand(command.type, realId);
+        const fullCommand = await commandService.getCommand(
+          command.type,
+          realId,
+        );
         const workflowContent = fullCommand.content?.trim() || "";
 
         if (workflowContent) {
@@ -202,7 +200,13 @@ export const useInputContainerCommand = ({
         clearCommandDraft();
       }
     },
-    [clearCommandDraft, onWorkflowDraftChange, setContent, content, textAreaRef],
+    [
+      clearCommandDraft,
+      onWorkflowDraftChange,
+      setContent,
+      content,
+      textAreaRef,
+    ],
   );
 
   const handleCommandSelect = useCallback(
@@ -210,7 +214,9 @@ export const useInputContainerCommand = ({
       try {
         const commandService = CommandService.getInstance();
         const commands = await commandService.listCommands();
-        const command = commands.find(c => c.id === commandInfo.id && c.type === commandInfo.type);
+        const command = commands.find(
+          (c) => c.id === commandInfo.id && c.type === commandInfo.type,
+        );
 
         if (!command) {
           console.error(
@@ -244,7 +250,7 @@ export const useInputContainerCommand = ({
       try {
         const commandService = CommandService.getInstance();
         const commands = await commandService.listCommands();
-        const command = commands.find(c => c.name === commandName);
+        const command = commands.find((c) => c.name === commandName);
 
         if (command) {
           await applyCommandDraft(command);

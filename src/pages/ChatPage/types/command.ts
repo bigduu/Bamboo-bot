@@ -1,4 +1,4 @@
-export type CommandType = 'workflow' | 'skill' | 'mcp';
+export type CommandType = "workflow" | "skill" | "mcp";
 
 export interface CommandItem {
   id: string;
@@ -13,13 +13,13 @@ export interface CommandItem {
     // Workflow
     filename?: string;
     size?: number;
-    source?: 'global' | 'workspace';
+    source?: "global" | "workspace";
 
     // Skill
     prompt?: string;
     toolRefs?: string[];
     workflowRefs?: string[];
-    visibility?: 'public' | 'private';
+    visibility?: "public" | "private";
 
     // MCP
     serverId?: string;

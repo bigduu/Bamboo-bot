@@ -106,7 +106,9 @@ export function useChatOpenAIStreaming(
 
         // Model must be loaded before sending - fail fast if not available
         if (!selectedModel) {
-          throw new Error("Model configuration not loaded. Please wait for model to load or reload the page.");
+          throw new Error(
+            "Model configuration not loaded. Please wait for model to load or reload the page.",
+          );
         }
 
         const model = selectedModel;

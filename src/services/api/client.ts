@@ -68,7 +68,11 @@ export class ApiClient {
         try {
           const errorData = JSON.parse(body);
           // Check for common error field names
-          errorMessage = errorData.error || errorData.message || errorData.detail || response.statusText;
+          errorMessage =
+            errorData.error ||
+            errorData.message ||
+            errorData.detail ||
+            response.statusText;
         } catch {
           // If not JSON, use the raw body as error message
           errorMessage = body || response.statusText;

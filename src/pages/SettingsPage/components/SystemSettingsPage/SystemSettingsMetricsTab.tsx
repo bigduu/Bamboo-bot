@@ -128,10 +128,11 @@ const SystemSettingsMetricsTab: React.FC = () => {
   const { token } = useToken();
   const [startDate, setStartDate] = useState<string | undefined>(undefined);
   const [endDate, setEndDate] = useState<string | undefined>(undefined);
-  const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined);
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(
+    undefined,
+  );
   const [days, setDays] = useState<number>(30);
-  const [granularity, setGranularity] =
-    useState<MetricsGranularity>("daily");
+  const [granularity, setGranularity] = useState<MetricsGranularity>("daily");
 
   const {
     summary,
@@ -231,7 +232,9 @@ const SystemSettingsMetricsTab: React.FC = () => {
   return (
     <Space direction="vertical" size={token.marginMD} style={{ width: "100%" }}>
       {error ? <Alert type="error" showIcon message={error} /> : null}
-      {forwardError ? <Alert type="error" showIcon message={forwardError} /> : null}
+      {forwardError ? (
+        <Alert type="error" showIcon message={forwardError} />
+      ) : null}
 
       <Card
         size="small"
@@ -328,7 +331,13 @@ const SystemSettingsMetricsTab: React.FC = () => {
               <ResponsiveContainer>
                 <BarChart data={toolUsageData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tool" interval={0} angle={-20} textAnchor="end" height={72} />
+                  <XAxis
+                    dataKey="tool"
+                    interval={0}
+                    angle={-20}
+                    textAnchor="end"
+                    height={72}
+                  />
                   <YAxis allowDecimals={false} />
                   <RechartsTooltip />
                   <Bar dataKey="count" fill="#1677ff" name="Calls" />
@@ -355,14 +364,24 @@ const SystemSettingsMetricsTab: React.FC = () => {
                   style={{
                     borderRadius: token.borderRadiusSM,
                     padding: token.paddingXS,
-                    background: heatColorForValue(point.sessions, activityData.maxSessions),
+                    background: heatColorForValue(
+                      point.sessions,
+                      activityData.maxSessions,
+                    ),
                     minHeight: 64,
-                    color: point.sessions > 0 ? "#fff" : token.colorTextSecondary,
+                    color:
+                      point.sessions > 0 ? "#fff" : token.colorTextSecondary,
                   }}
                 >
-                  <div style={{ fontSize: 12, lineHeight: 1.2 }}>{point.label}</div>
-                  <div style={{ fontWeight: 600, marginTop: 4 }}>{point.sessions} sessions</div>
-                  <div style={{ fontSize: 12 }}>{point.tokens.toLocaleString()} tokens</div>
+                  <div style={{ fontSize: 12, lineHeight: 1.2 }}>
+                    {point.label}
+                  </div>
+                  <div style={{ fontWeight: 600, marginTop: 4 }}>
+                    {point.sessions} sessions
+                  </div>
+                  <div style={{ fontSize: 12 }}>
+                    {point.tokens.toLocaleString()} tokens
+                  </div>
                 </div>
               ))}
             </div>
@@ -372,7 +391,11 @@ const SystemSettingsMetricsTab: React.FC = () => {
 
       {/* Forward Metrics Section */}
       <Card size="small" title="Forward Metrics">
-        <Space direction="vertical" size={token.marginMD} style={{ width: "100%" }}>
+        <Space
+          direction="vertical"
+          size={token.marginMD}
+          style={{ width: "100%" }}
+        >
           <ForwardMetricsCards
             summary={forwardSummary}
             loading={isForwardLoading}
@@ -404,7 +427,9 @@ const SystemSettingsMetricsTab: React.FC = () => {
       <Card
         size="small"
         title="Sessions"
-        extra={<Text type="secondary">Click a session for full round detail</Text>}
+        extra={
+          <Text type="secondary">Click a session for full round detail</Text>
+        }
       >
         <SessionTable
           sessions={sessions}
@@ -426,7 +451,11 @@ const SystemSettingsMetricsTab: React.FC = () => {
         {isSessionDetailLoading ? (
           <Text>Loading session details...</Text>
         ) : selectedSession ? (
-          <Space direction="vertical" style={{ width: "100%" }} size={token.marginMD}>
+          <Space
+            direction="vertical"
+            style={{ width: "100%" }}
+            size={token.marginMD}
+          >
             <Descriptions size="small" bordered column={2}>
               <Descriptions.Item label="Session ID" span={2}>
                 {selectedSession.session_id}

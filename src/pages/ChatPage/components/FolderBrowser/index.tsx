@@ -197,7 +197,8 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
         </Spin>
 
         <Text type="secondary" style={{ fontSize: 12 }}>
-          💡 Tip: Click a folder to enter, click "Select Current Folder" to confirm
+          💡 Tip: Click a folder to enter, click "Select Current Folder" to
+          confirm
         </Text>
       </Space>
     </Modal>

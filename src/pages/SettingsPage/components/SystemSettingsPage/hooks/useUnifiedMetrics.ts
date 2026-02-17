@@ -64,7 +64,9 @@ export const useUnifiedMetrics = (options: UseUnifiedMetricsOptions = {}) => {
   const [chatSummary, setChatSummary] = useState<MetricsSummary | null>(null);
   const [modelMetrics, setModelMetrics] = useState<ModelMetrics[]>([]);
   const [sessions, setSessions] = useState<SessionMetrics[]>([]);
-  const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(null);
+  const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(
+    null,
+  );
   const [isSessionDetailLoading, setIsSessionDetailLoading] = useState(false);
 
   // Forward metrics state
@@ -73,9 +75,9 @@ export const useUnifiedMetrics = (options: UseUnifiedMetricsOptions = {}) => {
   const [endpointMetrics, setEndpointMetrics] = useState<
     ForwardEndpointMetrics[]
   >([]);
-  const [forwardRequests, setForwardRequests] = useState<ForwardRequestMetrics[]>(
-    [],
-  );
+  const [forwardRequests, setForwardRequests] = useState<
+    ForwardRequestMetrics[]
+  >([]);
 
   // Unified metrics state
   const [combinedSummary, setCombinedSummary] =
@@ -122,21 +124,25 @@ export const useUnifiedMetrics = (options: UseUnifiedMetricsOptions = {}) => {
           limit: normalizedFilters.sessionLimit,
         };
 
-        const [modelResponse, sessionsResponse, endpointResponse, requestsResponse] =
-          await Promise.all([
-            metricsService.getByModel({
-              startDate: normalizedFilters.startDate,
-              endDate: normalizedFilters.endDate,
-            }),
-            metricsService.getSessions({
-              startDate: normalizedFilters.startDate,
-              endDate: normalizedFilters.endDate,
-              model: normalizedFilters.model,
-              limit: normalizedFilters.sessionLimit,
-            }),
-            metricsService.getForwardByEndpoint(forwardQuery),
-            metricsService.getForwardRequests(forwardQuery),
-          ]);
+        const [
+          modelResponse,
+          sessionsResponse,
+          endpointResponse,
+          requestsResponse,
+        ] = await Promise.all([
+          metricsService.getByModel({
+            startDate: normalizedFilters.startDate,
+            endDate: normalizedFilters.endDate,
+          }),
+          metricsService.getSessions({
+            startDate: normalizedFilters.startDate,
+            endDate: normalizedFilters.endDate,
+            model: normalizedFilters.model,
+            limit: normalizedFilters.sessionLimit,
+          }),
+          metricsService.getForwardByEndpoint(forwardQuery),
+          metricsService.getForwardRequests(forwardQuery),
+        ]);
 
         setModelMetrics(modelResponse);
         setSessions(sessionsResponse);

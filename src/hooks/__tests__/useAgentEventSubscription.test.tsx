@@ -1,24 +1,22 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAgentEventSubscription } from '../useAgentEventSubscription';
-import { useAppStore } from '../../pages/ChatPage/store';
-import { AgentClient } from '../../services/chat/AgentService';
+import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { useAgentEventSubscription } from "../useAgentEventSubscription";
+import { useAppStore } from "../../pages/ChatPage/store";
+import { AgentClient } from "../../services/chat/AgentService";
 
 // Mock dependencies
-vi.mock('../../pages/ChatPage/store', () => ({
+vi.mock("../../pages/ChatPage/store", () => ({
   useAppStore: vi.fn(),
 }));
 
-vi.mock('../../services/chat/AgentService', () => ({
+vi.mock("../../services/chat/AgentService", () => ({
   AgentClient: vi.fn(),
 }));
 
 // Type for mock selectors
 type MockSelector = (state: any) => any;
 
-
-
-describe('useAgentEventSubscription', () => {
+describe("useAgentEventSubscription", () => {
   let mockSubscribeToEvents: any;
   let mockSetProcessing: any;
   let mockAddMessage: any;
@@ -38,13 +36,13 @@ describe('useAgentEventSubscription', () => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: false,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -53,24 +51,24 @@ describe('useAgentEventSubscription', () => {
     });
   });
 
-  it('should not subscribe when isProcessing is false', () => {
+  it("should not subscribe when isProcessing is false", () => {
     renderHook(() => useAgentEventSubscription());
 
     expect(mockSubscribeToEvents).not.toHaveBeenCalled();
   });
 
-  it('should subscribe when isProcessing is true and session exists', async () => {
+  it("should subscribe when isProcessing is true and session exists", async () => {
     (useAppStore as any).mockImplementation((selector: MockSelector) => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: true, // Processing is true
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -84,18 +82,18 @@ describe('useAgentEventSubscription', () => {
 
     await waitFor(() => {
       expect(mockSubscribeToEvents).toHaveBeenCalledWith(
-        'session-1',
+        "session-1",
         expect.objectContaining({
           onToken: expect.any(Function),
           onComplete: expect.any(Function),
           onError: expect.any(Function),
         }),
-        expect.any(AbortController)
+        expect.any(AbortController),
       );
     });
   });
 
-  it('should unsubscribe when isProcessing becomes false', async () => {
+  it("should unsubscribe when isProcessing becomes false", async () => {
     const { rerender } = renderHook(() => useAgentEventSubscription());
 
     // Initially not processing
@@ -106,13 +104,13 @@ describe('useAgentEventSubscription', () => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -133,13 +131,13 @@ describe('useAgentEventSubscription', () => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: false,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -153,18 +151,18 @@ describe('useAgentEventSubscription', () => {
     // (Hard to test directly without access to abort controller)
   });
 
-  it('should handle subscription errors and reset state', async () => {
+  it("should handle subscription errors and reset state", async () => {
     (useAppStore as any).mockImplementation((selector: MockSelector) => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -172,16 +170,16 @@ describe('useAgentEventSubscription', () => {
       return selector(state);
     });
 
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    mockSubscribeToEvents.mockRejectedValue(new Error('Connection failed'));
+    mockSubscribeToEvents.mockRejectedValue(new Error("Connection failed"));
 
     renderHook(() => useAgentEventSubscription());
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[useAgentEventSubscription] Subscription error:',
-        expect.any(Error)
+        "[useAgentEventSubscription] Subscription error:",
+        expect.any(Error),
       );
 
       // Should reset processing state on error
@@ -191,23 +189,25 @@ describe('useAgentEventSubscription', () => {
     consoleSpy.mockRestore();
   });
 
-  it('should handle onComplete and save message', async () => {
+  it("should handle onComplete and save message", async () => {
     let completeHandler: any;
-    mockSubscribeToEvents.mockImplementation(async (_sessionId: string, handlers: any) => {
-      completeHandler = handlers.onComplete;
-    });
+    mockSubscribeToEvents.mockImplementation(
+      async (_sessionId: string, handlers: any) => {
+        completeHandler = handlers.onComplete;
+      },
+    );
 
     (useAppStore as any).mockImplementation((selector: MockSelector) => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -233,23 +233,25 @@ describe('useAgentEventSubscription', () => {
     });
   });
 
-  it('should handle onError and show error message', async () => {
+  it("should handle onError and show error message", async () => {
     let errorHandler: any;
-    mockSubscribeToEvents.mockImplementation(async (_sessionId: string, handlers: any) => {
-      errorHandler = handlers.onError;
-    });
+    mockSubscribeToEvents.mockImplementation(
+      async (_sessionId: string, handlers: any) => {
+        errorHandler = handlers.onError;
+      },
+    );
 
     (useAppStore as any).mockImplementation((selector: MockSelector) => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -257,7 +259,7 @@ describe('useAgentEventSubscription', () => {
       return selector(state);
     });
 
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     renderHook(() => useAgentEventSubscription());
 
@@ -268,14 +270,14 @@ describe('useAgentEventSubscription', () => {
     // Simulate error event
     await act(async () => {
       if (errorHandler) {
-        await errorHandler('Something went wrong');
+        await errorHandler("Something went wrong");
       }
     });
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[useAgentEventSubscription] Agent error:',
-        'Something went wrong'
+        "[useAgentEventSubscription] Agent error:",
+        "Something went wrong",
       );
       expect(mockAddMessage).toHaveBeenCalled();
       expect(mockSetProcessing).toHaveBeenCalledWith(false);
@@ -284,18 +286,18 @@ describe('useAgentEventSubscription', () => {
     consoleSpy.mockRestore();
   });
 
-  it('should not create duplicate subscriptions', async () => {
+  it("should not create duplicate subscriptions", async () => {
     (useAppStore as any).mockImplementation((selector: MockSelector) => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -319,23 +321,25 @@ describe('useAgentEventSubscription', () => {
     });
   });
 
-  it('should handle token streaming', async () => {
+  it("should handle token streaming", async () => {
     let tokenHandler: any;
-    mockSubscribeToEvents.mockImplementation(async (_sessionId: string, handlers: any) => {
-      tokenHandler = handlers.onToken;
-    });
+    mockSubscribeToEvents.mockImplementation(
+      async (_sessionId: string, handlers: any) => {
+        tokenHandler = handlers.onToken;
+      },
+    );
 
     (useAppStore as any).mockImplementation((selector: MockSelector) => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,
@@ -352,26 +356,26 @@ describe('useAgentEventSubscription', () => {
     // Simulate token events
     act(() => {
       if (tokenHandler) {
-        tokenHandler('Hello ');
-        tokenHandler('World');
+        tokenHandler("Hello ");
+        tokenHandler("World");
       }
     });
 
     // Should stream tokens (verified via streamingMessageBus, not mocked here)
   });
 
-  it('should cleanup subscription on unmount', async () => {
+  it("should cleanup subscription on unmount", async () => {
     (useAppStore as any).mockImplementation((selector: MockSelector) => {
       const state = {
         chats: [
           {
-            id: 'chat-1',
+            id: "chat-1",
             config: {
-              agentSessionId: 'session-1',
+              agentSessionId: "session-1",
             },
           },
         ],
-        currentChatId: 'chat-1',
+        currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
         setProcessing: mockSetProcessing,

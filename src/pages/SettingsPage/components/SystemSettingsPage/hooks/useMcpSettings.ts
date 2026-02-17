@@ -71,15 +71,15 @@ export const useMcpSettings = (
   const [selectedServerId, setSelectedServerIdState] = useState<string | null>(
     null,
   );
-  const [toolsByServer, setToolsByServer] = useState<Record<string, McpToolInfo[]>>(
-    {},
-  );
+  const [toolsByServer, setToolsByServer] = useState<
+    Record<string, McpToolInfo[]>
+  >({});
   const [toolLoadingByServer, setToolLoadingByServer] = useState<
     Record<string, boolean>
   >({});
-  const [actionLoadingMap, setActionLoadingMap] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [actionLoadingMap, setActionLoadingMap] = useState<
+    Record<string, boolean>
+  >({});
   const [isLoadingServers, setIsLoadingServers] = useState(false);
   const [isMutatingConfig, setIsMutatingConfig] = useState(false);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);

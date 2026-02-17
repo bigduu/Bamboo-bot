@@ -1,9 +1,6 @@
 import { StateCreator } from "zustand";
 import { skillService } from "../../services/SkillService";
-import type {
-  SkillDefinition,
-  SkillFilter,
-} from "../../types/skill";
+import type { SkillDefinition, SkillFilter } from "../../types/skill";
 import type { AppState } from "../";
 
 export interface SkillSlice {
@@ -20,7 +17,7 @@ export interface SkillSlice {
 
 export const createSkillSlice: StateCreator<AppState, [], [], SkillSlice> = (
   set,
-  get
+  get,
 ) => ({
   // Initial state
   skills: [],
@@ -38,7 +35,8 @@ export const createSkillSlice: StateCreator<AppState, [], [], SkillSlice> = (
       });
     } catch (error) {
       set({
-        skillsError: error instanceof Error ? error.message : "Failed to load skills",
+        skillsError:
+          error instanceof Error ? error.message : "Failed to load skills",
         isLoadingSkills: false,
       });
     }
@@ -60,7 +58,8 @@ export const createSkillSlice: StateCreator<AppState, [], [], SkillSlice> = (
       });
     } catch (error) {
       set({
-        skillsError: error instanceof Error ? error.message : "Failed to get skill",
+        skillsError:
+          error instanceof Error ? error.message : "Failed to get skill",
         isLoadingSkills: false,
       });
     }

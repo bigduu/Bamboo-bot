@@ -90,7 +90,9 @@ export const useMetrics = (options: UseMetricsOptions = {}) => {
   const [timeline, setTimeline] = useState<Array<DailyMetrics | PeriodMetrics>>(
     [],
   );
-  const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(null);
+  const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(
+    null,
+  );
   const [isSessionDetailLoading, setIsSessionDetailLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -105,28 +107,32 @@ export const useMetrics = (options: UseMetricsOptions = {}) => {
       }
 
       try {
-        const [summaryResponse, modelResponse, sessionsResponse, dailyResponse] =
-          await Promise.all([
-            service.getSummary({
-              startDate: normalizedFilters.startDate,
-              endDate: normalizedFilters.endDate,
-            }),
-            service.getByModel({
-              startDate: normalizedFilters.startDate,
-              endDate: normalizedFilters.endDate,
-            }),
-            service.getSessions({
-              startDate: normalizedFilters.startDate,
-              endDate: normalizedFilters.endDate,
-              model: normalizedFilters.model,
-              limit: normalizedFilters.sessionLimit,
-            }),
-            service.getDaily({
-              days: normalizedFilters.days,
-              endDate: normalizedFilters.endDate,
-              granularity: normalizedFilters.granularity,
-            }),
-          ]);
+        const [
+          summaryResponse,
+          modelResponse,
+          sessionsResponse,
+          dailyResponse,
+        ] = await Promise.all([
+          service.getSummary({
+            startDate: normalizedFilters.startDate,
+            endDate: normalizedFilters.endDate,
+          }),
+          service.getByModel({
+            startDate: normalizedFilters.startDate,
+            endDate: normalizedFilters.endDate,
+          }),
+          service.getSessions({
+            startDate: normalizedFilters.startDate,
+            endDate: normalizedFilters.endDate,
+            model: normalizedFilters.model,
+            limit: normalizedFilters.sessionLimit,
+          }),
+          service.getDaily({
+            days: normalizedFilters.days,
+            endDate: normalizedFilters.endDate,
+            granularity: normalizedFilters.granularity,
+          }),
+        ]);
 
         setSummary(summaryResponse);
         setModelMetrics(modelResponse);

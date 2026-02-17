@@ -88,10 +88,11 @@ const UnifiedMetricsDashboard: React.FC = () => {
   const { token } = useToken();
   const [startDate, setStartDate] = useState<string | undefined>(undefined);
   const [endDate, setEndDate] = useState<string | undefined>(undefined);
-  const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined);
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(
+    undefined,
+  );
   const [days, setDays] = useState<number>(30);
-  const [granularity, setGranularity] =
-    useState<MetricsGranularity>("daily");
+  const [granularity, setGranularity] = useState<MetricsGranularity>("daily");
 
   const {
     chatSummary,
@@ -225,10 +226,7 @@ const UnifiedMetricsDashboard: React.FC = () => {
       </div>
 
       {/* Forward Endpoint Distribution */}
-      <ForwardEndpointDistribution
-        data={endpointMetrics}
-        loading={isLoading}
-      />
+      <ForwardEndpointDistribution data={endpointMetrics} loading={isLoading} />
 
       {/* Detailed Data Tabs */}
       <Card size="small" title="Detailed Metrics">
@@ -273,7 +271,11 @@ const UnifiedMetricsDashboard: React.FC = () => {
         {isSessionDetailLoading ? (
           <Text>Loading session details...</Text>
         ) : selectedSession ? (
-          <Space direction="vertical" style={{ width: "100%" }} size={token.marginMD}>
+          <Space
+            direction="vertical"
+            style={{ width: "100%" }}
+            size={token.marginMD}
+          >
             <Descriptions size="small" bordered column={2}>
               <Descriptions.Item label="Session ID" span={2}>
                 {selectedSession.session_id}

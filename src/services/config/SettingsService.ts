@@ -4,7 +4,7 @@
  * Service for managing application settings, including provider configuration.
  */
 
-import { apiClient } from '../api';
+import { apiClient } from "../api";
 
 /**
  * Copilot authentication status
@@ -18,11 +18,11 @@ export interface CopilotAuthStatus {
  * Device code information for Copilot authentication
  */
 export interface DeviceCodeInfo {
-  device_code: string;  // The actual device code for polling (not the user code!)
-  user_code: string;    // The code user enters in browser
+  device_code: string; // The actual device code for polling (not the user code!)
+  user_code: string; // The code user enters in browser
   verification_uri: string;
   expires_in: number;
-  interval?: number;    // Polling interval in seconds
+  interval?: number; // Polling interval in seconds
 }
 
 /**
@@ -44,65 +44,68 @@ export class SettingsService {
    * Get the current provider configuration
    */
   async getProviderConfig(): Promise<any> {
-    return apiClient.get<any>('/bamboo/settings/provider');
+    return apiClient.get<any>("/bamboo/settings/provider");
   }
 
   /**
    * Save provider configuration
    */
   async saveProviderConfig(config: any): Promise<void> {
-    return apiClient.post<void>('/bamboo/settings/provider', config);
+    return apiClient.post<void>("/bamboo/settings/provider", config);
   }
 
   /**
    * Reload configuration (apply changes)
    */
   async reloadConfig(): Promise<void> {
-    return apiClient.post<void>('/bamboo/settings/reload');
+    return apiClient.post<void>("/bamboo/settings/reload");
   }
 
   /**
    * Check Copilot authentication status
    */
   async getCopilotAuthStatus(): Promise<CopilotAuthStatus> {
-    return apiClient.post<CopilotAuthStatus>('/bamboo/copilot/auth/status');
+    return apiClient.post<CopilotAuthStatus>("/bamboo/copilot/auth/status");
   }
 
   /**
    * Start Copilot authentication - get device code
    */
   async startCopilotAuth(): Promise<DeviceCodeInfo> {
-    return apiClient.post<DeviceCodeInfo>('/bamboo/copilot/auth/start');
+    return apiClient.post<DeviceCodeInfo>("/bamboo/copilot/auth/start");
   }
 
   /**
    * Complete Copilot authentication with device code
    */
   async completeCopilotAuth(request: CompleteAuthRequest): Promise<void> {
-    return apiClient.post<void>('/bamboo/copilot/auth/complete', request);
+    return apiClient.post<void>("/bamboo/copilot/auth/complete", request);
   }
 
   /**
    * Trigger Copilot authentication flow (legacy)
    */
   async authenticateCopilot(): Promise<void> {
-    return apiClient.post<void>('/bamboo/copilot/authenticate');
+    return apiClient.post<void>("/bamboo/copilot/authenticate");
   }
 
   /**
    * Logout from Copilot (delete cached token)
    */
   async logoutCopilot(): Promise<void> {
-    return apiClient.post<void>('/bamboo/copilot/logout');
+    return apiClient.post<void>("/bamboo/copilot/logout");
   }
 
   /**
    * Fetch available models for a provider (via backend)
    */
   async fetchProviderModels(provider: string): Promise<string[]> {
-    const response = await apiClient.post<{ models: string[] }>('/bamboo/settings/provider/models', {
-      provider,
-    });
+    const response = await apiClient.post<{ models: string[] }>(
+      "/bamboo/settings/provider/models",
+      {
+        provider,
+      },
+    );
     return response.models;
   }
 }

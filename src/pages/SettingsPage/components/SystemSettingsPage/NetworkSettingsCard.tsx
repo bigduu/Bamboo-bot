@@ -126,7 +126,11 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
         </Space>
 
         {/* Proxy Authentication */}
-        <Card size="small" title="Proxy Authentication" style={{ marginTop: token.marginSM }}>
+        <Card
+          size="small"
+          title="Proxy Authentication"
+          style={{ marginTop: token.marginSM }}
+        >
           {proxyAuthStatus.configured ? (
             <Space direction="vertical" style={{ width: "100%" }}>
               <Alert
@@ -186,7 +190,13 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
         </Text>
 
         {/* Save buttons */}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: token.marginSM }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: token.marginSM,
+          }}
+        >
           <Button onClick={onReload} disabled={isLoading}>
             Reload
           </Button>

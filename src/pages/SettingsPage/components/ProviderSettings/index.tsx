@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Form,
   Select,
@@ -14,7 +14,7 @@ import {
   Spin,
   Modal,
   Switch,
-} from 'antd';
+} from "antd";
 import {
   SaveOutlined,
   ReloadOutlined,
@@ -24,22 +24,22 @@ import {
   LoginOutlined,
   LogoutOutlined,
   CopyOutlined,
-} from '@ant-design/icons';
+} from "@ant-design/icons";
 import {
   settingsService,
   type CopilotAuthStatus,
   type DeviceCodeInfo,
-} from '../../../../services/config/SettingsService';
+} from "../../../../services/config/SettingsService";
 import type {
   ProviderConfig,
   ProviderType,
-} from '../../../ChatPage/types/providerConfig';
+} from "../../../ChatPage/types/providerConfig";
 import {
   PROVIDER_LABELS,
   OPENAI_MODELS,
   ANTHROPIC_MODELS,
   GEMINI_MODELS,
-} from '../../../ChatPage/types/providerConfig';
+} from "../../../ChatPage/types/providerConfig";
 
 const { Option } = Select;
 const { Password } = Input;
@@ -54,18 +54,25 @@ export const ProviderSettings: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [applyingConfig, setApplyingConfig] = useState(false);
-  const [currentProvider, setCurrentProvider] = useState<ProviderType>('copilot');
+  const [currentProvider, setCurrentProvider] =
+    useState<ProviderType>("copilot");
   const [configLoaded, setConfigLoaded] = useState(false);
-  const [copilotAuthStatus, setCopilotAuthStatus] = useState<CopilotAuthStatus | null>(null);
+  const [copilotAuthStatus, setCopilotAuthStatus] =
+    useState<CopilotAuthStatus | null>(null);
   const [checkingCopilotAuth, setCheckingCopilotAuth] = useState(false);
   const [authenticatingCopilot, setAuthenticatingCopilot] = useState(false);
-  const [deviceCodeInfo, setDeviceCodeInfo] = useState<DeviceCodeInfo | null>(null);
-  const [isDeviceCodeModalVisible, setIsDeviceCodeModalVisible] = useState(false);
+  const [deviceCodeInfo, setDeviceCodeInfo] = useState<DeviceCodeInfo | null>(
+    null,
+  );
+  const [isDeviceCodeModalVisible, setIsDeviceCodeModalVisible] =
+    useState(false);
   const [completingAuth, setCompletingAuth] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [copiedUserCode, setCopiedUserCode] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
-  const [availableModels, setAvailableModels] = useState<Array<{value: string; label: string}>>([]);
+  const [availableModels, setAvailableModels] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
 
   // Countdown timer for device code expiration
   useEffect(() => {
@@ -94,7 +101,7 @@ export const ProviderSettings: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (currentProvider === 'copilot') {
+    if (currentProvider === "copilot") {
       checkCopilotAuthStatus();
     }
   }, [currentProvider]);
@@ -112,13 +119,13 @@ export const ProviderSettings: React.FC = () => {
         providers: (response as any).providers || {},
       };
 
-      console.log('Loaded provider config:', config);
+      console.log("Loaded provider config:", config);
       setCurrentProvider(config.provider as ProviderType);
       form.setFieldsValue(config);
       setConfigLoaded(true);
     } catch (error) {
-      message.error('Failed to load provider config');
-      console.error('Failed to load provider config:', error);
+      message.error("Failed to load provider config");
+      console.error("Failed to load provider config:", error);
     } finally {
       setLoading(false);
     }
@@ -130,8 +137,11 @@ export const ProviderSettings: React.FC = () => {
       const status = await settingsService.getCopilotAuthStatus();
       setCopilotAuthStatus(status);
     } catch (error) {
-      console.error('Failed to check Copilot auth status:', error);
-      setCopilotAuthStatus({ authenticated: false, message: 'Failed to check status' });
+      console.error("Failed to check Copilot auth status:", error);
+      setCopilotAuthStatus({
+        authenticated: false,
+        message: "Failed to check status",
+      });
     } finally {
       setCheckingCopilotAuth(false);
     }
@@ -145,8 +155,8 @@ export const ProviderSettings: React.FC = () => {
       setDeviceCodeInfo(deviceCode);
       setIsDeviceCodeModalVisible(true);
     } catch (error) {
-      message.error('Failed to start Copilot authentication');
-      console.error('Failed to start Copilot authentication:', error);
+      message.error("Failed to start Copilot authentication");
+      console.error("Failed to start Copilot authentication:", error);
     } finally {
       setAuthenticatingCopilot(false);
     }
@@ -163,16 +173,16 @@ export const ProviderSettings: React.FC = () => {
         interval: deviceCodeInfo.interval || 5,
         expires_in: deviceCodeInfo.expires_in,
       });
-      message.success('Copilot authentication successful!');
+      message.success("Copilot authentication successful!");
       setIsDeviceCodeModalVisible(false);
       setDeviceCodeInfo(null);
       await checkCopilotAuthStatus();
       // Reload provider to use the new authentication
       await settingsService.reloadConfig();
-      message.success('Provider reloaded with new authentication.');
+      message.success("Provider reloaded with new authentication.");
     } catch (error) {
-      message.error('Authentication completion failed. Please try again.');
-      console.error('Authentication completion failed:', error);
+      message.error("Authentication completion failed. Please try again.");
+      console.error("Authentication completion failed:", error);
     } finally {
       setCompletingAuth(false);
     }
@@ -185,10 +195,13 @@ export const ProviderSettings: React.FC = () => {
       try {
         await navigator.clipboard.writeText(deviceCodeInfo.user_code);
         setCopiedUserCode(true);
-        message.success('User code copied to clipboard!');
+        message.success("User code copied to clipboard!");
         setTimeout(() => setCopiedUserCode(false), 2000);
       } catch (error) {
-        message.error('Failed to copy code. Please manually copy: ' + deviceCodeInfo.user_code);
+        message.error(
+          "Failed to copy code. Please manually copy: " +
+            deviceCodeInfo.user_code,
+        );
       }
     }
   };
@@ -197,11 +210,11 @@ export const ProviderSettings: React.FC = () => {
     try {
       setAuthenticatingCopilot(true);
       await settingsService.logoutCopilot();
-      message.success('Logged out from Copilot');
+      message.success("Logged out from Copilot");
       await checkCopilotAuthStatus();
     } catch (error) {
-      message.error('Failed to logout from Copilot');
-      console.error('Failed to logout:', error);
+      message.error("Failed to logout from Copilot");
+      console.error("Failed to logout:", error);
     } finally {
       setAuthenticatingCopilot(false);
     }
@@ -218,7 +231,7 @@ export const ProviderSettings: React.FC = () => {
       setFetchingModels(true);
 
       // Use backend to fetch models with real API key
-      const models = await settingsService.fetchProviderModels('openai');
+      const models = await settingsService.fetchProviderModels("openai");
 
       // Format models for Select component
       const formattedModels = models.map((model: string) => ({
@@ -229,8 +242,10 @@ export const ProviderSettings: React.FC = () => {
       setAvailableModels(formattedModels);
       message.success(`Found ${formattedModels.length} available models`);
     } catch (error) {
-      message.error('Failed to fetch models. Please check your API key and base URL.');
-      console.error('Failed to fetch OpenAI models:', error);
+      message.error(
+        "Failed to fetch models. Please check your API key and base URL.",
+      );
+      console.error("Failed to fetch OpenAI models:", error);
     } finally {
       setFetchingModels(false);
     }
@@ -241,7 +256,7 @@ export const ProviderSettings: React.FC = () => {
       setFetchingModels(true);
 
       // Use backend to fetch models with real API key
-      const models = await settingsService.fetchProviderModels('anthropic');
+      const models = await settingsService.fetchProviderModels("anthropic");
 
       // Format models for Select component
       const formattedModels = models.map((model: string) => ({
@@ -252,8 +267,10 @@ export const ProviderSettings: React.FC = () => {
       setAvailableModels(formattedModels);
       message.success(`Found ${formattedModels.length} available models`);
     } catch (error) {
-      message.error('Failed to fetch models. Please check your API key and base URL.');
-      console.error('Failed to fetch Anthropic models:', error);
+      message.error(
+        "Failed to fetch models. Please check your API key and base URL.",
+      );
+      console.error("Failed to fetch Anthropic models:", error);
     } finally {
       setFetchingModels(false);
     }
@@ -264,7 +281,7 @@ export const ProviderSettings: React.FC = () => {
       setFetchingModels(true);
 
       // Use backend to fetch models with real API key
-      const models = await settingsService.fetchProviderModels('gemini');
+      const models = await settingsService.fetchProviderModels("gemini");
 
       // Format models for Select component
       const formattedModels = models.map((model: string) => ({
@@ -275,8 +292,10 @@ export const ProviderSettings: React.FC = () => {
       setAvailableModels(formattedModels);
       message.success(`Found ${formattedModels.length} available models`);
     } catch (error) {
-      message.error('Failed to fetch models. Please check your API key and base URL.');
-      console.error('Failed to fetch Gemini models:', error);
+      message.error(
+        "Failed to fetch models. Please check your API key and base URL.",
+      );
+      console.error("Failed to fetch Gemini models:", error);
     } finally {
       setFetchingModels(false);
     }
@@ -294,24 +313,28 @@ export const ProviderSettings: React.FC = () => {
         providers: values.providers || {},
       };
 
-      console.log('Saving provider config:', payload);
+      console.log("Saving provider config:", payload);
       await settingsService.saveProviderConfig(payload);
-      message.success('Configuration saved successfully');
+      message.success("Configuration saved successfully");
 
       // Automatically apply configuration after saving
       try {
         setApplyingConfig(true);
         await settingsService.reloadConfig();
-        message.success('Configuration applied successfully. Changes will take effect for new conversations.');
+        message.success(
+          "Configuration applied successfully. Changes will take effect for new conversations.",
+        );
       } catch (applyError) {
-        message.warning('Configuration saved but failed to apply. Please click "Reload Configuration" manually.');
-        console.error('Failed to apply configuration:', applyError);
+        message.warning(
+          'Configuration saved but failed to apply. Please click "Reload Configuration" manually.',
+        );
+        console.error("Failed to apply configuration:", applyError);
       } finally {
         setApplyingConfig(false);
       }
     } catch (error) {
-      message.error('Failed to save configuration');
-      console.error('Failed to save configuration:', error);
+      message.error("Failed to save configuration");
+      console.error("Failed to save configuration:", error);
     } finally {
       setLoading(false);
     }
@@ -324,13 +347,17 @@ export const ProviderSettings: React.FC = () => {
 
       // Reload provider config in frontend
       // This ensures useActiveModel() returns the updated model
-      const { useProviderStore } = await import('../../../ChatPage/store/slices/providerSlice');
+      const { useProviderStore } = await import(
+        "../../../ChatPage/store/slices/providerSlice"
+      );
       await useProviderStore.getState().loadProviderConfig();
 
-      message.success('Configuration applied successfully. Changes will take effect for new conversations.');
+      message.success(
+        "Configuration applied successfully. Changes will take effect for new conversations.",
+      );
     } catch (error) {
-      message.error('Failed to apply configuration');
-      console.error('Failed to apply configuration:', error);
+      message.error("Failed to apply configuration");
+      console.error("Failed to apply configuration:", error);
     } finally {
       setApplyingConfig(false);
     }
@@ -338,7 +365,7 @@ export const ProviderSettings: React.FC = () => {
 
   const renderProviderFields = () => {
     switch (currentProvider) {
-      case 'openai':
+      case "openai":
         return (
           <>
             <Alert
@@ -349,26 +376,25 @@ export const ProviderSettings: React.FC = () => {
               style={{ marginBottom: 16 }}
             />
             <Form.Item
-              name={['providers', 'openai', 'api_key']}
+              name={["providers", "openai", "api_key"]}
               label="OpenAI API Key"
-              rules={[{ required: true, message: 'Please enter your OpenAI API key' }]}
+              rules={[
+                { required: true, message: "Please enter your OpenAI API key" },
+              ]}
             >
-              <Password
-                placeholder="sk-..."
-                prefix={<KeyOutlined />}
-              />
+              <Password placeholder="sk-..." prefix={<KeyOutlined />} />
             </Form.Item>
             <Form.Item
-              name={['providers', 'openai', 'base_url']}
+              name={["providers", "openai", "base_url"]}
               label="Base URL (Optional)"
               extra="Leave empty to use the default OpenAI API endpoint. Include full path (e.g., /v1) if needed."
             >
               <Input placeholder="https://api.openai.com/v1" />
             </Form.Item>
             <Form.Item
-              name={['providers', 'openai', 'model']}
+              name={["providers", "openai", "model"]}
               label="Default Model"
-              rules={[{ required: true, message: 'Please select a model' }]}
+              rules={[{ required: true, message: "Please select a model" }]}
               extra={
                 <Button
                   type="link"
@@ -377,12 +403,17 @@ export const ProviderSettings: React.FC = () => {
                   loading={fetchingModels}
                   style={{ padding: 0 }}
                 >
-                  {fetchingModels ? 'Fetching models...' : 'Fetch available models from API'}
+                  {fetchingModels
+                    ? "Fetching models..."
+                    : "Fetch available models from API"}
                 </Button>
               }
             >
               <Select placeholder="Select a model" allowClear showSearch>
-                {(availableModels.length > 0 ? availableModels : OPENAI_MODELS).map((model) => (
+                {(availableModels.length > 0
+                  ? availableModels
+                  : OPENAI_MODELS
+                ).map((model) => (
                   <Option key={model.value} value={model.value}>
                     {model.label}
                   </Option>
@@ -392,7 +423,7 @@ export const ProviderSettings: React.FC = () => {
           </>
         );
 
-      case 'anthropic':
+      case "anthropic":
         return (
           <>
             <Alert
@@ -403,26 +434,28 @@ export const ProviderSettings: React.FC = () => {
               style={{ marginBottom: 16 }}
             />
             <Form.Item
-              name={['providers', 'anthropic', 'api_key']}
+              name={["providers", "anthropic", "api_key"]}
               label="Anthropic API Key"
-              rules={[{ required: true, message: 'Please enter your Anthropic API key' }]}
+              rules={[
+                {
+                  required: true,
+                  message: "Please enter your Anthropic API key",
+                },
+              ]}
             >
-              <Password
-                placeholder="sk-ant-..."
-                prefix={<KeyOutlined />}
-              />
+              <Password placeholder="sk-ant-..." prefix={<KeyOutlined />} />
             </Form.Item>
             <Form.Item
-              name={['providers', 'anthropic', 'base_url']}
+              name={["providers", "anthropic", "base_url"]}
               label="Base URL (Optional)"
               extra="Leave empty to use the default Anthropic API endpoint. Include full path (e.g., /v1) if needed."
             >
               <Input placeholder="https://api.anthropic.com/v1" />
             </Form.Item>
             <Form.Item
-              name={['providers', 'anthropic', 'model']}
+              name={["providers", "anthropic", "model"]}
               label="Default Model"
-              rules={[{ required: true, message: 'Please select a model' }]}
+              rules={[{ required: true, message: "Please select a model" }]}
               extra={
                 <Button
                   type="link"
@@ -431,12 +464,17 @@ export const ProviderSettings: React.FC = () => {
                   loading={fetchingModels}
                   style={{ padding: 0 }}
                 >
-                  {fetchingModels ? 'Fetching models...' : 'Fetch available models from API'}
+                  {fetchingModels
+                    ? "Fetching models..."
+                    : "Fetch available models from API"}
                 </Button>
               }
             >
               <Select placeholder="Select a model" allowClear showSearch>
-                {(availableModels.length > 0 ? availableModels : ANTHROPIC_MODELS).map((model) => (
+                {(availableModels.length > 0
+                  ? availableModels
+                  : ANTHROPIC_MODELS
+                ).map((model) => (
                   <Option key={model.value} value={model.value}>
                     {model.label}
                   </Option>
@@ -444,7 +482,7 @@ export const ProviderSettings: React.FC = () => {
               </Select>
             </Form.Item>
             <Form.Item
-              name={['providers', 'anthropic', 'max_tokens']}
+              name={["providers", "anthropic", "max_tokens"]}
               label="Max Tokens (Optional)"
               extra="Maximum number of tokens to generate"
             >
@@ -453,7 +491,7 @@ export const ProviderSettings: React.FC = () => {
           </>
         );
 
-      case 'gemini':
+      case "gemini":
         return (
           <>
             <Alert
@@ -464,26 +502,25 @@ export const ProviderSettings: React.FC = () => {
               style={{ marginBottom: 16 }}
             />
             <Form.Item
-              name={['providers', 'gemini', 'api_key']}
+              name={["providers", "gemini", "api_key"]}
               label="Gemini API Key"
-              rules={[{ required: true, message: 'Please enter your Gemini API key' }]}
+              rules={[
+                { required: true, message: "Please enter your Gemini API key" },
+              ]}
             >
-              <Password
-                placeholder="AIza..."
-                prefix={<KeyOutlined />}
-              />
+              <Password placeholder="AIza..." prefix={<KeyOutlined />} />
             </Form.Item>
             <Form.Item
-              name={['providers', 'gemini', 'base_url']}
+              name={["providers", "gemini", "base_url"]}
               label="Base URL (Optional)"
               extra="Leave empty to use the default Google AI API endpoint. Include full path if needed."
             >
               <Input placeholder="https://generativelanguage.googleapis.com/v1beta" />
             </Form.Item>
             <Form.Item
-              name={['providers', 'gemini', 'model']}
+              name={["providers", "gemini", "model"]}
               label="Default Model"
-              rules={[{ required: true, message: 'Please select a model' }]}
+              rules={[{ required: true, message: "Please select a model" }]}
               extra={
                 <Button
                   type="link"
@@ -492,12 +529,17 @@ export const ProviderSettings: React.FC = () => {
                   loading={fetchingModels}
                   style={{ padding: 0 }}
                 >
-                  {fetchingModels ? 'Fetching models...' : 'Fetch available models from API'}
+                  {fetchingModels
+                    ? "Fetching models..."
+                    : "Fetch available models from API"}
                 </Button>
               }
             >
               <Select placeholder="Select a model" allowClear showSearch>
-                {(availableModels.length > 0 ? availableModels : GEMINI_MODELS).map((model) => (
+                {(availableModels.length > 0
+                  ? availableModels
+                  : GEMINI_MODELS
+                ).map((model) => (
                   <Option key={model.value} value={model.value}>
                     {model.label}
                   </Option>
@@ -507,7 +549,7 @@ export const ProviderSettings: React.FC = () => {
           </>
         );
 
-      case 'copilot':
+      case "copilot":
         return (
           <>
             <Alert
@@ -571,7 +613,7 @@ export const ProviderSettings: React.FC = () => {
             </Card>
 
             <Form.Item
-              name={['providers', 'copilot', 'headless_auth']}
+              name={["providers", "copilot", "headless_auth"]}
               label="Headless Authentication"
               valuePropName="checked"
               extra="Print login URL in console instead of opening browser automatically"
@@ -583,8 +625,13 @@ export const ProviderSettings: React.FC = () => {
               To use GitHub Copilot:
               <ul style={{ marginTop: 8, marginBottom: 0 }}>
                 <li>Ensure you have an active GitHub Copilot subscription</li>
-                <li>Click "Authenticate Copilot" to start the device code flow</li>
-                <li>Follow the instructions in your terminal to complete authentication</li>
+                <li>
+                  Click "Authenticate Copilot" to start the device code flow
+                </li>
+                <li>
+                  Follow the instructions in your terminal to complete
+                  authentication
+                </li>
               </ul>
             </Paragraph>
           </>
@@ -601,13 +648,15 @@ export const ProviderSettings: React.FC = () => {
       loading={loading && !configLoaded}
       extra={
         <Text type="secondary">
-          Current Provider: <Text strong>{PROVIDER_LABELS[currentProvider]}</Text>
+          Current Provider:{" "}
+          <Text strong>{PROVIDER_LABELS[currentProvider]}</Text>
         </Text>
       }
     >
       <Paragraph type="secondary">
-        Configure your preferred LLM provider. Configuration will be saved and applied automatically.
-        Use "Reload Configuration" if you need to manually reload the backend.
+        Configure your preferred LLM provider. Configuration will be saved and
+        applied automatically. Use "Reload Configuration" if you need to
+        manually reload the backend.
       </Paragraph>
 
       <Divider />
@@ -621,7 +670,7 @@ export const ProviderSettings: React.FC = () => {
         <Form.Item
           name="provider"
           label="Active LLM Provider"
-          rules={[{ required: true, message: 'Please select a provider' }]}
+          rules={[{ required: true, message: "Please select a provider" }]}
         >
           <Select onChange={handleProviderChange} size="large">
             {(Object.keys(PROVIDER_LABELS) as ProviderType[]).map((key) => (
@@ -666,7 +715,10 @@ export const ProviderSettings: React.FC = () => {
         open={isDeviceCodeModalVisible}
         onCancel={() => setIsDeviceCodeModalVisible(false)}
         footer={[
-          <Button key="cancel" onClick={() => setIsDeviceCodeModalVisible(false)}>
+          <Button
+            key="cancel"
+            onClick={() => setIsDeviceCodeModalVisible(false)}
+          >
             Cancel
           </Button>,
           <Button
@@ -680,7 +732,7 @@ export const ProviderSettings: React.FC = () => {
         ]}
       >
         {deviceCodeInfo && (
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Space direction="vertical" size="large" style={{ width: "100%" }}>
             <Alert
               message="Browser opened automatically"
               description={
@@ -695,7 +747,7 @@ export const ProviderSettings: React.FC = () => {
 
             {/* Verification URL */}
             <Card size="small">
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <Space direction="vertical" style={{ width: "100%" }}>
                 <Text type="secondary">1. Visit this URL:</Text>
                 <Space>
                   <Text copyable={{ text: deviceCodeInfo.verification_uri }}>
@@ -706,31 +758,54 @@ export const ProviderSettings: React.FC = () => {
             </Card>
 
             {/* User Code */}
-            <Card style={{ textAlign: 'center', background: '#f5f5f5' }}>
-              <Space direction="vertical" style={{ width: '100%' }}>
+            <Card style={{ textAlign: "center", background: "#f5f5f5" }}>
+              <Space direction="vertical" style={{ width: "100%" }}>
                 <Text type="secondary">2. Enter this code:</Text>
                 <Space>
-                  <Text style={{ fontSize: '32px', fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: '4px' }}>
+                  <Text
+                    style={{
+                      fontSize: "32px",
+                      fontFamily: "monospace",
+                      fontWeight: "bold",
+                      letterSpacing: "4px",
+                    }}
+                  >
                     {deviceCodeInfo.user_code}
                   </Text>
                   <Button
-                    icon={copiedUserCode ? <CheckCircleOutlined /> : <CopyOutlined />}
+                    icon={
+                      copiedUserCode ? (
+                        <CheckCircleOutlined />
+                      ) : (
+                        <CopyOutlined />
+                      )
+                    }
                     onClick={handleCopyUserCode}
                     type={copiedUserCode ? "default" : "primary"}
                   >
-                    {copiedUserCode ? 'Copied!' : 'Copy Code'}
+                    {copiedUserCode ? "Copied!" : "Copy Code"}
                   </Button>
                 </Space>
                 <div style={{ marginTop: 8 }}>
-                  <Tag color={timeRemaining < 60 ? 'red' : timeRemaining < 180 ? 'orange' : 'green'}>
-                    ⏱️ Expires in {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                  <Tag
+                    color={
+                      timeRemaining < 60
+                        ? "red"
+                        : timeRemaining < 180
+                          ? "orange"
+                          : "green"
+                    }
+                  >
+                    ⏱️ Expires in {Math.floor(timeRemaining / 60)}:
+                    {(timeRemaining % 60).toString().padStart(2, "0")}
                   </Tag>
                 </div>
               </Space>
             </Card>
 
             <Paragraph type="secondary">
-              After clicking "Continue" on GitHub, click the "I've Completed Authorization" button below.
+              After clicking "Continue" on GitHub, click the "I've Completed
+              Authorization" button below.
             </Paragraph>
           </Space>
         )}

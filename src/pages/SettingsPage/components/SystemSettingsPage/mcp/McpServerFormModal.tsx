@@ -1,4 +1,9 @@
-import { CodeOutlined, FormOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  CodeOutlined,
+  FormOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import {
   Alert,
   Button,
@@ -98,8 +103,7 @@ const toFormValues = (
     envEntries,
     url: transport.type === "sse" ? transport.url : undefined,
     headerEntries,
-    requestTimeoutMs:
-      config.request_timeout_ms || DEFAULT_REQUEST_TIMEOUT_MS,
+    requestTimeoutMs: config.request_timeout_ms || DEFAULT_REQUEST_TIMEOUT_MS,
     healthcheckIntervalMs:
       config.healthcheck_interval_ms || DEFAULT_HEALTHCHECK_INTERVAL_MS,
     allowedTools: config.allowed_tools || [],
@@ -137,19 +141,19 @@ const toServerConfig = (
 
   const transport: TransportConfig =
     values.transportType === "sse"
-      ? {
+      ? ({
           type: "sse",
           url: values.url?.trim() || "",
           headers: entriesToHeaders(values.headerEntries || []),
           connect_timeout_ms: DEFAULT_SSE_CONNECT_TIMEOUT_MS,
-        } satisfies SseTransportConfig
-      : {
+        } satisfies SseTransportConfig)
+      : ({
           type: "stdio",
           command: values.command?.trim() || "",
           args: values.args || [],
           env: entriesToRecord(values.envEntries || []),
           startup_timeout_ms: DEFAULT_STDIO_STARTUP_TIMEOUT_MS,
-        } satisfies StdioTransportConfig;
+        } satisfies StdioTransportConfig);
 
   return {
     id: serverId,
@@ -172,7 +176,11 @@ const formatJson = (config: McpServerConfig | null | undefined): string => {
   return JSON.stringify(config, null, 2);
 };
 
-const validateJson = (json: string): { valid: true; config: McpServerConfig } | { valid: false; error: string } => {
+const validateJson = (
+  json: string,
+):
+  | { valid: true; config: McpServerConfig }
+  | { valid: false; error: string } => {
   try {
     const parsed = JSON.parse(json) as McpServerConfig;
     if (!parsed.id || typeof parsed.id !== "string") {
@@ -183,7 +191,10 @@ const validateJson = (json: string): { valid: true; config: McpServerConfig } | 
     }
     return { valid: true, config: parsed };
   } catch (e) {
-    return { valid: false, error: `Invalid JSON: ${e instanceof Error ? e.message : "Unknown error"}` };
+    return {
+      valid: false,
+      error: `Invalid JSON: ${e instanceof Error ? e.message : "Unknown error"}`,
+    };
   }
 };
 
@@ -329,7 +340,11 @@ export const McpServerFormModal: React.FC<McpServerFormModalProps> = ({
           onChange={(e) => handleJsonChange(e.target.value)}
           rows={20}
           style={{ fontFamily: "monospace", fontSize: 13 }}
-          placeholder={JSON.stringify(createDefaultMcpServerConfig("example-server"), null, 2)}
+          placeholder={JSON.stringify(
+            createDefaultMcpServerConfig("example-server"),
+            null,
+            2,
+          )}
         />
       ) : (
         <Form<McpServerFormValues>
@@ -338,177 +353,199 @@ export const McpServerFormModal: React.FC<McpServerFormModalProps> = ({
           preserve
           initialValues={initialFormValues}
         >
-        <Form.Item
-          name="id"
-          label="Server ID"
-          rules={[
-            { required: true, message: "Server ID is required" },
-            {
-              pattern: /^[a-zA-Z0-9_-]+$/,
-              message: "Use only letters, numbers, underscore, and hyphen",
-            },
-          ]}
-        >
-          <Input
-            placeholder="filesystem"
-            disabled={mode === "edit"}
-            autoComplete="off"
-          />
-        </Form.Item>
-
-        <Form.Item name="name" label="Display Name">
-          <Input placeholder="Filesystem MCP" autoComplete="off" />
-        </Form.Item>
-
-        <Form.Item
-          name="enabled"
-          label="Enabled"
-          valuePropName="checked"
-          extra="Disabled servers stay in config but will not be started."
-        >
-          <Switch />
-        </Form.Item>
-
-        <Form.Item
-          name="transportType"
-          label="Transport Type"
-          rules={[{ required: true, message: "Transport type is required" }]}
-        >
-          <Select
-            options={[
-              { label: "Stdio", value: "stdio" },
-              { label: "SSE", value: "sse" },
+          <Form.Item
+            name="id"
+            label="Server ID"
+            rules={[
+              { required: true, message: "Server ID is required" },
+              {
+                pattern: /^[a-zA-Z0-9_-]+$/,
+                message: "Use only letters, numbers, underscore, and hyphen",
+              },
             ]}
-          />
-        </Form.Item>
+          >
+            <Input
+              placeholder="filesystem"
+              disabled={mode === "edit"}
+              autoComplete="off"
+            />
+          </Form.Item>
 
-        {transportType === "stdio" ? (
-          <>
-            <Form.Item
-              name="command"
-              label="Command"
-              rules={[{ required: true, message: "Command is required" }]}
-            >
-              <Input placeholder="npx" autoComplete="off" />
-            </Form.Item>
+          <Form.Item name="name" label="Display Name">
+            <Input placeholder="Filesystem MCP" autoComplete="off" />
+          </Form.Item>
 
-            <Form.Item name="args" label="Arguments">
-              <Select
-                mode="tags"
-                tokenSeparators={[","]}
-                placeholder="Add an argument and press Enter"
-                open={false}
-              />
-            </Form.Item>
+          <Form.Item
+            name="enabled"
+            label="Enabled"
+            valuePropName="checked"
+            extra="Disabled servers stay in config but will not be started."
+          >
+            <Switch />
+          </Form.Item>
 
-            <Form.List name="envEntries">
-              {(fields, { add, remove }) => (
-                <Space direction="vertical" style={{ width: "100%" }}>
-                  <Space
-                    align="center"
-                    style={{ justifyContent: "space-between", width: "100%" }}
-                  >
-                    <Text strong>Environment Variables</Text>
-                    <Button
-                      icon={<PlusOutlined />}
-                      onClick={() => add({ key: "", value: "" })}
-                      type="dashed"
-                    >
-                      Add Env
-                    </Button>
-                  </Space>
-
-                  {fields.map((field) => (
-                    <Space key={field.key} align="baseline" style={{ display: "flex" }}>
-                      <Form.Item
-                        {...field}
-                        name={[field.name, "key"]}
-                        rules={[{ required: true, message: "Key required" }]}
-                      >
-                        <Input placeholder="MCP_ROOT" autoComplete="off" />
-                      </Form.Item>
-                      <Form.Item {...field} name={[field.name, "value"]}>
-                        <Input placeholder="/Users/me/workspace" autoComplete="off" />
-                      </Form.Item>
-                      <Button
-                        danger
-                        type="text"
-                        icon={<MinusCircleOutlined />}
-                        onClick={() => remove(field.name)}
-                      />
-                    </Space>
-                  ))}
-                </Space>
-              )}
-            </Form.List>
-          </>
-        ) : (
-          <>
-            <Form.Item
-              name="url"
-              label="SSE URL"
-              rules={[
-                { required: true, message: "SSE URL is required" },
-                {
-                  validator: async (_, value: string | undefined) => {
-                    if (!value) {
-                      return;
-                    }
-                    try {
-                      new URL(value);
-                    } catch {
-                      throw new Error("Please enter a valid URL");
-                    }
-                  },
-                },
+          <Form.Item
+            name="transportType"
+            label="Transport Type"
+            rules={[{ required: true, message: "Transport type is required" }]}
+          >
+            <Select
+              options={[
+                { label: "Stdio", value: "stdio" },
+                { label: "SSE", value: "sse" },
               ]}
-            >
-              <Input placeholder="http://localhost:4000/sse" autoComplete="off" />
-            </Form.Item>
+            />
+          </Form.Item>
 
-            <Form.List name="headerEntries">
-              {(fields, { add, remove }) => (
-                <Space direction="vertical" style={{ width: "100%" }}>
-                  <Space
-                    align="center"
-                    style={{ justifyContent: "space-between", width: "100%" }}
-                  >
-                    <Text strong>Headers</Text>
-                    <Button
-                      icon={<PlusOutlined />}
-                      onClick={() => add({ name: "", value: "" })}
-                      type="dashed"
+          {transportType === "stdio" ? (
+            <>
+              <Form.Item
+                name="command"
+                label="Command"
+                rules={[{ required: true, message: "Command is required" }]}
+              >
+                <Input placeholder="npx" autoComplete="off" />
+              </Form.Item>
+
+              <Form.Item name="args" label="Arguments">
+                <Select
+                  mode="tags"
+                  tokenSeparators={[","]}
+                  placeholder="Add an argument and press Enter"
+                  open={false}
+                />
+              </Form.Item>
+
+              <Form.List name="envEntries">
+                {(fields, { add, remove }) => (
+                  <Space direction="vertical" style={{ width: "100%" }}>
+                    <Space
+                      align="center"
+                      style={{ justifyContent: "space-between", width: "100%" }}
                     >
-                      Add Header
-                    </Button>
-                  </Space>
-
-                  {fields.map((field) => (
-                    <Space key={field.key} align="baseline" style={{ display: "flex" }}>
-                      <Form.Item
-                        {...field}
-                        name={[field.name, "name"]}
-                        rules={[{ required: true, message: "Header name required" }]}
-                      >
-                        <Input placeholder="Authorization" autoComplete="off" />
-                      </Form.Item>
-                      <Form.Item {...field} name={[field.name, "value"]}>
-                        <Input placeholder="Bearer token" autoComplete="off" />
-                      </Form.Item>
+                      <Text strong>Environment Variables</Text>
                       <Button
-                        danger
-                        type="text"
-                        icon={<MinusCircleOutlined />}
-                        onClick={() => remove(field.name)}
-                      />
+                        icon={<PlusOutlined />}
+                        onClick={() => add({ key: "", value: "" })}
+                        type="dashed"
+                      >
+                        Add Env
+                      </Button>
                     </Space>
-                  ))}
-                </Space>
-              )}
-            </Form.List>
-          </>
-        )}
-      </Form>
+
+                    {fields.map((field) => (
+                      <Space
+                        key={field.key}
+                        align="baseline"
+                        style={{ display: "flex" }}
+                      >
+                        <Form.Item
+                          {...field}
+                          name={[field.name, "key"]}
+                          rules={[{ required: true, message: "Key required" }]}
+                        >
+                          <Input placeholder="MCP_ROOT" autoComplete="off" />
+                        </Form.Item>
+                        <Form.Item {...field} name={[field.name, "value"]}>
+                          <Input
+                            placeholder="/Users/me/workspace"
+                            autoComplete="off"
+                          />
+                        </Form.Item>
+                        <Button
+                          danger
+                          type="text"
+                          icon={<MinusCircleOutlined />}
+                          onClick={() => remove(field.name)}
+                        />
+                      </Space>
+                    ))}
+                  </Space>
+                )}
+              </Form.List>
+            </>
+          ) : (
+            <>
+              <Form.Item
+                name="url"
+                label="SSE URL"
+                rules={[
+                  { required: true, message: "SSE URL is required" },
+                  {
+                    validator: async (_, value: string | undefined) => {
+                      if (!value) {
+                        return;
+                      }
+                      try {
+                        new URL(value);
+                      } catch {
+                        throw new Error("Please enter a valid URL");
+                      }
+                    },
+                  },
+                ]}
+              >
+                <Input
+                  placeholder="http://localhost:4000/sse"
+                  autoComplete="off"
+                />
+              </Form.Item>
+
+              <Form.List name="headerEntries">
+                {(fields, { add, remove }) => (
+                  <Space direction="vertical" style={{ width: "100%" }}>
+                    <Space
+                      align="center"
+                      style={{ justifyContent: "space-between", width: "100%" }}
+                    >
+                      <Text strong>Headers</Text>
+                      <Button
+                        icon={<PlusOutlined />}
+                        onClick={() => add({ name: "", value: "" })}
+                        type="dashed"
+                      >
+                        Add Header
+                      </Button>
+                    </Space>
+
+                    {fields.map((field) => (
+                      <Space
+                        key={field.key}
+                        align="baseline"
+                        style={{ display: "flex" }}
+                      >
+                        <Form.Item
+                          {...field}
+                          name={[field.name, "name"]}
+                          rules={[
+                            { required: true, message: "Header name required" },
+                          ]}
+                        >
+                          <Input
+                            placeholder="Authorization"
+                            autoComplete="off"
+                          />
+                        </Form.Item>
+                        <Form.Item {...field} name={[field.name, "value"]}>
+                          <Input
+                            placeholder="Bearer token"
+                            autoComplete="off"
+                          />
+                        </Form.Item>
+                        <Button
+                          danger
+                          type="text"
+                          icon={<MinusCircleOutlined />}
+                          onClick={() => remove(field.name)}
+                        />
+                      </Space>
+                    ))}
+                  </Space>
+                )}
+              </Form.List>
+            </>
+          )}
+        </Form>
       )}
     </Modal>
   );

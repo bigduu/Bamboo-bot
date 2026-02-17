@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useProviderStore } from '../store/slices/providerSlice';
+import { useMemo } from "react";
+import { useProviderStore } from "../store/slices/providerSlice";
 
 /**
  * Hook to get the active model for the current provider
@@ -33,7 +33,7 @@ export function useActiveModel(): string | undefined {
     }
 
     // Return the model if it exists
-    if ('model' in config && config.model) {
+    if ("model" in config && config.model) {
       return config.model;
     }
 
@@ -53,9 +53,12 @@ export function useActiveModelInfo() {
   const currentProvider = useProviderStore((state) => state.currentProvider);
   const providerConfig = useProviderStore((state) => state.providerConfig);
 
-  return useMemo(() => ({
-    activeModel,
-    currentProvider,
-    providerConfig,
-  }), [activeModel, currentProvider, providerConfig]);
+  return useMemo(
+    () => ({
+      activeModel,
+      currentProvider,
+      providerConfig,
+    }),
+    [activeModel, currentProvider, providerConfig],
+  );
 }

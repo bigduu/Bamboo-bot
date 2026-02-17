@@ -44,7 +44,7 @@ interface MessageInputProps {
   onImagesChange?: (images: ImageFile[]) => void;
   allowImages?: boolean;
   isWorkflowSelectorVisible?: boolean; // Prevent Enter key handling when workflow selector is open
-  textAreaRef?: React.RefObject<TextAreaRef>;  // Add textAreaRef prop
+  textAreaRef?: React.RefObject<TextAreaRef>; // Add textAreaRef prop
   validateMessage?: (message: string) => {
     isValid: boolean;
     errorMessage?: string;
@@ -67,7 +67,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onImagesChange,
   allowImages = true,
   isWorkflowSelectorVisible = false,
-  textAreaRef: externalTextAreaRef,  // External ref from parent
+  textAreaRef: externalTextAreaRef, // External ref from parent
   validateMessage,
   onAttachmentsAdded,
   onWorkflowCommandChange,
@@ -85,7 +85,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   } = interaction;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const internalTextAreaRef = useRef<TextAreaRef>(null);
-  const textAreaRef = externalTextAreaRef || internalTextAreaRef;  // Use external ref if provided
+  const textAreaRef = externalTextAreaRef || internalTextAreaRef; // Use external ref if provided
   const highlightOverlayRef = useRef<HTMLDivElement>(null);
   const { token } = theme.useToken();
   const [messageApi, contextHolder] = message.useMessage();

@@ -176,11 +176,7 @@ const SystemSettingsPage = ({
             {
               key: "config",
               label: "Config",
-              children: (
-                <SystemSettingsConfigTab
-                  msgApi={msgApi}
-                />
-              ),
+              children: <SystemSettingsConfigTab msgApi={msgApi} />,
             },
             {
               key: "prompts",

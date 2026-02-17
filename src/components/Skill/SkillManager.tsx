@@ -33,7 +33,7 @@ export const SkillManager = () => {
   // Local state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(
-    undefined
+    undefined,
   );
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -78,7 +78,7 @@ export const SkillManager = () => {
 
   // Get unique categories
   const categories = Array.from(
-    new Set(skills.map((skill) => skill.category))
+    new Set(skills.map((skill) => skill.category)),
   ).sort();
 
   // Filter skills
@@ -127,14 +127,18 @@ export const SkillManager = () => {
             >
               Refresh
             </Button>
-            <span style={{ fontSize: "12px", color: "#8c8c8c", marginLeft: "auto" }}>
+            <span
+              style={{ fontSize: "12px", color: "#8c8c8c", marginLeft: "auto" }}
+            >
               Last updated: {formatLastRefresh()}
             </span>
           </div>
         }
       >
         <div style={{ marginBottom: "16px", color: "#8c8c8c" }}>
-          Skills are read-only. Edit `~/.bamboo/skills/&lt;skill-name&gt;/SKILL.md` and refresh to apply changes. Auto-refresh every 30s.
+          Skills are read-only. Edit
+          `~/.bamboo/skills/&lt;skill-name&gt;/SKILL.md` and refresh to apply
+          changes. Auto-refresh every 30s.
         </div>
         {/* Filters */}
         <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
@@ -187,9 +191,7 @@ export const SkillManager = () => {
               dataSource={filteredSkills}
               renderItem={(skill) => (
                 <List.Item>
-                  <SkillCard
-                    skill={skill}
-                  />
+                  <SkillCard skill={skill} />
                 </List.Item>
               )}
             />

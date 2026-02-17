@@ -1,6 +1,9 @@
 import { Card, Col, Row, Skeleton, Statistic, theme } from "antd";
 
-import type { MetricsSummary, SessionMetrics } from "../../../../../services/metrics";
+import type {
+  MetricsSummary,
+  SessionMetrics,
+} from "../../../../../services/metrics";
 
 const { useToken } = theme;
 
@@ -22,7 +25,8 @@ const formatDuration = (durationMs: number): string => {
 
 const averageSessionDuration = (sessions: SessionMetrics[]): number => {
   const completed = sessions.filter(
-    (session) => typeof session.duration_ms === "number" && session.duration_ms > 0,
+    (session) =>
+      typeof session.duration_ms === "number" && session.duration_ms > 0,
   );
 
   if (completed.length === 0) {
@@ -37,7 +41,11 @@ const averageSessionDuration = (sessions: SessionMetrics[]): number => {
   return Math.floor(total / completed.length);
 };
 
-const MetricCards: React.FC<MetricCardsProps> = ({ summary, sessions, loading }) => {
+const MetricCards: React.FC<MetricCardsProps> = ({
+  summary,
+  sessions,
+  loading,
+}) => {
   const { token } = useToken();
 
   if (loading) {
@@ -79,7 +87,9 @@ const MetricCards: React.FC<MetricCardsProps> = ({ summary, sessions, loading })
         <Card size="small">
           <Statistic
             title="Avg Session Duration"
-            value={averageDurationMs > 0 ? formatDuration(averageDurationMs) : "-"}
+            value={
+              averageDurationMs > 0 ? formatDuration(averageDurationMs) : "-"
+            }
           />
         </Card>
       </Col>

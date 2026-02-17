@@ -138,7 +138,10 @@ export class ToolService {
       request,
     );
     try {
-      const data = await apiClient.post<{ result: string }>("tools/execute", request);
+      const data = await apiClient.post<{ result: string }>(
+        "tools/execute",
+        request,
+      );
       const structuredResult: ToolExecutionResult = JSON.parse(data.result);
       console.log(
         "[ToolService] executeTool: Parsed structured result:",

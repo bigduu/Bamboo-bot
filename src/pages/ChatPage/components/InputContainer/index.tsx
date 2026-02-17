@@ -1,4 +1,11 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense, useRef } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  lazy,
+  Suspense,
+  useRef,
+} from "react";
 import { Space, theme, Tag, Alert, message as antdMessage, Spin } from "antd";
 import type { TextAreaRef } from "antd/es/input/TextArea";
 import { ToolOutlined, RobotOutlined } from "@ant-design/icons";
@@ -36,9 +43,9 @@ export type WorkflowDraft = {
   name: string;
   content: string;
   createdAt: string;
-  type?: 'workflow' | 'skill' | 'mcp';  // Add command type
-  displayName?: string;  // Add display name for better prompts
-  category?: string;  // Add category for skills
+  type?: "workflow" | "skill" | "mcp"; // Add command type
+  displayName?: string; // Add display name for better prompts
+  category?: string; // Add category for skills
 };
 
 interface InputContainerProps {
@@ -52,7 +59,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
 }) => {
   const [content, setContent] = useState("");
   const [referenceText, setReferenceText] = useState<string | null>(null);
-  const textAreaRef = useRef<TextAreaRef>(null);  // Add ref for cursor position
+  const textAreaRef = useRef<TextAreaRef>(null); // Add ref for cursor position
   const { token } = useToken();
   const currentChatId = useAppStore((state) => state.currentChatId);
   const currentChat = useAppStore(selectCurrentChat);
@@ -64,7 +71,11 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   const setProcessing = useAppStore((state) => state.setProcessing);
   const activeModel = useActiveModel();
 
-  const { sendMessage, cancel: cancelMessage, agentAvailable } = useMessageStreaming({
+  const {
+    sendMessage,
+    cancel: cancelMessage,
+    agentAvailable,
+  } = useMessageStreaming({
     currentChat,
     addMessage,
     setProcessing,
@@ -84,7 +95,10 @@ export const InputContainer: React.FC<InputContainerProps> = ({
       customEvent.detail.handled = true;
       const contentValue = customEvent.detail?.content;
 
-      if (typeof contentValue !== "string" || contentValue.trim().length === 0) {
+      if (
+        typeof contentValue !== "string" ||
+        contentValue.trim().length === 0
+      ) {
         customEvent.detail?.reject?.(
           new Error("External send message content is empty"),
         );
@@ -100,7 +114,10 @@ export const InputContainer: React.FC<InputContainerProps> = ({
         });
     };
 
-    window.addEventListener(CHAT_SEND_MESSAGE_EVENT, handleExternalSend as EventListener);
+    window.addEventListener(
+      CHAT_SEND_MESSAGE_EVENT,
+      handleExternalSend as EventListener,
+    );
 
     return () => {
       window.removeEventListener(
@@ -184,7 +201,11 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   // Agent status indicator config
   const agentStatusConfig = useMemo(() => {
     if (!activeModel) {
-      return { color: "warning", icon: <RobotOutlined />, text: "Loading Model..." };
+      return {
+        color: "warning",
+        icon: <RobotOutlined />,
+        text: "Loading Model...",
+      };
     }
     if (agentAvailable === null) {
       return { color: "default", icon: <RobotOutlined />, text: "Checking..." };
@@ -231,7 +252,13 @@ export const InputContainer: React.FC<InputContainerProps> = ({
       {contextHolder}
 
       {/* Agent Status Indicator */}
-      <div style={{ marginBottom: token.marginXS, display: "flex", justifyContent: "flex-end" }}>
+      <div
+        style={{
+          marginBottom: token.marginXS,
+          display: "flex",
+          justifyContent: "flex-end",
+        }}
+      >
         <Tag
           color={agentStatusConfig.color}
           icon={agentStatusConfig.icon}

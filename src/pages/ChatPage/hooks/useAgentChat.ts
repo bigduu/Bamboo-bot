@@ -1,5 +1,9 @@
 import { useCallback, useRef } from "react";
-import { AgentClient, AgentEventHandlers, AgentEvent } from "../services/AgentService";
+import {
+  AgentClient,
+  AgentEventHandlers,
+  AgentEvent,
+} from "../services/AgentService";
 import { streamingMessageBus } from "../utils/streamingMessageBus";
 
 interface UseAgentChatParams {
@@ -44,7 +48,7 @@ export const useAgentChat = ({
         const streamingMessageId = `streaming-${chatId}`;
         streamingMessageIdRef.current = streamingMessageId;
         streamingContentRef.current = "";
-        
+
         streamingMessageBus.publish({
           chatId,
           messageId: streamingMessageId,
@@ -52,10 +56,13 @@ export const useAgentChat = ({
         });
 
         // Track tool calls for this streaming session
-        const toolCallsInProgress = new Map<string, {
-          name: string;
-          args: Record<string, unknown>;
-        }>();
+        const toolCallsInProgress = new Map<
+          string,
+          {
+            name: string;
+            args: Record<string, unknown>;
+          }
+        >();
 
         // Step 3: Stream events from Agent Server
         const handlers: AgentEventHandlers = {
@@ -68,9 +75,13 @@ export const useAgentChat = ({
             });
           },
 
-          onToolStart: (toolCallId: string, toolName: string, args: Record<string, unknown>) => {
+          onToolStart: (
+            toolCallId: string,
+            toolName: string,
+            args: Record<string, unknown>,
+          ) => {
             toolCallsInProgress.set(toolCallId, { name: toolName, args });
-            
+
             // Add tool call indicator to streaming content
             const toolIndicator = `\n\n🔧 **Using tool**: ${toolName}\n`;
             streamingContentRef.current += toolIndicator;
@@ -81,16 +92,19 @@ export const useAgentChat = ({
             });
           },
 
-          onToolComplete: (toolCallId: string, result: AgentEvent["result"]) => {
+          onToolComplete: (
+            toolCallId: string,
+            result: AgentEvent["result"],
+          ) => {
             const toolCall = toolCallsInProgress.get(toolCallId);
             if (toolCall) {
               toolCallsInProgress.delete(toolCallId);
-              
+
               // Add tool result indicator
               const successIcon = result?.success ? "✅" : "❌";
               const resultPreview = result?.result?.substring(0, 200) || "";
               const resultIndicator = `${successIcon} **Result**: \`\`\`\n${resultPreview}\n\`\`\`\n\n`;
-              
+
               streamingContentRef.current += resultIndicator;
               streamingMessageBus.publish({
                 chatId,
@@ -102,7 +116,7 @@ export const useAgentChat = ({
 
           onToolError: (toolCallId: string, error: string) => {
             toolCallsInProgress.delete(toolCallId);
-            
+
             const errorIndicator = `\n\n❌ **Tool Error**: ${error}\n\n`;
             streamingContentRef.current += errorIndicator;
             streamingMessageBus.publish({
@@ -126,7 +140,7 @@ export const useAgentChat = ({
                 },
               });
             }
-            
+
             // Clear streaming state
             streamingMessageIdRef.current = null;
             streamingContentRef.current = "";
@@ -136,9 +150,10 @@ export const useAgentChat = ({
             console.error("Agent error:", errorMessage);
 
             // Check if it's a Copilot authentication error
-            const isAuthError = errorMessage.includes("Not authenticated") ||
-                               errorMessage.includes("Authentication error") ||
-                               errorMessage.includes("Please run authenticate()");
+            const isAuthError =
+              errorMessage.includes("Not authenticated") ||
+              errorMessage.includes("Authentication error") ||
+              errorMessage.includes("Please run authenticate()");
 
             let errorContent: string;
 
@@ -176,12 +191,11 @@ After authentication, start a new conversation.`;
         await clientRef.current.streamEvents(
           session_id,
           handlers,
-          abortControllerRef.current
+          abortControllerRef.current,
         );
-
       } catch (error) {
         console.error("Failed to send message:", error);
-        
+
         await addMessage(chatId, {
           id: `error-${Date.now()}`,
           role: "assistant",
@@ -189,17 +203,17 @@ After authentication, start a new conversation.`;
           createdAt: new Date().toISOString(),
           isError: true,
         });
-        
+
         streamingMessageIdRef.current = null;
       }
     },
-    [chatId, addMessage]
+    [chatId, addMessage],
   );
 
   const stopGeneration = useCallback(async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      
+
       // Also tell the server to stop
       try {
         const streamingId = streamingMessageIdRef.current;
