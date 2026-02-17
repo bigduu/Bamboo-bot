@@ -257,4 +257,9 @@ impl McpProtocolClient {
         let mut rx = self.notification_rx.write().await;
         rx.try_recv().ok()
     }
+
+    pub async fn is_connected(&self) -> bool {
+        let transport = self.transport.read().await;
+        transport.is_connected()
+    }
 }

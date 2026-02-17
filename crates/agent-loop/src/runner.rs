@@ -18,6 +18,7 @@ use agent_metrics::{
     MetricsCollector, RoundStatus as MetricsRoundStatus, SessionStatus as MetricsSessionStatus,
     TokenUsage as MetricsTokenUsage,
 };
+use agent_tools::CreateTodoListTool;
 use agent_tools::guide::{context::GuideBuildContext, EnhancedPromptBuilder};
 
 use crate::config::AgentLoopConfig;
@@ -472,45 +473,15 @@ pub async fn run_agent_loop_with_config(
                         if let Ok(args) =
                             serde_json::from_str::<serde_json::Value>(&tool_call.function.arguments)
                         {
-                            if let (Some(title), Some(items)) =
-                                (args["title"].as_str(), args["items"].as_array())
+                            if let Ok(todo_list) =
+                                CreateTodoListTool::todo_list_from_args(&args, &session_id)
                             {
-                                let todo_items: Vec<agent_core::TodoItem> = items
-                                    .iter()
-                                    .filter_map(|item| {
-                                        let id = item["id"].as_str()?.to_string();
-                                        let description = item["description"].as_str()?.to_string();
-                                        let depends_on: Vec<String> = item["depends_on"]
-                                            .as_array()
-                                            .map(|arr| {
-                                                arr.iter()
-                                                    .filter_map(|v| v.as_str().map(String::from))
-                                                    .collect()
-                                            })
-                                            .unwrap_or_default();
-                                        Some(agent_core::TodoItem {
-                                            id,
-                                            description,
-                                            status: agent_core::TodoItemStatus::Pending,
-                                            depends_on,
-                                            notes: String::new(),
-                                        })
-                                    })
-                                    .collect();
-
-                                let todo_list = agent_core::TodoList {
-                                    session_id: session_id.clone(),
-                                    title: title.to_string(),
-                                    items: todo_items.clone(),
-                                    created_at: chrono::Utc::now(),
-                                    updated_at: chrono::Utc::now(),
-                                };
                                 session.set_todo_list(todo_list.clone());
                                 log::info!(
                                     "[{}] Todo list '{}' created with {} items",
                                     session_id,
-                                    title,
-                                    items.len()
+                                    todo_list.title,
+                                    todo_list.items.len()
                                 );
 
                                 // Save session to persist todo list
@@ -527,7 +498,9 @@ pub async fn run_agent_loop_with_config(
 
                                 // Emit event for frontend
                                 let _ = event_tx
-                                    .send(AgentEvent::TodoListUpdated { todo_list: todo_list.clone() })
+                                    .send(AgentEvent::TodoListUpdated {
+                                        todo_list: todo_list.clone(),
+                                    })
                                     .await;
 
                                 // IMPORTANT: Re-initialize TodoLoopContext from session
