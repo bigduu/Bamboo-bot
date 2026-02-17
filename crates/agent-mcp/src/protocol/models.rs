@@ -164,3 +164,211 @@ pub struct McpToolCallResult {
     #[serde(default)]
     pub is_error: bool,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_json_rpc_request() {
+        let request = JsonRpcRequest::new(1, "test", Some(serde_json::json!({"key": "value"})));
+        assert_eq!(request.jsonrpc, "2.0");
+        assert_eq!(request.id, 1);
+        assert_eq!(request.method, "test");
+        assert!(request.params.is_some());
+    }
+
+    #[test]
+    fn test_json_rpc_request_serialization() {
+        let request = JsonRpcRequest::new(1, "test", None);
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"jsonrpc\":\"2.0\""));
+        assert!(json.contains("\"id\":1"));
+        assert!(json.contains("\"method\":\"test\""));
+    }
+
+    #[test]
+    fn test_json_rpc_response_success() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"result":{"status":"ok"}}"#;
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.jsonrpc, "2.0");
+        assert_eq!(response.id, 1);
+        assert!(response.result.is_some());
+        assert!(response.error.is_none());
+    }
+
+    #[test]
+    fn test_json_rpc_response_error() {
+        let json = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Invalid Request"}}"#;
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.jsonrpc, "2.0");
+        assert_eq!(response.id, 1);
+        assert!(response.result.is_none());
+        assert!(response.error.is_some());
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32600);
+        assert_eq!(error.message, "Invalid Request");
+    }
+
+    #[test]
+    fn test_json_rpc_notification() {
+        let json = r#"{"jsonrpc":"2.0","method":"update","params":{"count":1}}"#;
+        let notification: JsonRpcNotification = serde_json::from_str(json).unwrap();
+        assert_eq!(notification.jsonrpc, "2.0");
+        assert_eq!(notification.method, "update");
+        assert!(notification.params.is_some());
+    }
+
+    #[test]
+    fn test_mcp_initialize_request_default() {
+        let request = McpInitializeRequest::default();
+        assert_eq!(request.protocol_version, "2024-11-05");
+        assert_eq!(request.client_info.name, "bamboo-agent");
+    }
+
+    #[test]
+    fn test_mcp_initialize_request_serialization() {
+        let request = McpInitializeRequest::default();
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("protocolVersion"));
+        assert!(json.contains("bamboo-agent"));
+    }
+
+    #[test]
+    fn test_mcp_initialize_result() {
+        let json = r#"{
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "serverInfo": {
+                "name": "test-server",
+                "version": "1.0.0"
+            }
+        }"#;
+        let result: McpInitializeResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.protocol_version, "2024-11-05");
+        assert_eq!(result.server_info.name, "test-server");
+        assert_eq!(result.server_info.version, "1.0.0");
+    }
+
+    #[test]
+    fn test_client_capabilities_default() {
+        let caps = ClientCapabilities::default();
+        assert!(caps.experimental.is_none());
+        assert!(caps.sampling.is_none());
+    }
+
+    #[test]
+    fn test_server_capabilities_default() {
+        let caps = ServerCapabilities::default();
+        assert!(caps.experimental.is_none());
+        assert!(caps.tools.is_none());
+    }
+
+    #[test]
+    fn test_tools_capability() {
+        let caps = ToolsCapability {
+            list_changed: true,
+        };
+        assert!(caps.list_changed);
+    }
+
+    #[test]
+    fn test_prompts_capability() {
+        let caps = PromptsCapability {
+            list_changed: false,
+        };
+        assert!(!caps.list_changed);
+    }
+
+    #[test]
+    fn test_resources_capability() {
+        let caps = ResourcesCapability {
+            subscribe: true,
+            list_changed: false,
+        };
+        assert!(caps.subscribe);
+        assert!(!caps.list_changed);
+    }
+
+    #[test]
+    fn test_implementation() {
+        let impl_info = Implementation {
+            name: "test".to_string(),
+            version: "1.0.0".to_string(),
+        };
+        assert_eq!(impl_info.name, "test");
+        assert_eq!(impl_info.version, "1.0.0");
+    }
+
+    #[test]
+    fn test_mcp_tool_list_result() {
+        let json = r#"{
+            "tools": [
+                {
+                    "name": "test_tool",
+                    "description": "A test tool",
+                    "inputSchema": {"type": "object"}
+                }
+            ]
+        }"#;
+        let result: McpToolListResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.tools.len(), 1);
+        assert_eq!(result.tools[0].name, "test_tool");
+        assert_eq!(result.tools[0].description, "A test tool");
+    }
+
+    #[test]
+    fn test_mcp_tool_info() {
+        let tool = McpToolInfo {
+            name: "read_file".to_string(),
+            description: "Read a file".to_string(),
+            input_schema: Some(serde_json::json!({"type": "object"})),
+        };
+        assert_eq!(tool.name, "read_file");
+        assert_eq!(tool.description, "Read a file");
+        assert!(tool.input_schema.is_some());
+    }
+
+    #[test]
+    fn test_mcp_tool_call_request() {
+        let request = McpToolCallRequest {
+            name: "test_tool".to_string(),
+            arguments: Some(serde_json::json!({"path": "/test"})),
+        };
+        assert_eq!(request.name, "test_tool");
+        assert!(request.arguments.is_some());
+    }
+
+    #[test]
+    fn test_mcp_tool_call_request_serialization() {
+        let request = McpToolCallRequest {
+            name: "test".to_string(),
+            arguments: Some(serde_json::json!({"key": "value"})),
+        };
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"name\":\"test\""));
+        assert!(json.contains("\"arguments\""));
+    }
+
+    #[test]
+    fn test_mcp_tool_call_result() {
+        let result = McpToolCallResult {
+            content: vec![],
+            is_error: false,
+        };
+        assert!(!result.is_error);
+        assert!(result.content.is_empty());
+    }
+
+    #[test]
+    fn test_json_rpc_error() {
+        let error = JsonRpcError {
+            code: -32600,
+            message: "Invalid Request".to_string(),
+            data: Some(serde_json::json!({"details": "test"})),
+        };
+        assert_eq!(error.code, -32600);
+        assert_eq!(error.message, "Invalid Request");
+        assert!(error.data.is_some());
+    }
+}

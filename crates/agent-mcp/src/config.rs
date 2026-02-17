@@ -154,3 +154,248 @@ fn default_initial_backoff() -> u64 {
 fn default_max_backoff() -> u64 {
     30000
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mcp_config_default() {
+        let config = McpConfig::default();
+        assert_eq!(config.version, 1);
+        assert!(config.servers.is_empty());
+    }
+
+    #[test]
+    fn test_mcp_config_deserialization() {
+        let json = r#"{"version": 2, "servers": []}"#;
+        let config: McpConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.version, 2);
+        assert!(config.servers.is_empty());
+    }
+
+    #[test]
+    fn test_mcp_config_default_version() {
+        let json = r#"{"servers": []}"#;
+        let config: McpConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.version, 1);
+    }
+
+    #[test]
+    fn test_mcp_server_config_minimal() {
+        let json = r#"{
+            "id": "test-server",
+            "transport": {
+                "type": "stdio",
+                "command": "node"
+            }
+        }"#;
+        let config: McpServerConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.id, "test-server");
+        assert!(config.enabled); // default
+        assert_eq!(config.request_timeout_ms, 60000); // default
+        assert_eq!(config.healthcheck_interval_ms, 30000); // default
+        assert!(config.reconnect.enabled); // default
+        assert!(config.allowed_tools.is_empty());
+        assert!(config.denied_tools.is_empty());
+    }
+
+    #[test]
+    fn test_mcp_server_config_full() {
+        let json = r#"{
+            "id": "test-server",
+            "name": "Test Server",
+            "enabled": false,
+            "transport": {
+                "type": "stdio",
+                "command": "node",
+                "args": ["server.js"],
+                "cwd": "/app",
+                "env": {"NODE_ENV": "production"},
+                "startup_timeout_ms": 30000
+            },
+            "request_timeout_ms": 120000,
+            "healthcheck_interval_ms": 60000,
+            "reconnect": {
+                "enabled": true,
+                "initial_backoff_ms": 2000,
+                "max_backoff_ms": 60000,
+                "max_attempts": 5
+            },
+            "allowed_tools": ["tool1", "tool2"],
+            "denied_tools": ["tool3"]
+        }"#;
+        let config: McpServerConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.id, "test-server");
+        assert_eq!(config.name, Some("Test Server".to_string()));
+        assert!(!config.enabled);
+        assert_eq!(config.request_timeout_ms, 120000);
+        assert_eq!(config.healthcheck_interval_ms, 60000);
+        assert!(config.reconnect.enabled);
+        assert_eq!(config.reconnect.initial_backoff_ms, 2000);
+        assert_eq!(config.reconnect.max_backoff_ms, 60000);
+        assert_eq!(config.reconnect.max_attempts, 5);
+        assert_eq!(config.allowed_tools, vec!["tool1", "tool2"]);
+        assert_eq!(config.denied_tools, vec!["tool3"]);
+    }
+
+    #[test]
+    fn test_stdio_config() {
+        let json = r#"{
+            "type": "stdio",
+            "command": "python",
+            "args": ["-m", "server"],
+            "cwd": "/home/user",
+            "env": {"DEBUG": "1"},
+            "startup_timeout_ms": 15000
+        }"#;
+        let config: TransportConfig = serde_json::from_str(json).unwrap();
+        match config {
+            TransportConfig::Stdio(stdio) => {
+                assert_eq!(stdio.command, "python");
+                assert_eq!(stdio.args, vec!["-m", "server"]);
+                assert_eq!(stdio.cwd, Some("/home/user".to_string()));
+                assert_eq!(stdio.env.get("DEBUG"), Some(&"1".to_string()));
+                assert_eq!(stdio.startup_timeout_ms, 15000);
+            }
+            _ => panic!("Expected Stdio transport"),
+        }
+    }
+
+    #[test]
+    fn test_stdio_config_minimal() {
+        let json = r#"{
+            "type": "stdio",
+            "command": "node"
+        }"#;
+        let config: TransportConfig = serde_json::from_str(json).unwrap();
+        match config {
+            TransportConfig::Stdio(stdio) => {
+                assert_eq!(stdio.command, "node");
+                assert!(stdio.args.is_empty());
+                assert!(stdio.cwd.is_none());
+                assert!(stdio.env.is_empty());
+                assert_eq!(stdio.startup_timeout_ms, 20000); // default
+            }
+            _ => panic!("Expected Stdio transport"),
+        }
+    }
+
+    #[test]
+    fn test_sse_config() {
+        let json = r#"{
+            "type": "sse",
+            "url": "http://localhost:8080/sse",
+            "headers": [
+                {"name": "Authorization", "value": "Bearer token123"}
+            ],
+            "connect_timeout_ms": 5000
+        }"#;
+        let config: TransportConfig = serde_json::from_str(json).unwrap();
+        match config {
+            TransportConfig::Sse(sse) => {
+                assert_eq!(sse.url, "http://localhost:8080/sse");
+                assert_eq!(sse.headers.len(), 1);
+                assert_eq!(sse.headers[0].name, "Authorization");
+                assert_eq!(sse.headers[0].value, "Bearer token123");
+                assert_eq!(sse.connect_timeout_ms, 5000);
+            }
+            _ => panic!("Expected SSE transport"),
+        }
+    }
+
+    #[test]
+    fn test_sse_config_minimal() {
+        let json = r#"{
+            "type": "sse",
+            "url": "http://localhost:8080/sse"
+        }"#;
+        let config: TransportConfig = serde_json::from_str(json).unwrap();
+        match config {
+            TransportConfig::Sse(sse) => {
+                assert_eq!(sse.url, "http://localhost:8080/sse");
+                assert!(sse.headers.is_empty());
+                assert_eq!(sse.connect_timeout_ms, 10000); // default
+            }
+            _ => panic!("Expected SSE transport"),
+        }
+    }
+
+    #[test]
+    fn test_reconnect_config_default() {
+        let config = ReconnectConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.initial_backoff_ms, 1000);
+        assert_eq!(config.max_backoff_ms, 30000);
+        assert_eq!(config.max_attempts, 0); // unlimited
+    }
+
+    #[test]
+    fn test_reconnect_config_unlimited_attempts() {
+        let json = r#"{
+            "enabled": true,
+            "initial_backoff_ms": 500,
+            "max_backoff_ms": 10000
+        }"#;
+        let config: ReconnectConfig = serde_json::from_str(json).unwrap();
+        assert!(config.enabled);
+        assert_eq!(config.initial_backoff_ms, 500);
+        assert_eq!(config.max_backoff_ms, 10000);
+        assert_eq!(config.max_attempts, 0);
+    }
+
+    #[test]
+    fn test_reconnect_config_disabled() {
+        let json = r#"{"enabled": false}"#;
+        let config: ReconnectConfig = serde_json::from_str(json).unwrap();
+        assert!(!config.enabled);
+    }
+
+    #[test]
+    fn test_header_config() {
+        let header = HeaderConfig {
+            name: "Content-Type".to_string(),
+            value: "application/json".to_string(),
+        };
+        assert_eq!(header.name, "Content-Type");
+        assert_eq!(header.value, "application/json");
+    }
+
+    #[test]
+    fn test_full_mcp_config() {
+        let json = r#"{
+            "version": 1,
+            "servers": [
+                {
+                    "id": "fs-server",
+                    "transport": {
+                        "type": "stdio",
+                        "command": "mcp-server-filesystem"
+                    }
+                },
+                {
+                    "id": "web-server",
+                    "transport": {
+                        "type": "sse",
+                        "url": "http://localhost:3000/sse"
+                    }
+                }
+            ]
+        }"#;
+        let config: McpConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.servers.len(), 2);
+        assert_eq!(config.servers[0].id, "fs-server");
+        assert_eq!(config.servers[1].id, "web-server");
+    }
+
+    #[test]
+    fn test_server_config_disabled() {
+        let json = r#"{
+            "id": "disabled-server",
+            "enabled": false,
+            "transport": {"type": "stdio", "command": "node"}
+        }"#;
+        let config: McpServerConfig = serde_json::from_str(json).unwrap();
+        assert!(!config.enabled);
+    }
+}

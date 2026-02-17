@@ -344,6 +344,7 @@ dependencies = [
  "dashmap",
  "eventsource-stream",
  "futures",
+ "mockall",
  "parking_lot 0.12.5",
  "reqwest 0.12.28",
  "serde",
