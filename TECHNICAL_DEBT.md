@@ -1,105 +1,40 @@
-# Technical Debt - Architectural Concerns & Design Decisions
-
-This document tracks architectural issues and design decisions that require team discussion before implementation.
+# Technical Debt - Remaining Issues
 
 **Last Updated:** 2026-02-17
-**Total Issues:** 15 (down from 94)
-**Status:** 43 warnings remaining (mostly dead code in agent-server/web_service)
+**Status:** After architecture fixes and dependency cleanup
 
 ---
 
-## 🏗️ HIGH PRIORITY - Affects Public API
+## ✅ RECENTLY RESOLVED
 
-### 1. Duplicate Type Definitions in agent-mcp
+### Architecture Fixes (2026-02-17)
+1. ✅ **MutexGuard across await** - Fixed in commit 31ab04c
+   - Converted to tokio::sync::Mutex
+   - All 15+ methods now async-safe
 
-**Location:** `crates/agent-mcp/src/types.rs` vs `crates/agent-mcp/src/protocol/models.rs`
+2. ✅ **Duplicate Type Definitions** - Fixed in commit 31ab04c
+   - Removed 41 lines of duplicate code
+   - Established single source of truth
 
-**Issue:**
-Two identical enums exist:
-- `types::McpContentItem` - exposed to users of the crate
-- `protocol::models::McpContentItem` - used for protocol serialization
+3. ✅ **Endpoints Visibility** - Fixed in commit 31ab04c
+   - Made Endpoints public
+   - API consistency achieved
 
-Same issue with `McpResource` vs `McpResourceInfo`.
+4. ✅ **Too Many Parameters** - Fixed in commit 31ab04c
+   - Created ProcessRegistrationConfig struct
+   - Reduced from 8-9 to 1-2 parameters
 
-**Current State:**
-```rust
-// lib.rs:20
-pub use protocol::*;  // Exports protocol::models::McpContentItem
-// lib.rs:23
-pub use types::*;     // Also exports types::McpContentItem
-```
-Causes compiler warning: "ambiguous glob re-exports"
-
-**Impact:**
-- Maintenance burden (double the code to update)
-- Runtime overhead (unnecessary conversions)
-- Potential for type mismatches
-- API confusion for users
-
-**Options:**
-
-**Option A: Single Source of Truth (Recommended)**
-1. Keep `types::McpContentItem` as authoritative definition
-2. Make `protocol::models` use these types via re-export
-3. Remove duplicate definitions
-4. Update serde attributes as needed
-
-**Option B: Explicit Re-exports**
-1. Remove one glob re-export in `lib.rs`
-2. Explicitly re-export only needed types from each module
-3. Keep both type definitions but add `From` traits for conversion
-
-**Option C: Separate Concerns Clearly**
-1. Protocol types in `protocol::models` with serde for wire format
-2. Public types in `types` as higher-level abstractions
-3. Implement `From`/`Into` for automatic conversion
-4. Document the distinction
-
-**Recommendation:** Option A is cleanest. Protocol models should use canonical types.
-
-**Effort:** 2-4 hours (design + implementation + testing)
-
-**Decision Needed:** Which approach?
+### Dependency Cleanup (2026-02-17)
+5. ✅ **XState Dependencies** - Removed in commit 5f58e6d
+   - Uninstalled @xstate/react and xstate
+   - Reduced bundle by ~2.5MB
+   - Removed 16 packages
 
 ---
 
-### 2. Private Type in Public API
+## 🔴 HIGH PRIORITY - Missing Features
 
-**Location:** `crates/agent-llm/src/providers/copilot/auth/handler.rs:32`
-
-**Issue:**
-```rust
-pub struct CopilotConfig {
-    pub endpoints: Endpoints,  // Endpoints is pub(crate)!
-}
-
-pub(crate) struct Endpoints { ... }
-```
-
-**Impact:**
-- Type mismatch warning
-- Could be intentional design or accidental exposure
-- External code cannot access endpoint configuration
-
-**Options:**
-- **Option A:** Make `Endpoints` public - intentional API design
-- **Option B:** Make `endpoints` field `pub(crate)` - hide implementation detail
-
-**Decision Needed:** Should external code access endpoint configuration?
-
-**Effort:** 30 minutes
-
----
-
-### 3. TokenUsage Missing Copy Trait ✅ FIXED
-
-**Status:** COMPLETED in commit 84df026
-
----
-
-## ⚠️ MEDIUM PRIORITY - Missing Features
-
-### 4. Gemini Tool Calls Not Implemented
+### 1. Gemini Tool Calls Not Implemented
 
 **Location:** `crates/web_service/src/controllers/gemini_controller.rs:82, 208`
 
@@ -125,7 +60,7 @@ pub(crate) struct Endpoints { ... }
 
 ---
 
-### 5. Reconnection Logic Not Implemented
+### 2. Reconnection Logic Not Implemented
 
 **Location:** `crates/agent-mcp/src/config.rs:124-148`
 
@@ -152,7 +87,7 @@ pub(crate) struct Endpoints { ... }
 
 ---
 
-### 6. Incomplete Features in agent-tools
+### 3. Incomplete Features in agent-tools
 
 **Locations:**
 - `crates/agent-tools/src/output_manager.rs:77, 166`
@@ -175,9 +110,9 @@ pub(crate) struct Endpoints { ... }
 
 ---
 
-## 📋 LOW PRIORITY - Code Quality
+## 🟡 MEDIUM PRIORITY - Code Quality
 
-### 7. Deprecated proc-macro-hack Dependency
+### 4. Deprecated proc-macro-hack Dependency
 
 **Location:** `src-tauri/Cargo.lock:3779`
 
@@ -198,32 +133,7 @@ pub(crate) struct Endpoints { ... }
 
 ---
 
-### 8. Unimplemented Trait Method
-
-**Location:** `crates/agent-llm/src/protocol/anthropic.rs:287`
-
-**Issue:**
-```rust
-fn to_anthropic(&self) -> ProtocolResult<AnthropicMessage> {
-    unimplemented!("Use clone for now")
-}
-```
-
-**Impact:**
-- Will panic if called
-- Currently unused in production
-- Incomplete API
-
-**Options:**
-- **Option A:** Implement properly
-- **Option B:** Remove method from trait
-- **Option C:** Mark as test-only ✅ DONE (commit 84df026)
-
-**Status:** Marked as test-only, issue resolved
-
----
-
-### 9. Error Handling Semantics
+### 5. Error Handling Semantics
 
 **Locations:**
 - `crates/agent-core/src/composition/condition.rs:41`
@@ -243,9 +153,9 @@ Different approaches to error handling that may be inconsistent.
 
 ---
 
-## 🔷 TYPE SAFETY IMPROVEMENTS (TypeScript)
+## 🔵 TYPE SAFETY IMPROVEMENTS (TypeScript)
 
-### 10. Excessive `any` Type Usage
+### 6. Excessive `any` Type Usage
 
 **Locations:** 30+ instances across frontend
 
@@ -268,7 +178,7 @@ Different approaches to error handling that may be inconsistent.
 
 ---
 
-### 11. Deprecated TypeScript Services
+### 7. Deprecated TypeScript Services
 
 **Files:**
 - `src/pages/ChatPage/services/workspaceApiTypes.ts`
@@ -290,7 +200,7 @@ Different approaches to error handling that may be inconsistent.
 
 ---
 
-### 12. TypeScript Path Aliases
+### 8. TypeScript Path Aliases
 
 **Issue:**
 20+ files with deep imports (`../../../../`)
@@ -321,7 +231,7 @@ Different approaches to error handling that may be inconsistent.
 
 ## 🧪 TEST COVERAGE
 
-### 13. Missing Tests in agent-mcp
+### 9. Missing Tests in agent-mcp
 
 **Issue:**
 Only `tool_index.rs` has unit tests
@@ -335,7 +245,7 @@ Only `tool_index.rs` has unit tests
 
 ---
 
-### 14. Test Type Safety Issues
+### 10. Test Type Safety Issues
 
 **Issue:**
 Test files use `as any` to bypass type checking
@@ -353,9 +263,9 @@ Test files use `as any` to bypass type checking
 
 ---
 
-## 📊 METRICS & MONITORING
+## 📊 MONITORING & LOGGING
 
-### 15. Console Logging Strategy
+### 11. Console Logging Strategy
 
 **Issue:**
 72 files with `console.log/warn/error/debug` statements
@@ -371,49 +281,69 @@ Test files use `as any` to bypass type checking
 
 ---
 
+## 🔍 SECURITY AUDIT
+
+### 12. npm audit vulnerabilities
+
+**Current Status:**
+```
+8 vulnerabilities (7 moderate, 1 critical)
+```
+
+**Action:**
+1. Run `npm audit fix` to auto-fix safe issues
+2. Review critical vulnerabilities manually
+3. Update affected packages
+4. Test for breaking changes
+
+**Effort:** 2-4 hours
+
+---
+
 ## Summary by Priority
 
-| Priority | Count | Effort Range |
-|----------|-------|--------------|
-| **HIGH** | 3 | 3-6 hours |
-| **MEDIUM** | 3 | 2-4 days |
-| **LOW** | 9 | 2-3 weeks |
-| **Total** | 15 | 3-4 weeks |
+| Priority | Count | Effort Range | Status |
+|----------|-------|--------------|--------|
+| **HIGH (Features)** | 3 | 2-4 days | 🔴 Need decision |
+| **MEDIUM (Quality)** | 2 | 3-6 hours | 🟡 Lower priority |
+| **TYPE SAFETY** | 3 | 2-3 days | 🔵 Improve gradually |
+| **TESTS** | 2 | 12-24 hours | 🟢 Ongoing effort |
+| **MONITORING** | 1 | 1-2 days | 🟡 When needed |
+| **SECURITY** | 1 | 2-4 hours | 🔴 Do soon |
+| **Total** | 12 | 5-8 days | |
 
 ---
 
 ## Next Steps
 
 ### Immediate (This Week)
-1. ✅ Fix TokenUsage Copy trait (DONE)
-2. ✅ Remove dead code (DONE)
-3. 🔲 Decide on duplicate type strategy (agent-mcp)
-4. 🔲 Decide on private type in public API (CopilotConfig)
+1. 🔴 Run `npm audit fix` for security
+2. 🔴 Decide on Gemini tool calls priority
+3. 🔴 Decide on MCP reconnection: implement or remove
 
 ### Short-term (Next Sprint)
-5. 🔲 Implement Gemini tool calls or defer
-6. 🔲 Implement or remove reconnection logic
-7. 🔲 Review incomplete features in agent-tools
+4. 🟡 Remove deprecated proc-macro-hack dependency
+5. 🟡 Start TypeScript `any` elimination (ServiceFactory.ts)
+6. 🟡 Audit deprecated TypeScript services usage
 
 ### Long-term (Next Quarter)
-8. 🔲 Improve TypeScript type safety
-9. 🔲 Migrate deprecated services
-10. 🔲 Add comprehensive test coverage
-11. 🔲 Implement structured logging
+7. 🔵 Implement TypeScript path aliases
+8. 🔵 Add comprehensive test coverage (agent-mcp)
+9. 🔵 Improve test type safety
+10. 🟡 Implement structured logging
 
 ---
 
 ## Questions for Team Discussion
 
-1. **agent-mcp types:** Which consolidation approach? (A, B, or C)
-2. **CopilotConfig.endpoints:** Public API or implementation detail?
-3. **Gemini tool calls:** Priority and timeline?
-4. **MCP reconnection:** Implement or remove?
-5. **Incomplete features:** Keep, complete, or remove?
-6. **TypeScript strict mode:** Timeline for eliminating `any`?
+1. **Gemini tool calls:** Priority and timeline?
+2. **MCP reconnection:** Implement or remove?
+3. **Incomplete agent-tools features:** Keep, complete, or remove?
+4. **TypeScript strict mode:** Timeline for eliminating `any`?
+5. **Security vulnerabilities:** Can we run `npm audit fix` now?
 
 ---
 
 **Generated by:** Claude Sonnet 4.5
-**Commit:** 84df026
-**Analysis method:** 5 parallel agents (agent-mcp, agent-tools, core crates, src-tauri/web_service, TypeScript)
+**Last Commit:** 5f58e6d (XState removal)
+**Previous Analysis:** See `ARCHITECTURE_FIXES_REPORT.md` for completed work
