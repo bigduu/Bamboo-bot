@@ -14,6 +14,14 @@ This document provides a quick index to all project documentation.
 | Context Session | Backend context management | [`architecture/CONTEXT_SESSION_ARCHITECTURE.md`](./architecture/CONTEXT_SESSION_ARCHITECTURE.md) |
 | Tool System | Tool architecture and development | [`architecture/tools-system.md`](./architecture/tools-system.md) |
 
+### ⚡ Features
+| Document | Description | Path |
+|----------|-------------|------|
+| Command Selector | Unified command selection interface | [`features/command-selector/README.md`](./features/command-selector/README.md) |
+| Command Selector Theme Enhancement | Theme system integration & contrast fixes | [`features/command-selector/THEME_SYSTEM_ENHANCEMENT.md`](./features/command-selector/THEME_SYSTEM_ENHANCEMENT.md) |
+| QuestionDialog | Agent decision dialog component | [`features/question-dialog/README.md`](./features/question-dialog/README.md) |
+| QuestionDialog Enhancement | Positioning & theme improvements | [`features/question-dialog/ENHANCEMENT_SUMMARY.md`](./features/question-dialog/ENHANCEMENT_SUMMARY.md) |
+
 ### 🔧 Extension System
 | Document | Description | Path |
 |----------|-------------|------|

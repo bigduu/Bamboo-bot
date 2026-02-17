@@ -122,7 +122,12 @@ const CommandSelector: React.FC<CommandSelectorProps> = ({
         onMouseEnter={() => setSelectedIndex(index)}
       >
         <div className="command-selector-item-header">
-          <div className="command-selector-item-name">
+          <div
+            className="command-selector-item-name"
+            style={{
+              color: token.colorPrimary,
+            }}
+          >
             /{command.name}
           </div>
           <Tag color={typeConfig.color}>
@@ -130,19 +135,29 @@ const CommandSelector: React.FC<CommandSelectorProps> = ({
           </Tag>
         </div>
 
-        <div className="command-selector-item-description">
+        <div
+          className="command-selector-item-description"
+          style={{
+            color: token.colorTextSecondary,
+          }}
+        >
           {command.description}
         </div>
 
         {command.category && (
-          <div className="command-selector-item-category">
+          <div
+            className="command-selector-item-category"
+            style={{
+              color: token.colorTextTertiary,
+            }}
+          >
             Category: {command.category}
           </div>
         )}
 
         {command.tags && command.tags.length > 0 && (
           <div className="command-selector-item-tags">
-            {command.tags.slice(0, 3).map(tag => (
+            {command.tags.slice(0, 3).map((tag) => (
               <Tag key={tag}>{tag}</Tag>
             ))}
           </div>
@@ -171,9 +186,12 @@ const CommandSelector: React.FC<CommandSelectorProps> = ({
           color: token.colorTextTertiary,
         }}
       >
-        Navigation: Up/Down or Ctrl+P/N | Select: Enter | Complete: Space/Tab | Cancel: Esc
+        Navigation: Up/Down or Ctrl+P/N | Select: Enter | Complete: Space/Tab |
+        Cancel: Esc
       </div>
-      {filteredCommands.map((command, index) => renderCommandItem(command, index))}
+      {filteredCommands.map((command, index) =>
+        renderCommandItem(command, index),
+      )}
     </div>
   );
 };
