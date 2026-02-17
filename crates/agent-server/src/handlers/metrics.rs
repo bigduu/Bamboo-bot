@@ -131,7 +131,7 @@ pub async fn daily(
     state: web::Data<AppState>,
     query: web::Query<MetricsDailyQuery>,
 ) -> impl Responder {
-    let days = query.days.unwrap_or(30).max(1).min(365);
+    let days = query.days.unwrap_or(30).clamp(1, 365);
     let granularity = query.granularity.as_deref().unwrap_or("daily");
 
     match granularity {
@@ -272,7 +272,7 @@ pub async fn v2_unified_timeline(
     state: web::Data<AppState>,
     query: web::Query<MetricsDailyQuery>,
 ) -> impl Responder {
-    let days = query.days.unwrap_or(30).max(1).min(365);
+    let days = query.days.unwrap_or(30).clamp(1, 365);
 
     let chat_result = state.metrics_service.daily(days, query.end_date).await;
     let forward_result = state

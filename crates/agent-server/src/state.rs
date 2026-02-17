@@ -251,6 +251,7 @@ impl AppState {
     }
 
     /// Shutdown all MCP servers gracefully
+    #[allow(dead_code)]
     pub async fn shutdown(&self) {
         log::info!("Shutting down MCP servers...");
         self.mcp_manager.shutdown_all().await;

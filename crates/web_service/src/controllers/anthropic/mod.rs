@@ -1307,10 +1307,6 @@ fn format_sse_data(data: Value) -> String {
     format!("data: {}\n\n", data)
 }
 
-fn to_actix_status(status: u16) -> StatusCode {
-    StatusCode::from_u16(status).unwrap_or(StatusCode::BAD_GATEWAY)
-}
-
 struct ToolStreamState {
     block_index: usize,
     id: Option<String>,
