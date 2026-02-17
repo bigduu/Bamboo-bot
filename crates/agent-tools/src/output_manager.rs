@@ -21,8 +21,6 @@ pub struct ArtifactRef {
     pub path: PathBuf,
     /// Token count of the full content
     pub full_token_count: u32,
-    /// Token count of the truncated content
-    pub truncated_token_count: u32,
 }
 
 /// Manager for capping and storing large tool outputs.
@@ -72,23 +70,60 @@ impl ToolOutputManager {
             return Ok((result, None));
         }
 
-        // Result is too large - truncate and store as artifact
-        let truncated = self.truncate_to_token_limit(&result, self.max_inline_tokens);
-        let _truncated_token_count = self.counter.count_text(&truncated);
-
         // Store full result as artifact
         let artifact = self.store_artifact(tool_call_id, &result, token_count).await?;
 
-        // Add reference to artifact in truncated output
-        let capped = format!(
-            "{}\n\n[Output truncated. Full result ({} tokens) stored as artifact: {}]\n[Use the retrieve_artifact tool with id '{}' to access the full output.]",
-            truncated,
-            token_count,
-            artifact.path.display(),
-            artifact.id
-        );
+        // Result is too large - truncate and add a short notice referencing the artifact id.
+        // The notice itself costs tokens, so we reserve budget for it up-front.
+        let notice = self.build_truncation_notice(token_count, &artifact.id);
+        let notice_token_count = self.counter.count_text(&notice);
+        let mut content_budget = self.max_inline_tokens.saturating_sub(notice_token_count);
+
+        let mut truncated = if content_budget == 0 {
+            String::new()
+        } else {
+            self.truncate_to_token_limit(&result, content_budget)
+        };
+        let mut capped = format!("{truncated}{notice}");
+
+        // Due to rounding in the heuristic counter, ensure the final string fits the budget.
+        while content_budget > 0 && self.counter.count_text(&capped) > self.max_inline_tokens {
+            content_budget = content_budget.saturating_sub(1);
+            truncated = if content_budget == 0 {
+                String::new()
+            } else {
+                self.truncate_to_token_limit(&result, content_budget)
+            };
+            capped = format!("{truncated}{notice}");
+        }
 
         Ok((capped, Some(artifact)))
+    }
+
+    /// Builds the truncation notice appended to capped tool output.
+    ///
+    /// Keep this intentionally short because it competes with the inline token budget.
+    fn build_truncation_notice(&self, full_token_count: u32, artifact_id: &str) -> String {
+        // NOTE: We only include the artifact id here (not the full path) to keep token usage low
+        // and avoid leaking local filesystem paths into the model context. A future
+        // `retrieve_artifact` tool can use this id to fetch the full content.
+        let candidates = [
+            format!(
+                "\n\n[Output truncated. Full result ({full_token_count} tokens) stored as artifact id '{artifact_id}'.]"
+            ),
+            format!("\n\n[Output truncated. Artifact id '{artifact_id}'.]"),
+            format!("\n\n[Truncated. Artifact '{artifact_id}'.]"),
+        ];
+
+        for candidate in candidates.iter() {
+            if self.counter.count_text(candidate) <= self.max_inline_tokens {
+                return candidate.clone();
+            }
+        }
+
+        // Extreme edge case: even the shortest notice doesn't fit. Return a truncated notice so
+        // `cap_tool_result` can still satisfy the inline token constraint.
+        self.truncate_to_token_limit(&candidates[2], self.max_inline_tokens)
     }
 
     /// Truncate text to fit within a token budget.
@@ -132,7 +167,6 @@ impl ToolOutputManager {
             tool_call_id: tool_call_id.to_string(),
             path: artifact_path,
             full_token_count: token_count,
-            truncated_token_count: self.max_inline_tokens,
         })
     }
 
@@ -163,14 +197,37 @@ impl ToolOutputManager {
             if path.extension().is_some_and(|ext| ext == "txt") {
                 if let Some(stem) = path.file_stem() {
                     let id = stem.to_string_lossy().to_string();
-                    let _metadata = tokio::fs::metadata(&path).await?;
+                    let metadata = tokio::fs::metadata(&path).await?;
+
+                    // Best-effort: recover the original tool_call_id from the id format
+                    // `{tool_call_id}_{unix_timestamp}`.
+                    let tool_call_id = id
+                        .rsplit_once('_')
+                        .and_then(|(prefix, suffix)| suffix.parse::<i64>().ok().map(|_| prefix))
+                        .unwrap_or("")
+                        .to_string();
+
+                    // For typical artifact sizes, compute tokens from file contents for accuracy.
+                    // For very large artifacts, avoid reading the entire file during listing and
+                    // fall back to a byte-based estimate.
+                    let full_token_count = if metadata.len() <= 1024 * 1024 {
+                        match tokio::fs::read_to_string(&path).await {
+                            Ok(content) => self.counter.count_text(&content),
+                            Err(_) => 0,
+                        }
+                    } else {
+                        // HeuristicTokenCounter defaults: chars/4 + 10% safety margin (ceil).
+                        // Using bytes as a proxy for chars intentionally overestimates for
+                        // non-ASCII content, which is acceptable for a conservative estimate.
+                        let estimated = ((metadata.len() as f64 / 4.0) * 1.1).ceil();
+                        estimated.min(u32::MAX as f64) as u32
+                    };
 
                     artifacts.push(ArtifactRef {
                         id,
-                        tool_call_id: String::new(), // We don't store this separately in listing
                         path,
-                        full_token_count: 0, // Would need to read file to calculate
-                        truncated_token_count: 0,
+                        tool_call_id,
+                        full_token_count,
                     });
                 }
             }
@@ -196,6 +253,7 @@ impl ToolOutputManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use agent_core::budget::HeuristicTokenCounter;
     use tempfile::tempdir;
 
     #[tokio::test]
@@ -231,6 +289,48 @@ mod tests {
         let retrieved = manager.retrieve_artifact(&artifact.id).await.unwrap();
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap(), result);
+    }
+
+    #[tokio::test]
+    async fn cap_large_result_keeps_inline_output_within_budget() {
+        let dir = tempdir().unwrap();
+        let manager = ToolOutputManager::new(dir.path(), 100);
+
+        // Create a large result to ensure truncation.
+        let result = "x".repeat(10_000);
+        let (capped, artifact) = manager
+            .cap_tool_result("call_budget", result)
+            .await
+            .unwrap();
+
+        assert!(artifact.is_some());
+
+        let counter = HeuristicTokenCounter::default();
+        let capped_token_count = counter.count_text(&capped);
+        assert!(
+            capped_token_count <= 100,
+            "inline output exceeded budget: {capped_token_count} > 100"
+        );
+    }
+
+    #[tokio::test]
+    async fn list_artifacts_includes_tool_call_id_and_token_count() {
+        let dir = tempdir().unwrap();
+        let manager = ToolOutputManager::new(dir.path(), 50);
+
+        let result = "x".repeat(1_000);
+        let (_capped, artifact) = manager
+            .cap_tool_result("call_list_123", result)
+            .await
+            .unwrap();
+        let artifact = artifact.unwrap();
+
+        let artifacts = manager.list_artifacts().await.unwrap();
+        let listed = artifacts.into_iter().find(|a| a.id == artifact.id).unwrap();
+
+        assert_eq!(listed.tool_call_id, "call_list_123");
+        assert!(listed.full_token_count > 0);
+        assert!(listed.path.exists());
     }
 
     #[test]
