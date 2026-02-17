@@ -28,18 +28,6 @@ pub enum AgentStatus {
     Error(String),
 }
 
-impl AgentStatus {
-    pub fn as_str(&self) -> &str {
-        match self {
-            AgentStatus::Pending => "pending",
-            AgentStatus::Running => "running",
-            AgentStatus::Completed => "completed",
-            AgentStatus::Cancelled => "cancelled",
-            AgentStatus::Error(_) => "error",
-        }
-    }
-}
-
 /// Runner that manages agent execution for a session
 /// Supports multiple subscribers via broadcast channel
 #[derive(Clone)]
@@ -284,6 +272,7 @@ impl AppState {
     }
 }
 
+#[cfg(test)]
 fn merge_base_and_enhancement(base_prompt: &str, enhance_prompt: Option<&str>) -> String {
     let mut merged = base_prompt.to_string();
 
@@ -298,6 +287,7 @@ fn merge_base_and_enhancement(base_prompt: &str, enhance_prompt: Option<&str>) -
     merged
 }
 
+#[cfg(test)]
 fn merge_workspace_context(base_prompt: &str, workspace_path: Option<&str>) -> String {
     let mut merged = base_prompt.to_string();
 
@@ -323,7 +313,7 @@ fn bamboo_dir() -> PathBuf {
 }
 
 /// Load MCP configuration from file
-async fn load_mcp_config(app_data_root: &PathBuf) -> agent_mcp::McpConfig {
+async fn load_mcp_config(app_data_root: &std::path::Path) -> agent_mcp::McpConfig {
     let config_path = app_data_root.join("mcp.json");
 
     if !config_path.exists() {
@@ -353,6 +343,7 @@ async fn load_mcp_config(app_data_root: &PathBuf) -> agent_mcp::McpConfig {
 }
 
 /// Start SSE stream sender
+#[cfg(test)]
 pub fn spawn_sse_sender(
     mut rx: mpsc::Receiver<AgentEvent>,
     tx: mpsc::Sender<actix_web::web::Bytes>,

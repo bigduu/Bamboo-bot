@@ -89,7 +89,7 @@ impl McpTransport for SseTransport {
                             // Store the endpoint URL for POST requests
                             debug!("Got endpoint: {}", event.data);
                         } else if event.event == "message" || event.event.is_empty() {
-                            if let Err(_) = message_tx.send(event.data).await {
+                            if message_tx.send(event.data).await.is_err() {
                                 break;
                             }
                         }

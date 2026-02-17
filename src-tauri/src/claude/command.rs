@@ -41,7 +41,7 @@ pub fn create_command_with_env(program: &str) -> Command {
         if let Some(node_bin_dir) = std::path::Path::new(program).parent() {
             let current_path = std::env::var("PATH").unwrap_or_default();
             let node_bin_str = node_bin_dir.to_string_lossy();
-            if !current_path.contains(&node_bin_str.as_ref()) {
+            if !current_path.contains(node_bin_str.as_ref()) {
                 let new_path = std::env::join_paths(
                     std::iter::once(node_bin_dir.to_path_buf())
                         .chain(std::env::split_paths(&current_path)),
@@ -57,7 +57,7 @@ pub fn create_command_with_env(program: &str) -> Command {
         if let Some(program_dir) = std::path::Path::new(program).parent() {
             let current_path = std::env::var("PATH").unwrap_or_default();
             let homebrew_bin_str = program_dir.to_string_lossy();
-            if !current_path.contains(&homebrew_bin_str.as_ref()) {
+            if !current_path.contains(homebrew_bin_str.as_ref()) {
                 let new_path = std::env::join_paths(
                     std::iter::once(program_dir.to_path_buf())
                         .chain(std::env::split_paths(&current_path)),

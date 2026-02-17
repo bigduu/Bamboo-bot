@@ -13,9 +13,9 @@ impl ReadFileTool {
 
     /// Expand ~ to home directory
     fn expand_path(path: &str) -> String {
-        if path.starts_with("~/") {
+        if let Some(stripped) = path.strip_prefix("~/") {
             if let Some(home) = dirs::home_dir() {
-                return home.join(&path[2..]).to_string_lossy().to_string();
+                return home.join(stripped).to_string_lossy().to_string();
             }
         }
         path.to_string()
