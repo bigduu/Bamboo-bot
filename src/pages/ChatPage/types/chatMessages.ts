@@ -1,4 +1,3 @@
-import { StateValue } from "xstate";
 import type { TodoListMsg } from "./todoList";
 import type { TokenUsage } from "./tokenBudget";
 
@@ -173,7 +172,7 @@ export interface ChatItem {
     segmentsRemoved?: number;
   };
   currentInteraction: {
-    machineState: StateValue;
+    machineState: string; // Legacy field, no longer used
     streamingMessageId: string | null;
     streamingContent: string | null;
     pendingApproval?: {
