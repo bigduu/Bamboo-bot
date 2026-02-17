@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { serviceFactory } from "../../../../services/common/ServiceFactory";
+import {
+  serviceFactory,
+  type BambooConfig,
+} from "../../../../services/common/ServiceFactory";
 
-const cloneJson = (value: any) => {
+const cloneJson = (value: BambooConfig) => {
   try {
     return JSON.parse(JSON.stringify(value ?? {}));
   } catch {
@@ -28,12 +31,15 @@ export const useSystemSettingsConfig = ({
   const bambooConfigDirtyRef = useRef(false);
   const bambooConfigLastRef = useRef("");
 
-  const fetchBambooConfig = async () => {
+  const fetchBambooConfig = async (): Promise<BambooConfig> => {
     const config = await serviceFactory.getBambooConfig();
     return config ?? {};
   };
 
-  const applyBambooConfig = async (config: any, force = false) => {
+  const applyBambooConfig = async (
+    config: BambooConfig,
+    force = false,
+  ): Promise<void> => {
     const raw = JSON.stringify(config ?? {}, null, 2);
     if (force || !bambooConfigDirtyRef.current) {
       setBambooConfigJson(raw);
@@ -42,7 +48,7 @@ export const useSystemSettingsConfig = ({
     bambooConfigLastRef.current = raw;
   };
 
-  const loadBambooConfig = async () => {
+  const loadBambooConfig = async (): Promise<void> => {
     setIsLoadingBambooConfig(true);
     setBambooConfigError(null);
     try {
@@ -57,12 +63,12 @@ export const useSystemSettingsConfig = ({
     }
   };
 
-  const reloadBambooConfig = async () => {
+  const reloadBambooConfig = async (): Promise<void> => {
     const config = await fetchBambooConfig();
     await applyBambooConfig(config, true);
   };
 
-  const pollBambooConfig = async () => {
+  const pollBambooConfig = async (): Promise<void> => {
     try {
       const config = await fetchBambooConfig();
       const raw = JSON.stringify(config ?? {}, null, 2);
@@ -77,7 +83,7 @@ export const useSystemSettingsConfig = ({
     } catch {}
   };
 
-  const handleSaveBambooConfig = async () => {
+  const handleSaveBambooConfig = async (): Promise<void> => {
     try {
       const parsed = JSON.parse(bambooConfigJson || "{}");
       const resolved = cloneJson(parsed);

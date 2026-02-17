@@ -1,6 +1,33 @@
 import { invoke } from "@tauri-apps/api/core";
 import { apiClient } from "../api";
 
+/**
+ * Bamboo configuration structure
+ */
+export interface BambooConfig {
+  model?: string;
+  api_key?: string;
+  api_base?: string;
+  http_proxy?: string;
+  https_proxy?: string;
+  headless_auth?: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * Anthropic model mapping configuration
+ */
+export interface AnthropicModelMapping {
+  mappings: Record<string, string>;
+}
+
+/**
+ * Generic API success response
+ */
+export interface ApiSuccessResponse {
+  success: boolean;
+}
+
 export interface UtilityService {
   /**
    * Copy text to clipboard
@@ -10,17 +37,17 @@ export interface UtilityService {
   /**
    * Get Bamboo config
    */
-  getBambooConfig(): Promise<any>;
+  getBambooConfig(): Promise<BambooConfig>;
 
   /**
    * Set Bamboo config
    */
-  setBambooConfig(config: any): Promise<any>;
+  setBambooConfig(config: BambooConfig): Promise<BambooConfig>;
 
   /**
    * Set proxy auth credentials
    */
-  setProxyAuth(auth: { username: string; password: string }): Promise<any>;
+  setProxyAuth(auth: { username: string; password: string }): Promise<ApiSuccessResponse>;
 
   /**
    * Get proxy auth status (returns whether proxy auth is configured, without password)
@@ -33,22 +60,22 @@ export interface UtilityService {
   /**
    * Clear proxy auth credentials
    */
-  clearProxyAuth(): Promise<any>;
+  clearProxyAuth(): Promise<ApiSuccessResponse>;
 
   /**
    * Get Anthropic model mapping
    */
-  getAnthropicModelMapping(): Promise<any>;
+  getAnthropicModelMapping(): Promise<AnthropicModelMapping>;
 
   /**
    * Set Anthropic model mapping
    */
-  setAnthropicModelMapping(mapping: any): Promise<any>;
+  setAnthropicModelMapping(mapping: AnthropicModelMapping): Promise<AnthropicModelMapping>;
 
   /**
    * Reset Bamboo config (delete config.json)
    */
-  resetBambooConfig(): Promise<any>;
+  resetBambooConfig(): Promise<ApiSuccessResponse>;
 
   /**
    * Reset setup status (mark as incomplete)
@@ -58,28 +85,28 @@ export interface UtilityService {
   /**
    * Generic invoke method for custom commands
    */
-  invoke<T = any>(command: string, args?: Record<string, any>): Promise<T>;
+  invoke<T = unknown>(command: string, args?: Record<string, unknown>): Promise<T>;
 }
 
 class HttpUtilityService implements Partial<UtilityService> {
-  async getBambooConfig(): Promise<any> {
+  async getBambooConfig(): Promise<BambooConfig> {
     try {
-      return await apiClient.get("bamboo/config");
+      return await apiClient.get<BambooConfig>("bamboo/config");
     } catch (error) {
       console.error("Failed to fetch Bamboo config:", error);
       return {};
     }
   }
 
-  async setBambooConfig(config: any): Promise<any> {
-    return apiClient.post("bamboo/config", config);
+  async setBambooConfig(config: BambooConfig): Promise<BambooConfig> {
+    return apiClient.post<BambooConfig>("bamboo/config", config);
   }
 
   async setProxyAuth(auth: {
     username: string;
     password: string;
-  }): Promise<any> {
-    return apiClient.post("bamboo/proxy-auth", auth);
+  }): Promise<ApiSuccessResponse> {
+    return apiClient.post<ApiSuccessResponse>("bamboo/proxy-auth", auth);
   }
 
   async getProxyAuthStatus(): Promise<{
@@ -87,32 +114,45 @@ class HttpUtilityService implements Partial<UtilityService> {
     username: string | null;
   }> {
     try {
-      return await apiClient.get("bamboo/proxy-auth/status");
+      return await apiClient.get<{
+        configured: boolean;
+        username: string | null;
+      }>("bamboo/proxy-auth/status");
     } catch (error) {
       console.error("Failed to fetch proxy auth status:", error);
       return { configured: false, username: null };
     }
   }
 
-  async clearProxyAuth(): Promise<any> {
-    return apiClient.post("bamboo/proxy-auth", { username: "", password: "" });
+  async clearProxyAuth(): Promise<ApiSuccessResponse> {
+    return apiClient.post<ApiSuccessResponse>("bamboo/proxy-auth", {
+      username: "",
+      password: "",
+    });
   }
 
-  async getAnthropicModelMapping(): Promise<any> {
+  async getAnthropicModelMapping(): Promise<AnthropicModelMapping> {
     try {
-      return await apiClient.get("bamboo/anthropic-model-mapping");
+      return await apiClient.get<AnthropicModelMapping>(
+        "bamboo/anthropic-model-mapping",
+      );
     } catch (error) {
       console.error("Failed to fetch Anthropic model mapping:", error);
       return { mappings: {} };
     }
   }
 
-  async setAnthropicModelMapping(mapping: any): Promise<any> {
-    return apiClient.post("bamboo/anthropic-model-mapping", mapping);
+  async setAnthropicModelMapping(
+    mapping: AnthropicModelMapping,
+  ): Promise<AnthropicModelMapping> {
+    return apiClient.post<AnthropicModelMapping>(
+      "bamboo/anthropic-model-mapping",
+      mapping,
+    );
   }
 
-  async resetBambooConfig(): Promise<any> {
-    return apiClient.post("bamboo/config/reset", {});
+  async resetBambooConfig(): Promise<ApiSuccessResponse> {
+    return apiClient.post<ApiSuccessResponse>("bamboo/config/reset", {});
   }
 }
 
@@ -134,9 +174,9 @@ class TauriUtilityService {
   /**
    * Generic invoke method for custom commands
    */
-  async invoke<T = any>(
+  async invoke<T = unknown>(
     command: string,
-    args?: Record<string, any>,
+    args?: Record<string, unknown>,
   ): Promise<T> {
     return await invoke(command, args);
   }
@@ -170,12 +210,12 @@ export class ServiceFactory {
     return {
       copyToClipboard: (text: string) =>
         this.tauriUtilityService.copyToClipboard(text),
-      invoke: <T = any>(
+      invoke: <T = unknown>(
         command: string,
-        args?: Record<string, any>,
+        args?: Record<string, unknown>,
       ): Promise<T> => this.tauriUtilityService.invoke(command, args),
       getBambooConfig: () => this.httpUtilityService.getBambooConfig(),
-      setBambooConfig: (config: any) =>
+      setBambooConfig: (config: BambooConfig) =>
         this.httpUtilityService.setBambooConfig(config),
       setProxyAuth: (auth: { username: string; password: string }) =>
         this.httpUtilityService.setProxyAuth(auth),
@@ -183,7 +223,7 @@ export class ServiceFactory {
       clearProxyAuth: () => this.httpUtilityService.clearProxyAuth(),
       getAnthropicModelMapping: () =>
         this.httpUtilityService.getAnthropicModelMapping(),
-      setAnthropicModelMapping: (mapping: any) =>
+      setAnthropicModelMapping: (mapping: AnthropicModelMapping) =>
         this.httpUtilityService.setAnthropicModelMapping(mapping),
       resetBambooConfig: () => this.httpUtilityService.resetBambooConfig(),
       resetSetupStatus: () => this.tauriUtilityService.resetSetupStatus(),
@@ -195,18 +235,18 @@ export class ServiceFactory {
     return this.getUtilityService().copyToClipboard(text);
   }
 
-  async getBambooConfig(): Promise<any> {
+  async getBambooConfig(): Promise<BambooConfig> {
     return this.getUtilityService().getBambooConfig();
   }
 
-  async setBambooConfig(config: any): Promise<any> {
+  async setBambooConfig(config: BambooConfig): Promise<BambooConfig> {
     return this.getUtilityService().setBambooConfig(config);
   }
 
   async setProxyAuth(auth: {
     username: string;
     password: string;
-  }): Promise<any> {
+  }): Promise<ApiSuccessResponse> {
     return this.getUtilityService().setProxyAuth(auth);
   }
 
@@ -217,19 +257,21 @@ export class ServiceFactory {
     return this.getUtilityService().getProxyAuthStatus();
   }
 
-  async clearProxyAuth(): Promise<any> {
+  async clearProxyAuth(): Promise<ApiSuccessResponse> {
     return this.getUtilityService().clearProxyAuth();
   }
 
-  async getAnthropicModelMapping(): Promise<any> {
+  async getAnthropicModelMapping(): Promise<AnthropicModelMapping> {
     return this.getUtilityService().getAnthropicModelMapping();
   }
 
-  async setAnthropicModelMapping(mapping: any): Promise<any> {
+  async setAnthropicModelMapping(
+    mapping: AnthropicModelMapping,
+  ): Promise<AnthropicModelMapping> {
     return this.getUtilityService().setAnthropicModelMapping(mapping);
   }
 
-  async resetBambooConfig(): Promise<any> {
+  async resetBambooConfig(): Promise<ApiSuccessResponse> {
     return this.getUtilityService().resetBambooConfig();
   }
 
@@ -237,9 +279,9 @@ export class ServiceFactory {
     return this.getUtilityService().resetSetupStatus();
   }
 
-  async invoke<T = any>(
+  async invoke<T = unknown>(
     command: string,
-    args?: Record<string, any>,
+    args?: Record<string, unknown>,
   ): Promise<T> {
     return this.getUtilityService().invoke(command, args);
   }
