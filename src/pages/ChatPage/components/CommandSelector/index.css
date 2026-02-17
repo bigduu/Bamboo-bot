@@ -43,12 +43,10 @@
   font-weight: 600;
   font-family: monospace;
   font-size: 13px;
-  color: #1677ff;
   flex-shrink: 0;
 }
 
 .command-selector-item-description {
-  color: rgba(0, 0, 0, 0.65);
   font-size: 13px;
   margin-top: 4px;
   line-height: 1.4;
@@ -60,7 +58,6 @@
 }
 
 .command-selector-item-category {
-  color: rgba(0, 0, 0, 0.45);
   font-size: 12px;
   margin-top: 4px;
 }
@@ -95,13 +92,5 @@
 
   .command-selector-item.selected:hover {
     background-color: rgba(22, 119, 255, 0.2);
-  }
-
-  .command-selector-item-description {
-    color: rgba(255, 255, 255, 0.65);
-  }
-
-  .command-selector-item-category {
-    color: rgba(255, 255, 255, 0.45);
   }
 }

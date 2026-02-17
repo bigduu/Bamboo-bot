@@ -18,6 +18,11 @@ The Command Selector provides a unified interface for accessing three types of c
   - Different handling for workflow/skill/MCP
   - User experience enhancements
 
+- **[THEME_SYSTEM_ENHANCEMENT.md](./THEME_SYSTEM_ENHANCEMENT.md)** ⭐ NEW
+  - Theme system integration with Ant Design tokens
+  - Improved contrast and accessibility
+  - Dark/light mode optimization
+
 ### 🧪 Testing & Verification
 
 - **[COMMAND_SELECTOR_TEST.md](./COMMAND_SELECTOR_TEST.md)**
