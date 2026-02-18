@@ -27,7 +27,7 @@ impl LLMProvider for MockProvider {
         _messages: &[agent_core::Message],
         _tools: &[agent_core::tools::ToolSchema],
         _max_output_tokens: Option<u32>,
-        _model: Option<&str>,
+        _model: &str,
     ) -> Result<LLMStream, LLMError> {
         let items = self.chunks.clone().into_iter().map(Ok);
         Ok(Box::pin(stream::iter(items)))
@@ -526,4 +526,3 @@ fn parse_sse_data(body: &str) -> Vec<Value> {
 
     events
 }
-

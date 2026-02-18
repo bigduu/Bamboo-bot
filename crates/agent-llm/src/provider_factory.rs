@@ -103,12 +103,6 @@ pub async fn create_provider_with_dir(
                 }
             }
 
-            if let Some(model) = &openai_config.model {
-                if !model.is_empty() {
-                    provider = provider.with_model(model);
-                }
-            }
-
             Ok(Arc::new(MaskingProviderDecorator::new(
                 provider,
                 masking_config.clone(),
@@ -131,12 +125,6 @@ pub async fn create_provider_with_dir(
             if let Some(base_url) = &anthropic_config.base_url {
                 if !base_url.is_empty() {
                     provider = provider.with_base_url(base_url);
-                }
-            }
-
-            if let Some(model) = &anthropic_config.model {
-                if !model.is_empty() {
-                    provider = provider.with_model(model);
                 }
             }
 
@@ -166,12 +154,6 @@ pub async fn create_provider_with_dir(
             if let Some(base_url) = &gemini_config.base_url {
                 if !base_url.is_empty() {
                     provider = provider.with_base_url(base_url);
-                }
-            }
-
-            if let Some(model) = &gemini_config.model {
-                if !model.is_empty() {
-                    provider = provider.with_model(model);
                 }
             }
 

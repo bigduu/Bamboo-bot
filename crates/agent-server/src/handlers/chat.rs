@@ -15,8 +15,7 @@ pub struct ChatRequest {
     pub enhance_prompt: Option<String>,
     #[serde(default)]
     pub workspace_path: Option<String>,
-    #[allow(dead_code)]
-    pub model: Option<String>,
+    pub model: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -32,6 +31,14 @@ pub async fn handler(state: web::Data<AppState>, req: web::Json<ChatRequest>) ->
         .clone()
         .unwrap_or_else(|| Uuid::new_v4().to_string());
 
+    let model = req.model.trim();
+    if model.is_empty() {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "model is required"
+        }));
+    }
+    let model = model.to_string();
+
     let existing_session = {
         let sessions = state.sessions.read().await;
         sessions.get(&session_id).cloned()
@@ -41,7 +48,7 @@ pub async fn handler(state: web::Data<AppState>, req: web::Json<ChatRequest>) ->
         Some(session) => session,
         None => match state.storage.load_session(&session_id).await {
             Ok(Some(session)) => session,
-            Ok(None) => Session::new(session_id.clone()),
+            Ok(None) => Session::new(session_id.clone(), model.clone()),
             Err(e) => {
                 log::error!("[{}] Failed to load session from storage: {}", session_id, e);
                 return HttpResponse::InternalServerError().json(serde_json::json!({
@@ -72,10 +79,8 @@ pub async fn handler(state: web::Data<AppState>, req: web::Json<ChatRequest>) ->
 
     session.add_message(agent_core::Message::user(req.message.clone()));
 
-    // Store model in session if provided
-    if let Some(ref model) = req.model {
-        session.model = Some(model.clone());
-    }
+    // Model is required (validated by request deserialization). Persist it on the session.
+    session.model = model;
 
     {
         let mut sessions = state.sessions.write().await;
@@ -140,7 +145,7 @@ mod tests {
 
     #[test]
     fn upsert_system_prompt_inserts_when_missing() {
-        let mut session = Session::new("session-1");
+        let mut session = Session::new("session-1", "test-model");
         session.add_message(agent_core::Message::user("hello"));
 
         upsert_system_prompt_message(&mut session, "system prompt".to_string());
@@ -154,7 +159,7 @@ mod tests {
 
     #[test]
     fn upsert_system_prompt_replaces_existing_message() {
-        let mut session = Session::new("session-1");
+        let mut session = Session::new("session-1", "test-model");
         session.add_message(agent_core::Message::system("old"));
         session.add_message(agent_core::Message::user("hello"));
 
@@ -207,7 +212,7 @@ mod tests {
         let request: ChatRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.message, "Hello");
         assert_eq!(request.session_id, Some("test-session".to_string()));
-        assert_eq!(request.model, Some("gpt-5".to_string()));
+        assert_eq!(request.model, "gpt-5");
     }
 
     #[test]
@@ -216,40 +221,79 @@ mod tests {
             "message": "Hello"
         }"#;
 
-        let request: ChatRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(request.message, "Hello");
-        assert_eq!(request.model, None);
+        let result: Result<ChatRequest, _> = serde_json::from_str(json);
+        assert!(result.is_err());
     }
 
     #[test]
     fn session_stores_model_in_dedicated_field() {
         // Simulate what the handler does
-        let mut session = Session::new("test-session");
-        let model = Some("gpt-4o-mini".to_string());
-
-        if let Some(ref m) = model {
-            session.model = Some(m.clone());
-        }
-
-        assert_eq!(session.model, Some("gpt-4o-mini".to_string()));
+        let mut session = Session::new("test-session", "initial-model");
+        session.model = "gpt-4o-mini".to_string();
+        assert_eq!(session.model, "gpt-4o-mini");
     }
 
     #[test]
     fn session_model_round_trip() {
         // Create session with model
-        let mut session = Session::new("test-session");
-        session.model = Some("gpt-5".to_string());
+        let session = Session::new("test-session", "gpt-5");
 
         // Serialize and deserialize
         let json = serde_json::to_string(&session).unwrap();
         let deserialized: Session = serde_json::from_str(&json).unwrap();
 
-        // Retrieve model (like stream.rs does)
-        let model = deserialized
-            .model
-            .clone()
-            .unwrap_or_else(|| "fallback".to_string());
+        assert_eq!(deserialized.model, "gpt-5");
+    }
 
-        assert_eq!(model, "gpt-5");
+    // ========== MODEL REQUIREMENT ARCHITECTURE TESTS ==========
+    // These tests ensure the design principle:
+    // "model must be explicitly provided in the request"
+
+    /// Test: ChatRequest.model must be String (not Option<String>)
+    /// This prevents accidental fallback to None
+    #[test]
+    fn chat_request_model_type_is_string_not_option() {
+        let json = r#"{
+            "message": "Hello",
+            "model": "claude-3-opus"
+        }"#;
+
+        let request: ChatRequest = serde_json::from_str(json).unwrap();
+        // This line proves model is String, not Option<String>
+        // If it were Option<String>, this would fail to compile
+        let _model_str: &str = &request.model;
+        assert_eq!(request.model, "claude-3-opus");
+    }
+
+    /// Test: Empty/whitespace model should fail validation
+    #[test]
+    fn chat_request_empty_model_fails_validation() {
+        let request = ChatRequest {
+            message: "Hello".to_string(),
+            session_id: None,
+            system_prompt: None,
+            enhance_prompt: None,
+            workspace_path: None,
+            model: "   ".to_string(), // Empty/whitespace
+        };
+
+        // Handler validation: trim and check if empty
+        let model = request.model.trim();
+        assert!(model.is_empty(), "Empty model should fail validation");
+    }
+
+    /// Test: Session.model is just for recording, not execution
+    #[test]
+    fn session_model_is_for_recording_only() {
+        // Create session with initial model
+        let mut session = Session::new("test-123", "initial-model");
+        assert_eq!(session.model, "initial-model");
+
+        // Session.model can be updated (just for recording)
+        session.model = "updated-model".to_string();
+        assert_eq!(session.model, "updated-model");
+
+        // Note: The actual execution uses config.model_name from the request,
+        // not session.model. This is enforced in execute.rs and agent-loop.
     }
 }

@@ -143,7 +143,7 @@ mod tests {
     #[tokio::test]
     async fn delete_session_removes_metadata_and_events_files() -> io::Result<()> {
         let (storage, temp_dir) = create_temp_storage().await?;
-        let session = Session::new("session-1");
+        let session = Session::new("session-1", "test-model");
 
         storage.save_session(&session).await?;
         storage

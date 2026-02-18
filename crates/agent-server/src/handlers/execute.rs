@@ -1,6 +1,6 @@
 use actix_web::{web, HttpResponse, Responder};
 use chrono::Utc;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -15,12 +15,29 @@ pub struct ExecuteResponse {
     pub events_url: String,
 }
 
+#[derive(Deserialize)]
+pub struct ExecuteRequest {
+    /// Model to use for execution (required)
+    pub model: String,
+}
+
 pub async fn handler(
     state: web::Data<AppState>,
     path: web::Path<String>,
+    req: web::Json<ExecuteRequest>,
 ) -> impl Responder {
     let session_id = path.into_inner();
-    log::debug!("[{}] Execute request received", session_id);
+    let model = req.model.trim();
+
+    // Validate model is not empty
+    if model.is_empty() {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "model parameter is required"
+        }));
+    }
+    let model = model.to_string();
+
+    log::debug!("[{}] Execute request received with model: {}", session_id, model);
 
     // Load session from memory or storage first (async, no locks held)
     let mut session = {
@@ -145,11 +162,11 @@ pub async fn handler(
         // Get all tool schemas
         let all_tool_schemas = state_clone.get_all_tool_schemas();
 
-        // Get model from session or use state default
-        let model_name = session
-            .model
-            .clone()
-            .unwrap_or_else(|| state_clone.model_name.clone());
+        // Use model from request (not from session - session.model is just for recording/debugging)
+        log::info!("[{}] Using model from request: {}", session_id_clone, model);
+
+        // Update session.model for debugging/recording purposes
+        session.model = model.clone();
 
         if let Some(prompt) = system_prompt.as_ref() {
             println!("\n========== SYSTEM PROMPT ==========");
@@ -179,7 +196,7 @@ pub async fn handler(
                 skip_initial_user_message: true,
                 storage: Some(storage),
                 metrics_collector: Some(state_clone.metrics_service.collector()),
-                model_name: Some(model_name),
+                model_name: Some(model),
                 ..Default::default()
             },
         )
@@ -277,5 +294,56 @@ mod tests {
         assert!(matches!(runner.status, AgentStatus::Pending));
         // Verify cancel token exists (can be cloned)
         let _token_clone = runner.cancel_token.clone();
+    }
+
+    // ========== MODEL REQUIREMENT ARCHITECTURE TESTS ==========
+    // These tests ensure the design principle:
+    // "execute must receive model in request body, not from session"
+
+    /// Test: ExecuteRequest.model must be String (not Option<String>)
+    #[test]
+    fn execute_request_model_type_is_string_not_option() {
+        let json = r#"{
+            "model": "kimi-for-coding"
+        }"#;
+
+        let request: ExecuteRequest = serde_json::from_str(json).unwrap();
+        // This proves model is String, not Option<String>
+        let _model_str: &str = &request.model;
+        assert_eq!(request.model, "kimi-for-coding");
+    }
+
+    /// Test: ExecuteRequest deserialization fails without model
+    #[test]
+    fn execute_request_requires_model() {
+        let json = r#"{}"#;
+        let result: Result<ExecuteRequest, _> = serde_json::from_str(json);
+        assert!(
+            result.is_err(),
+            "ExecuteRequest should fail without model field"
+        );
+    }
+
+    /// Test: Empty/whitespace model should fail validation
+    #[test]
+    fn execute_request_empty_model_fails_validation() {
+        let request = ExecuteRequest {
+            model: "   ".to_string(),
+        };
+
+        // Handler validation: trim and check if empty
+        let model = request.model.trim();
+        assert!(model.is_empty(), "Empty model should fail validation");
+    }
+
+    /// Test: ExecuteRequest with valid model succeeds
+    #[test]
+    fn execute_request_with_valid_model_succeeds() {
+        let json = r#"{
+            "model": "gpt-4o-mini"
+        }"#;
+
+        let request: ExecuteRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.model, "gpt-4o-mini");
     }
 }

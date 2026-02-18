@@ -1,5 +1,5 @@
 use crate::services::gemini_model_mapping_service::resolve_model;
-use crate::{error::AppError, server::AppState};
+use crate::{error::AppError, model_config_helper::get_default_model_from_config, server::AppState};
 use actix_web::{get, post, web, HttpResponse};
 use agent_core::Message;
 use agent_core::tools::ToolSchema;
@@ -65,14 +65,17 @@ pub async fn generate_content(
     let provider = state.get_provider().await;
 
     // 4. Call provider with mapped model
-    let model_override = if resolution.mapped_model.is_empty() {
-        None
+    let model_to_use = if resolution.mapped_model.trim().is_empty() {
+        let config = state.config.read().await.clone();
+        get_default_model_from_config(&config).map_err(|e| {
+            AppError::InternalError(anyhow!("No default model configured: {}", e))
+        })?
     } else {
-        Some(resolution.mapped_model.as_str())
+        resolution.mapped_model.clone()
     };
 
     let mut stream = provider
-        .chat_stream(&internal_messages, &internal_tools, None, model_override)
+        .chat_stream(&internal_messages, &internal_tools, None, model_to_use.as_str())
         .await
         .map_err(|e| AppError::InternalError(anyhow!("Provider error: {}", e)))?;
 
@@ -183,16 +186,19 @@ pub async fn stream_generate_content(
     let internal_tools = convert_gemini_tools(&request.tools)?;
 
     // 3. Get provider and create stream
-    let model_override = if resolution.mapped_model.is_empty() {
-        None
+    let model_to_use = if resolution.mapped_model.trim().is_empty() {
+        let config = state.config.read().await.clone();
+        get_default_model_from_config(&config).map_err(|e| {
+            AppError::InternalError(anyhow!("No default model configured: {}", e))
+        })?
     } else {
-        Some(resolution.mapped_model.as_str())
+        resolution.mapped_model.clone()
     };
 
     let mut stream = state
         .get_provider()
         .await
-        .chat_stream(&internal_messages, &internal_tools, None, model_override)
+        .chat_stream(&internal_messages, &internal_tools, None, model_to_use.as_str())
         .await
         .map_err(|e| AppError::InternalError(anyhow!("Provider error: {}", e)))?;
 

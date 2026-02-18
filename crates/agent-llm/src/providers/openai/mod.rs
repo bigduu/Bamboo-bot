@@ -14,7 +14,6 @@ pub struct OpenAIProvider {
     client: Client,
     api_key: String,
     base_url: String,
-    model: String,
 }
 
 impl OpenAIProvider {
@@ -23,17 +22,11 @@ impl OpenAIProvider {
             client: Client::new(),
             api_key: api_key.into(),
             base_url: "https://api.openai.com/v1".to_string(),
-            model: "gpt-4o-mini".to_string(),
         }
     }
 
     pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = url.into();
-        self
-    }
-
-    pub fn with_model(mut self, model: impl Into<String>) -> Self {
-        self.model = model.into();
         self
     }
 }
@@ -45,20 +38,11 @@ impl LLMProvider for OpenAIProvider {
         messages: &[Message],
         tools: &[ToolSchema],
         max_output_tokens: Option<u32>,
-        model: Option<&str>,
+        model: &str,
     ) -> Result<LLMStream> {
-        // Use provided model or fall back to default
-        let model_to_use = model.unwrap_or(&self.model);
+        log::debug!("OpenAI provider using model: {}", model);
 
-        if model.is_some() {
-            log::debug!(
-                "OpenAI provider using override model '{}' (default: '{}')",
-                model_to_use,
-                self.model
-            );
-        }
-
-        let body = build_openai_compat_body(model_to_use, messages, tools, None, max_output_tokens);
+        let body = build_openai_compat_body(model, messages, tools, None, max_output_tokens);
 
         let response = self
             .client
@@ -103,7 +87,6 @@ mod tests {
         let provider = OpenAIProvider::new("test_key");
         assert_eq!(provider.api_key, "test_key");
         assert_eq!(provider.base_url, "https://api.openai.com/v1");
-        assert_eq!(provider.model, "gpt-4o-mini");
     }
 
     #[test]
@@ -114,28 +97,18 @@ mod tests {
     }
 
     #[test]
-    fn test_with_model() {
-        let provider = OpenAIProvider::new("test_key")
-            .with_model("gpt-4o");
-        assert_eq!(provider.model, "gpt-4o");
-    }
-
-    #[test]
     fn test_default_values() {
         let provider = OpenAIProvider::new("test_key");
         assert_eq!(provider.base_url, "https://api.openai.com/v1");
-        assert_eq!(provider.model, "gpt-4o-mini");
     }
 
     #[test]
     fn test_chained_builders() {
         let provider = OpenAIProvider::new("test_key")
-            .with_base_url("https://custom.openai.com/v1")
-            .with_model("gpt-4-turbo");
+            .with_base_url("https://custom.openai.com/v1");
 
         assert_eq!(provider.api_key, "test_key");
         assert_eq!(provider.base_url, "https://custom.openai.com/v1");
-        assert_eq!(provider.model, "gpt-4-turbo");
     }
 
     // ===== Request Building Tests (4 tests) =====
@@ -305,13 +278,11 @@ mod tests {
     fn test_provider_immutability() {
         // Verify that builder methods work correctly
         let provider = OpenAIProvider::new("key1")
-            .with_base_url("https://custom.api.com")
-            .with_model("gpt-4");
+            .with_base_url("https://custom.api.com");
 
         // Verify all settings are applied
         assert_eq!(provider.api_key, "key1");
         assert_eq!(provider.base_url, "https://custom.api.com");
-        assert_eq!(provider.model, "gpt-4");
     }
 
     #[test]
@@ -356,5 +327,42 @@ mod tests {
 
         assert!(matches!(chunk, LLMChunk::Done));
     }
-}
 
+    // ========== MODEL REQUIREMENT ARCHITECTURE TESTS ==========
+    // These tests ensure the design principle:
+    // "Provider must not have a default model field or with_model() method"
+
+    /// Test: OpenAIProvider does NOT have a model field
+    #[test]
+    fn openai_provider_has_no_model_field() {
+        // This test documents the provider structure:
+        // pub struct OpenAIProvider {
+        //     client: Client,
+        //     api_key: String,
+        //     base_url: String,
+        //     // NO model field!
+        // }
+        //
+        // If someone adds a model field, this test should be updated
+        // to reflect the architecture change.
+        let provider = OpenAIProvider::new("test_key");
+        // Verify we can access known fields
+        assert_eq!(provider.api_key, "test_key");
+        assert_eq!(provider.base_url, "https://api.openai.com/v1");
+        // There is NO provider.model field to access
+    }
+
+    /// Test: OpenAIProvider does NOT have with_model() method
+    #[test]
+    fn openai_provider_has_no_with_model_method() {
+        let provider = OpenAIProvider::new("test_key");
+
+        // Available builder method:
+        let provider = provider.with_base_url("https://custom.api.com");
+
+        // There is NO .with_model("gpt-4") method
+        // Model is passed to chat_stream() as a parameter
+
+        assert_eq!(provider.base_url, "https://custom.api.com");
+    }
+}

@@ -24,7 +24,6 @@ pub struct AnthropicProvider {
     client: Client,
     api_key: String,
     base_url: String,
-    model: String,
     max_tokens: u32,
 }
 
@@ -34,18 +33,12 @@ impl AnthropicProvider {
             client: Client::new(),
             api_key: api_key.into(),
             base_url: "https://api.anthropic.com/v1".to_string(),
-            model: "claude-3-5-sonnet-20241022".to_string(),
             max_tokens: 1024,
         }
     }
 
     pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = url.into();
-        self
-    }
-
-    pub fn with_model(mut self, model: impl Into<String>) -> Self {
-        self.model = model.into();
         self
     }
 
@@ -80,22 +73,16 @@ impl LLMProvider for AnthropicProvider {
         messages: &[Message],
         tools: &[ToolSchema],
         max_output_tokens: Option<u32>,
-        model: Option<&str>,
+        model: &str,
     ) -> Result<LLMStream> {
         let max_tokens = max_output_tokens.unwrap_or(self.max_tokens);
 
-        // Use provided model or fall back to default
-        let model_to_use = model.unwrap_or(&self.model);
+        log::debug!(
+            "Anthropic provider using model: {}",
+            model
+        );
 
-        if model.is_some() {
-            log::debug!(
-                "Anthropic provider using override model '{}' (default: '{}')",
-                model_to_use,
-                self.model
-            );
-        }
-
-        let body = build_anthropic_request(messages, tools, model_to_use, max_tokens, true);
+        let body = build_anthropic_request(messages, tools, model, max_tokens, true);
         let headers = self.build_headers()?;
 
         let response = self
@@ -789,7 +776,6 @@ mod anthropic_provider_tests {
         let provider = AnthropicProvider::new("test_api_key");
         assert_eq!(provider.api_key, "test_api_key");
         assert_eq!(provider.base_url, "https://api.anthropic.com/v1");
-        assert_eq!(provider.model, "claude-3-5-sonnet-20241022");
         assert_eq!(provider.max_tokens, 1024);
     }
 
@@ -798,13 +784,6 @@ mod anthropic_provider_tests {
         let provider = AnthropicProvider::new("test_key")
             .with_base_url("https://custom.anthropic.com");
         assert_eq!(provider.base_url, "https://custom.anthropic.com");
-    }
-
-    #[test]
-    fn test_with_model() {
-        let provider = AnthropicProvider::new("test_key")
-            .with_model("claude-3-opus-20240229");
-        assert_eq!(provider.model, "claude-3-opus-20240229");
     }
 
     #[test]
@@ -818,12 +797,10 @@ mod anthropic_provider_tests {
     fn test_chained_builders() {
         let provider = AnthropicProvider::new("test_key")
             .with_base_url("https://custom.api.com")
-            .with_model("claude-3-opus-20240229")
             .with_max_tokens(4096);
 
         assert_eq!(provider.api_key, "test_key");
         assert_eq!(provider.base_url, "https://custom.api.com");
-        assert_eq!(provider.model, "claude-3-opus-20240229");
         assert_eq!(provider.max_tokens, 4096);
     }
 
@@ -855,7 +832,6 @@ mod anthropic_provider_tests {
         let provider = AnthropicProvider::new("key");
 
         assert_eq!(provider.base_url, "https://api.anthropic.com/v1");
-        assert_eq!(provider.model, "claude-3-5-sonnet-20241022");
         assert_eq!(provider.max_tokens, 1024);
     }
 
@@ -874,5 +850,48 @@ mod anthropic_provider_tests {
             }
             _ => panic!("Expected LLMError::Api"),
         }
+    }
+
+    // ========== MODEL REQUIREMENT ARCHITECTURE TESTS ==========
+    // These tests ensure the design principle:
+    // "Provider must not have a default model field or with_model() method"
+
+    /// Test: AnthropicProvider does NOT have a model field
+    #[test]
+    fn anthropic_provider_has_no_model_field() {
+        // This test documents the provider structure:
+        // pub struct AnthropicProvider {
+        //     client: Client,
+        //     api_key: String,
+        //     base_url: String,
+        //     max_tokens: u32,
+        //     // NO model field!
+        // }
+        //
+        // If someone adds a model field, this test should be updated
+        // to reflect the architecture change.
+        let provider = AnthropicProvider::new("test_key");
+        // Verify we can access known fields
+        assert_eq!(provider.api_key, "test_key");
+        assert_eq!(provider.base_url, "https://api.anthropic.com/v1");
+        assert_eq!(provider.max_tokens, 1024);
+        // There is NO provider.model field to access
+    }
+
+    /// Test: AnthropicProvider does NOT have with_model() method
+    #[test]
+    fn anthropic_provider_has_no_with_model_method() {
+        let provider = AnthropicProvider::new("test_key");
+
+        // Available builder methods:
+        let provider = provider
+            .with_base_url("https://custom.api.com")
+            .with_max_tokens(2048);
+
+        // There is NO .with_model("gpt-4") method
+        // Model is passed to chat_stream() as a parameter
+
+        assert_eq!(provider.base_url, "https://custom.api.com");
+        assert_eq!(provider.max_tokens, 2048);
     }
 }

@@ -30,7 +30,7 @@ impl<P: LLMProvider> LLMProvider for MaskingProviderDecorator<P> {
         messages: &[Message],
         tools: &[ToolSchema],
         max_output_tokens: Option<u32>,
-        model: Option<&str>,
+        model: &str,
     ) -> Result<LLMStream> {
         if self.masking_config.entries.is_empty() {
             return self
@@ -84,7 +84,7 @@ mod tests {
             messages: &[Message],
             _tools: &[ToolSchema],
             _max_output_tokens: Option<u32>,
-            _model: Option<&str>,
+            _model: &str,
         ) -> Result<LLMStream> {
             self.seen.lock().expect("lock").push(messages.to_vec());
             Ok(Box::pin(stream::empty()))
@@ -110,7 +110,7 @@ mod tests {
         let tools: Vec<ToolSchema> = Vec::new();
 
         decorator
-            .chat_stream(&messages, &tools, None, None)
+            .chat_stream(&messages, &tools, None, "test-model")
             .await
             .expect("chat_stream");
 
@@ -131,7 +131,7 @@ mod tests {
         let tools: Vec<ToolSchema> = Vec::new();
 
         decorator
-            .chat_stream(&messages, &tools, None, None)
+            .chat_stream(&messages, &tools, None, "test-model")
             .await
             .expect("chat_stream");
 
@@ -141,4 +141,3 @@ mod tests {
         assert_eq!(recorded[0][0].content, "This is secret");
     }
 }
-

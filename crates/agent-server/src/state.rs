@@ -160,11 +160,7 @@ impl AppState {
             }
             _ => {
                 log::info!("Using OpenAI provider");
-                Arc::new(
-                    OpenAIProvider::new(api_key)
-                        .with_base_url(llm_base_url)
-                        .with_model(model.clone()),
-                )
+                Arc::new(OpenAIProvider::new(api_key).with_base_url(llm_base_url))
             }
         };
 

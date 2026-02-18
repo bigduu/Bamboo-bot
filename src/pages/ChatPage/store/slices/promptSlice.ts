@@ -10,11 +10,18 @@ const systemPromptService = SystemPromptService.getInstance();
 
 // Helper function to generate ID from name
 function generateIdFromName(name: string): string {
-  return name
+  const sanitized = name
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+
+  // If the name contains no ASCII characters, generate a unique ID
+  if (sanitized.length === 0) {
+    return `prompt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  return sanitized;
 }
 
 export interface PromptSlice {
@@ -156,7 +163,30 @@ const loadCustomPrompts = (): UserSystemPrompt[] => {
     const stored = localStorage.getItem(CUSTOM_PROMPTS_LS_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : [];
+    const prompts = Array.isArray(parsed) ? parsed : [];
+
+    // Migration: Fix prompts with empty or missing IDs
+    const needsMigration = prompts.some(
+      (p) => !p.id || p.id.trim() === "" || !p.id.match(/^[a-z0-9_]+$/),
+    );
+
+    if (needsMigration) {
+      const fixedPrompts = prompts.map((p) => {
+        if (!p.id || p.id.trim() === "" || !p.id.match(/^[a-z0-9_]+$/)) {
+          const newId = `prompt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          console.log(
+            `[Migration] Fixed prompt "${p.name}" with invalid ID, new ID: ${newId}`,
+          );
+          return { ...p, id: newId };
+        }
+        return p;
+      });
+      // Save the fixed prompts
+      saveCustomPrompts(fixedPrompts);
+      return fixedPrompts;
+    }
+
+    return prompts;
   } catch (error) {
     console.error("Failed to load custom system prompts:", error);
     return [];

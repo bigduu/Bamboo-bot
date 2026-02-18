@@ -114,7 +114,7 @@ export interface ChatRequest {
   system_prompt?: string;
   enhance_prompt?: string;
   workspace_path?: string;
-  model?: string;
+  model: string; // Required
 }
 
 export interface ChatResponse {
@@ -201,8 +201,8 @@ export class AgentClient {
    * Execute agent for a session (idempotent)
    * Returns status: started | already_running | completed | error | cancelled
    */
-  async execute(sessionId: string): Promise<ExecuteResponse> {
-    return agentApiClient.post<ExecuteResponse>(`execute/${sessionId}`);
+  async execute(sessionId: string, model: string): Promise<ExecuteResponse> {
+    return agentApiClient.post<ExecuteResponse>(`execute/${sessionId}`, { model });
   }
 
   /**

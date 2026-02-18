@@ -60,7 +60,7 @@ mod tests {
     async fn need_clarification_sends_event() {
         let (event_tx, mut event_rx) = mpsc::channel(8);
         let tools: Arc<dyn ToolExecutor> = Arc::new(BuiltinToolExecutor::new());
-        let mut session = Session::new("s1");
+        let mut session = Session::new("s1", "test-model");
         let tool_call = make_tool_call("call_parent", "smart_tool", "{}");
         let result = ToolResult {
             success: true,
@@ -101,7 +101,7 @@ mod tests {
     async fn need_more_actions_executes_sub_actions() {
         let (event_tx, mut event_rx) = mpsc::channel(16);
         let tools: Arc<dyn ToolExecutor> = Arc::new(BuiltinToolExecutor::new());
-        let mut session = Session::new("s2");
+        let mut session = Session::new("s2", "test-model");
         let sub_action = make_tool_call("call_sub", "get_current_dir", "{}");
         let parent_call = make_tool_call("call_parent", "smart_tool", "{}");
         let result = ToolResult {

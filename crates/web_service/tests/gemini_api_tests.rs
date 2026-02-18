@@ -29,7 +29,7 @@ impl LLMProvider for MockProvider {
         _messages: &[agent_core::Message],
         tools: &[agent_core::tools::ToolSchema],
         _max_output_tokens: Option<u32>,
-        _model: Option<&str>,
+        _model: &str,
     ) -> Result<LLMStream, LLMError> {
         *self.seen_tools.lock().await = tools.to_vec();
         let items = self.chunks.clone().into_iter().map(Ok);
@@ -206,4 +206,3 @@ async fn test_gemini_stream_generate_content_emits_tool_call_parts() {
         "expected at least one stream event containing the tool function_call"
     );
 }
-

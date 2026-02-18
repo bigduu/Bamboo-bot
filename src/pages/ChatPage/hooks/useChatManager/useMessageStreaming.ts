@@ -73,6 +73,11 @@ export function useMessageStreaming(
    */
   const sendWithAgent = useCallback(
     async (content: string, chatId: string, _userMessage: UserMessage) => {
+      // Validate model is available (TypeScript type guard)
+      if (!activeModel) {
+        throw new Error("Model not selected");
+      }
+
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -95,7 +100,7 @@ export function useMessageStreaming(
           system_prompt: baseSystemPrompt || undefined,
           enhance_prompt: enhancePrompt || undefined,
           workspace_path: workspacePath || undefined,
-          model: activeModel || undefined,
+          model: activeModel,
         });
 
         const { session_id } = response;
@@ -110,7 +115,10 @@ export function useMessageStreaming(
         }
 
         // Step 2: Trigger execution (idempotent)
-        const executeResult = await agentClientRef.current.execute(session_id);
+        const executeResult = await agentClientRef.current.execute(
+          session_id,
+          activeModel,
+        );
         console.log("[Agent] Execute status:", executeResult.status);
 
         // Step 3: Set processing flag to activate event subscription (handled by useAgentEventSubscription)
@@ -139,6 +147,15 @@ export function useMessageStreaming(
         modal.info({
           title: "No Active Chat",
           content: "Please create or select a chat before sending a message.",
+        });
+        return;
+      }
+
+      // Validate model is available
+      if (!activeModel) {
+        modal.error({
+          title: "No Model Selected",
+          content: "Please select a model before sending a message.",
         });
         return;
       }

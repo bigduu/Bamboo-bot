@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Empty, Modal, Space, Typography, message, theme } from "antd";
 import { ToolOutlined } from "@ant-design/icons";
 
@@ -45,6 +45,12 @@ const SystemPromptSelector: React.FC<SystemPromptSelectorProps> = ({
     null,
   );
 
+  // Filter out prompts with empty or missing IDs - use useMemo to avoid recalculation
+  const validPrompts = useMemo(
+    () => prompts.filter((p) => p.id && p.id.trim() !== ""),
+    [prompts],
+  );
+
   const handleCopyPrompt = async (
     event: React.MouseEvent,
     prompt: UserSystemPrompt,
@@ -76,10 +82,15 @@ const SystemPromptSelector: React.FC<SystemPromptSelectorProps> = ({
 
   useEffect(() => {
     if (open) {
-      const defaultPrompt = prompts.find((p) => p.isDefault);
-      setSelectedId(lastSelectedPromptId || defaultPrompt?.id || null);
+      const defaultPrompt = validPrompts.find((p) => p.isDefault);
+      // Priority: last selected > default prompt > first available prompt
+      const initialId =
+        lastSelectedPromptId ||
+        defaultPrompt?.id ||
+        (validPrompts.length > 0 ? validPrompts[0].id : null);
+      setSelectedId(initialId);
     }
-  }, [open, lastSelectedPromptId, prompts]);
+  }, [open, lastSelectedPromptId, validPrompts.length]); // Use validPrompts.length instead of validPrompts to avoid unnecessary re-runs
 
   const handleSelect = (prompt: UserSystemPrompt) => {
     setSelectedId(prompt.id);
@@ -111,7 +122,7 @@ const SystemPromptSelector: React.FC<SystemPromptSelectorProps> = ({
               ...(showCancelButton ? [createCancelButton(handleCancel)] : []),
               createOkButton(
                 () => {
-                  const prompt = prompts.find((p) => p.id === selectedId);
+                  const prompt = validPrompts.find((p) => p.id === selectedId);
                   if (prompt) {
                     handleSelect(prompt);
                   }
@@ -139,14 +150,14 @@ const SystemPromptSelector: React.FC<SystemPromptSelectorProps> = ({
           </Text>
         </div>
 
-        {prompts.length === 0 ? (
+        {validPrompts.length === 0 ? (
           <Empty
             description="No system prompts found. Add one in System Settings."
             style={{ margin: token.marginLG }}
           />
         ) : (
           <div>
-            {prompts.map((prompt) => (
+            {validPrompts.map((prompt) => (
               <SystemPromptListItem
                 key={prompt.id}
                 prompt={prompt}

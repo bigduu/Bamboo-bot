@@ -187,7 +187,7 @@ mod tests {
     }
 
     fn make_session_with_messages(messages: Vec<Message>) -> Session {
-        let mut session = Session::new("test-session");
+        let mut session = Session::new("test-session", "test-model");
         session.messages = messages;
         session
     }
@@ -346,7 +346,7 @@ mod tests {
         let counter = HeuristicTokenCounter::default();
         let budget = TokenBudget::for_model(128_000);
 
-        let session = Session::new("empty");
+        let session = Session::new("empty", "test-model");
         let prepared = prepare_hybrid_context(&session, &budget, &counter).unwrap();
 
         assert!(!prepared.truncation_occurred);

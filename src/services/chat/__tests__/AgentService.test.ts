@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AgentClient } from "../AgentService";
+import { AgentClient, ChatRequest } from "../AgentService";
 import { mockFetchError, mockFetchResponse } from "@test/helpers";
 
 describe("AgentClient", () => {
@@ -34,5 +34,83 @@ describe("AgentClient", () => {
     const client = AgentClient.getInstance();
 
     await expect(client.deleteSession("session-1")).rejects.toThrow();
+  });
+
+  // ========== MODEL REQUIREMENT ARCHITECTURE TESTS ==========
+  // These tests ensure the design principle:
+  // "Frontend must explicitly specify model in requests"
+
+  describe("Model Requirement", () => {
+    it("ChatRequest requires model field", () => {
+      // This test verifies at TypeScript level that model is required
+      // ChatRequest interface: model: string (not model?: string)
+      const validRequest: ChatRequest = {
+        message: "Hello",
+        model: "kimi-for-coding",
+      };
+
+      expect(validRequest.model).toBe("kimi-for-coding");
+
+      // TypeScript would prevent this:
+      // const invalidRequest: ChatRequest = {
+      //   message: "Hello",
+      //   // model is missing - TypeScript error
+      // };
+    });
+
+    it("execute method requires model parameter", async () => {
+      fetchMock.mockResolvedValue(
+        mockFetchResponse({
+          session_id: "session-1",
+          status: "started",
+          events_url: "/stream/session-1",
+        }),
+      );
+
+      const client = AgentClient.getInstance();
+
+      // Model parameter is required (not optional)
+      await client.execute("session-1", "kimi-for-coding");
+
+      // Verify the request was made with model in body
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/execute/session-1"),
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining("kimi-for-coding"),
+        }),
+      );
+
+      // TypeScript would prevent this:
+      // await client.execute("session-1"); // Missing model parameter
+    });
+
+    it("sendMessage requires model in request", async () => {
+      fetchMock.mockResolvedValue(
+        mockFetchResponse({
+          session_id: "session-1",
+          stream_url: "/stream/session-1",
+          status: "started",
+        }),
+      );
+
+      const client = AgentClient.getInstance();
+
+      const request: ChatRequest = {
+        message: "Hello",
+        model: "kimi-for-coding",
+      };
+
+      await client.sendMessage(request);
+
+      // Verify the request was made with model
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/chat"),
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining("kimi-for-coding"),
+        }),
+      );
+    });
   });
 });

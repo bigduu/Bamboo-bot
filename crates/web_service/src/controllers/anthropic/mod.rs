@@ -1,5 +1,5 @@
 use crate::services::anthropic_model_mapping_service::load_anthropic_model_mapping;
-use crate::{error::AppError, server::AppState};
+use crate::{error::AppError, model_config_helper::get_default_model_from_config, server::AppState};
 use actix_web::{get, http::StatusCode, post, web, HttpResponse};
 use agent_core::Message;
 use agent_core::tools::ToolSchema;
@@ -215,6 +215,38 @@ pub async fn messages(
         }
     };
     openai_request.model = resolution.mapped_model.clone();
+    if openai_request.model.trim().is_empty() {
+        let config = app_state.config.read().await.clone();
+        openai_request.model = match get_default_model_from_config(&config) {
+            Ok(model) => model,
+            Err(err) => {
+                return Ok(anthropic_error_response(AnthropicError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "api_error",
+                    format!(
+                        "No default model configured. Please set a model in config.json. Details: {}",
+                        err
+                    ),
+                )));
+            }
+        };
+    }
+    if openai_request.model.trim().is_empty() {
+        let config = app_state.config.read().await.clone();
+        openai_request.model = match get_default_model_from_config(&config) {
+            Ok(model) => model,
+            Err(err) => {
+                return Ok(anthropic_error_response(AnthropicError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "api_error",
+                    format!(
+                        "No default model configured. Please set a model in config.json. Details: {}",
+                        err
+                    ),
+                )));
+            }
+        };
+    }
 
     // Enable usage tracking for streaming requests
     if stream {
@@ -238,7 +270,7 @@ pub async fn messages(
                 &internal_messages,
                 &internal_tools,
                 max_tokens,
-                None,
+                openai_request.model.as_str(),
             )
             .await;
 
@@ -311,7 +343,7 @@ pub async fn messages(
                 &internal_messages,
                 &internal_tools,
                 max_tokens,
-                None,
+                openai_request.model.as_str(),
             )
             .await
             .map_err(|err| {
@@ -435,7 +467,7 @@ pub async fn complete(
                 &internal_messages,
                 &internal_tools,
                 max_tokens,
-                None,
+                openai_request.model.as_str(),
             )
             .await;
 
@@ -498,7 +530,7 @@ pub async fn complete(
                 &internal_messages,
                 &internal_tools,
                 max_tokens,
-                None,
+                openai_request.model.as_str(),
             )
             .await
             .map_err(|err| {
