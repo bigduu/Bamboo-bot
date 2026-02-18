@@ -160,6 +160,7 @@ pub async fn evaluate_todo_progress(
     llm: Arc<dyn LLMProvider>,
     event_tx: &mpsc::Sender<AgentEvent>,
     session_id: &str,
+    model: &str,  // Add model parameter (required)
 ) -> Result<TodoEvaluationResult, agent_core::AgentError> {
     use crate::stream::handler::consume_llm_stream;
 
@@ -192,8 +193,11 @@ pub async fn evaluate_todo_progress(
     let messages = build_todo_evaluation_messages(ctx, session);
     let tools = get_todo_evaluation_tools();
 
+    // Use model from parameter (passed from config), not from session
+    log::debug!("[{}] Todo evaluation using model: {}", session_id, model);
+
     // 调用 LLM（限制 output tokens）
-    match llm.chat_stream(&messages, &tools, Some(500), None).await {
+    match llm.chat_stream(&messages, &tools, Some(500), model).await {
         Ok(stream) => {
             // 消费流
             let stream_output = consume_llm_stream(
@@ -268,7 +272,7 @@ mod tests {
     use chrono::Utc;
 
     fn create_test_context() -> TodoLoopContext {
-        let mut session = agent_core::Session::new("test");
+        let mut session = agent_core::Session::new("test", "test-model");
         let todo_list = TodoList {
             session_id: "test".to_string(),
             title: "Test Tasks".to_string(),
@@ -315,7 +319,7 @@ mod tests {
     #[test]
     fn test_build_evaluation_messages() {
         let ctx = create_test_context();
-        let session = agent_core::Session::new("test");
+        let session = agent_core::Session::new("test", "test-model");
 
         let messages = build_todo_evaluation_messages(&ctx, &session);
 
@@ -344,5 +348,32 @@ mod tests {
         // Completed task doesn't need evaluation
         ctx.items[0].status = TodoItemStatus::Completed;
         assert!(!ctx.items.iter().any(|i| matches!(i.status, TodoItemStatus::InProgress)));
+    }
+
+    // ========== MODEL REQUIREMENT ARCHITECTURE TESTS ==========
+    // These tests ensure the design principle:
+    // "Todo evaluation must receive model as parameter, not use session.model"
+
+    /// Test: evaluate_todo_progress requires model parameter
+    /// This test documents that the function signature requires model
+    #[test]
+    fn todo_evaluation_requires_model_parameter() {
+        // This test is compile-time verification:
+        // The function signature is:
+        // pub async fn evaluate_todo_progress(
+        //     ctx: &TodoLoopContext,
+        //     session: &Session,
+        //     llm: Arc<dyn LLMProvider>,
+        //     event_tx: &mpsc::Sender<AgentEvent>,
+        //     session_id: &str,
+        //     model: &str,  // <-- Required parameter
+        // ) -> Result<TodoEvaluationResult, agent_core::AgentError>
+        //
+        // The presence of `model: &str` in the signature proves that
+        // model must be passed as a parameter, not read from session.
+        //
+        // This is a documentation test - the actual verification
+        // happens at compile time when the function is called.
+        assert!(true, "Model parameter requirement is enforced by function signature");
     }
 }

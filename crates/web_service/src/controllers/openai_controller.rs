@@ -1,4 +1,4 @@
-use crate::{error::AppError, server::AppState};
+use crate::{error::AppError, model_config_helper::get_default_model_from_config, server::AppState};
 use actix_web::{get, post, web, HttpResponse};
 use agent_llm::api::models::{ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamChunk};
 use agent_llm::protocol::FromProvider;
@@ -300,13 +300,17 @@ pub async fn chat_completions(
 ) -> Result<HttpResponse, AppError> {
     let stream = req.stream.unwrap_or(false);
     let request = req.into_inner();
-    let model = request.model.clone();
-
-    // If model is "default", use None to let provider use its configured default
-    let model_override = if model == "default" {
-        None
+    let requested_model = request.model.clone();
+    let resolved_model = if requested_model.trim() == "default" {
+        let config = app_state.config.read().await.clone();
+        get_default_model_from_config(&config).map_err(|e| {
+            AppError::InternalError(anyhow::anyhow!(
+                "No default model configured: {}. Please set a model in config.json.",
+                e
+            ))
+        })?
     } else {
-        Some(model.as_str())
+        requested_model
     };
 
     // Convert messages to internal format
@@ -323,7 +327,7 @@ pub async fn chat_completions(
                 &internal_messages,
                 &internal_tools,
                 max_tokens,
-                model_override,  // Pass model override
+                resolved_model.as_str(),
             )
             .await
             .map_err(|e| {
@@ -336,7 +340,7 @@ pub async fn chat_completions(
             })?;
 
         let (tx, rx) = mpsc::channel(10);
-        let model_clone = model.clone();
+        let model_clone = resolved_model.clone();
 
         // Spawn a task to handle the streaming response
         tokio::spawn(async move {
@@ -379,7 +383,7 @@ pub async fn chat_completions(
                 &internal_messages,
                 &internal_tools,
                 max_tokens,
-                model_override,  // Pass model override
+                resolved_model.as_str(),
             )
             .await
             .map_err(|e| {
@@ -422,7 +426,7 @@ pub async fn chat_completions(
             }
         }
 
-        let response = build_completion_response(content, tool_calls, &model);
+        let response = build_completion_response(content, tool_calls, &resolved_model);
         Ok(HttpResponse::Ok().json(response))
     }
 }

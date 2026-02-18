@@ -130,11 +130,8 @@ pub async fn handler(
         // Get all tool schemas
         let all_tool_schemas = state_clone.get_all_tool_schemas();
 
-        // Get model from session or use state default
-        let model_name = session
-            .model
-            .clone()
-            .unwrap_or_else(|| state_clone.model_name.clone());
+        // Model is required in session
+        let model_name = session.model.clone();
 
         if let Some(prompt) = system_prompt.as_ref() {
             println!("\n========== SYSTEM PROMPT ==========");

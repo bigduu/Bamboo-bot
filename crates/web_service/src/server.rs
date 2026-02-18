@@ -32,6 +32,13 @@ impl AppState {
     /// Reload the provider based on current configuration
     pub async fn reload_provider(&self) -> Result<(), agent_llm::LLMError> {
         let config = self.config.read().await.clone();
+
+        log::info!(
+            "Reloading provider: type={}, model={:?}",
+            config.provider,
+            config.providers.anthropic.as_ref().and_then(|p| p.model.as_ref())
+        );
+
         let new_provider = agent_llm::create_provider_with_dir(&config, self.app_data_dir.clone()).await?;
 
         let mut provider = self.provider.write().await;

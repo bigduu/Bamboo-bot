@@ -148,8 +148,8 @@ pub struct Session {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending_question: Option<PendingQuestion>,
     /// Model name for this session (e.g., "gpt-4o", "gpt-4o-mini")
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
+    #[serde(default)]
+    pub model: String,
     /// Session metadata for extensibility (other configuration)
     #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub metadata: std::collections::HashMap<String, String>,
@@ -165,7 +165,7 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new(id: impl Into<String>) -> Self {
+    pub fn new(id: impl Into<String>, model: impl Into<String>) -> Self {
         let now = Utc::now();
         Self {
             id: id.into(),
@@ -174,7 +174,7 @@ impl Session {
             updated_at: now,
             todo_list: None,
             pending_question: None,
-            model: None,
+            model: model.into(),
             metadata: std::collections::HashMap::new(),
             token_budget: None,
             token_usage: None,

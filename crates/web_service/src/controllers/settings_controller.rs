@@ -595,6 +595,29 @@ pub async fn update_provider_config(
 
     log::info!("Provider configuration updated to: {}", payload.provider);
 
+    // First, reload the configuration from file into AppState
+    let new_config = app_state.reload_config().await;
+
+    // Validate the configuration
+    if let Err(e) = agent_llm::validate_provider_config(&new_config) {
+        log::error!("Invalid configuration after update: {}", e);
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "success": false,
+            "error": format!("Configuration saved but invalid: {}", e)
+        })));
+    }
+
+    // Reload provider to apply new configuration
+    if let Err(e) = app_state.reload_provider().await {
+        log::error!("Failed to reload provider after updating configuration: {}", e);
+        return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "success": false,
+            "error": format!("Configuration saved but failed to reload provider: {}", e)
+        })));
+    }
+
+    log::info!("Provider reloaded successfully after configuration update");
+
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "success": true,
         "provider": payload.provider

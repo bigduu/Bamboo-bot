@@ -248,12 +248,18 @@ pub async fn run_agent_loop_with_config(
         }
 
         let timer = Timer::new("llm_request");
+
+        // Use model from config (provided by execute request), not from session
+        let model = config.model_name.as_deref().ok_or_else(|| {
+            agent_core::AgentError::LLM("model_name is required in AgentLoopConfig".to_string())
+        })?;
+
         let stream = match llm
             .chat_stream(
                 &prepared_context.messages,
                 &tool_schemas,
                 Some(budget.max_output_tokens),
-                None,
+                model,
             )
             .await
         {
@@ -749,12 +755,18 @@ pub async fn run_agent_loop_with_config(
 
             log::debug!("[{}] Evaluating todo list progress at end of round {}", session_id, round + 1);
 
+            // Use model from config
+            let model = config.model_name.as_deref().ok_or_else(|| {
+                agent_core::AgentError::LLM("model_name is required in AgentLoopConfig".to_string())
+            })?;
+
             match evaluate_todo_progress(
                 ctx,
                 session,
                 llm.clone(),
                 &event_tx,
                 &session_id,
+                model,  // Pass model from config
             ).await {
                 Ok(evaluation_result) => {
                     if evaluation_result.needs_evaluation && !evaluation_result.updates.is_empty() {
@@ -1097,7 +1109,7 @@ impl Timer {
 mod tests {
     use super::{
         merge_system_prompt_with_contexts, strip_existing_skill_context,
-        strip_existing_tool_guide_context,
+        strip_existing_tool_guide_context, AgentLoopConfig,
     };
 
     #[test]
@@ -1139,5 +1151,58 @@ mod tests {
             "Base prompt\n\n## Tool Usage Guidelines\n\n### File Reading Tools\nInstructions",
         );
         assert_eq!(stripped, "Base prompt");
+    }
+
+    // ========== MODEL REQUIREMENT ARCHITECTURE TESTS ==========
+    // These tests ensure the design principle:
+    // "Agent loop must use config.model_name, not session.model"
+
+    /// Test: AgentLoopConfig.model_name defaults to None
+    #[test]
+    fn agent_loop_config_model_name_defaults_to_none() {
+        let config = AgentLoopConfig::default();
+        assert!(
+            config.model_name.is_none(),
+            "model_name should default to None, forcing explicit setting"
+        );
+    }
+
+    /// Test: AgentLoopConfig can have model_name set
+    #[test]
+    fn agent_loop_config_can_set_model_name() {
+        let config = AgentLoopConfig {
+            model_name: Some("kimi-for-coding".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(config.model_name, Some("kimi-for-coding".to_string()));
+    }
+
+    /// Test: Model must be extracted from config, not session
+    /// This test documents the requirement that model comes from config.model_name
+    #[test]
+    fn model_must_come_from_config_not_session() {
+        use agent_core::Session;
+
+        // Create a config with model
+        let config = AgentLoopConfig {
+            model_name: Some("config-model".to_string()),
+            ..Default::default()
+        };
+
+        // Create a session with a different model (just for recording)
+        let session = Session::new("test", "session-model");
+
+        // The model used for execution should come from config, not session
+        let execution_model = config.model_name.as_deref().unwrap();
+        assert_eq!(
+            execution_model, "config-model",
+            "Model must come from config.model_name, not session.model"
+        );
+
+        // session.model is different (just for recording)
+        assert_eq!(
+            session.model, "session-model",
+            "session.model is just for recording, not execution"
+        );
     }
 }

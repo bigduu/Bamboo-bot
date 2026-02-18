@@ -45,7 +45,7 @@ impl LLMProvider for MockProvider {
         _messages: &[agent_core::Message],
         _tools: &[agent_core::tools::ToolSchema],
         _max_output_tokens: Option<u32>,
-        _model: Option<&str>,
+        _model: &str,
     ) -> Result<LLMStream, LLMError> {
         let items = self.chunks.clone().into_iter().map(Ok);
         Ok(Box::pin(stream::iter(items)))
@@ -248,4 +248,3 @@ async fn test_chat_completions_streaming() {
         Some("stop")
     );
 }
-

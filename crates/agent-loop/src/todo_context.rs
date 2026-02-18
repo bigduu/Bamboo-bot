@@ -347,7 +347,7 @@ mod tests {
     use super::*;
 
     fn create_test_todo_list() -> agent_core::Session {
-        let mut session = agent_core::Session::new("test-session");
+        let mut session = agent_core::Session::new("test-session", "test-model");
         let todo_list = TodoList {
             session_id: "test-session".to_string(),
             title: "Test Tasks".to_string(),

@@ -6,7 +6,7 @@ mod tests {
 
     #[test]
     fn test_session_creation() {
-        let session = Session::new("test-123");
+        let session = Session::new("test-123", "test-model");
         assert_eq!(session.id, "test-123");
         assert!(session.messages.is_empty());
     }
@@ -21,7 +21,7 @@ mod tests {
 
     #[test]
     fn test_session_add_message() {
-        let mut session = Session::new("test");
+        let mut session = Session::new("test", "test-model");
         let msg = Message::user("Test message");
         session.add_message(msg);
 
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_session_metadata_serialization() {
-        let mut session = Session::new("test-metadata");
+        let mut session = Session::new("test-metadata", "test-model");
         session.metadata.insert("model".to_string(), "gpt-5".to_string());
         session.metadata.insert("key".to_string(), "value".to_string());
 
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_session_metadata_empty_not_serialized() {
-        let session = Session::new("test-no-metadata");
+        let session = Session::new("test-no-metadata", "test-model");
         // metadata is empty by default
 
         let json = serde_json::to_string(&session).unwrap();
@@ -189,36 +189,17 @@ mod tests {
 
     #[test]
     fn test_session_with_model_field() {
-        let mut session = Session::new("test-session");
-        session.model = Some("gpt-4o-mini".to_string());
+        let mut session = Session::new("test-session", "gpt-4o-mini");
+        assert_eq!(session.model, "gpt-4o-mini");
 
-        // Simulate reading model from dedicated field (like in stream.rs)
-        let model = session
-            .model
-            .clone()
-            .unwrap_or_else(|| "default-model".to_string());
-
-        assert_eq!(model, "gpt-4o-mini");
-    }
-
-    #[test]
-    fn test_session_model_fallback() {
-        let session = Session::new("test-session");
-        // No model set
-
-        // Simulate reading model with fallback
-        let model = session
-            .model
-            .clone()
-            .unwrap_or_else(|| "fallback-model".to_string());
-
-        assert_eq!(model, "fallback-model");
+        // Model can be updated (e.g., user switches models mid-session).
+        session.model = "gpt-5".to_string();
+        assert_eq!(session.model, "gpt-5");
     }
 
     #[test]
     fn test_session_model_serialization() {
-        let mut session = Session::new("test-session");
-        session.model = Some("gpt-5".to_string());
+        let session = Session::new("test-session", "gpt-5");
 
         let json = serde_json::to_string(&session).unwrap();
         println!("Serialized session with model: {}", json);
@@ -230,23 +211,7 @@ mod tests {
 
         // Deserialize and verify
         let deserialized: Session = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.model, Some("gpt-5".to_string()));
-    }
-
-    #[test]
-    fn test_session_model_not_serialized_when_none() {
-        let session = Session::new("test-session");
-        // model is None by default
-
-        let json = serde_json::to_string(&session).unwrap();
-        println!("Serialized session without model: {}", json);
-
-        // Verify model is not present when None (skip_serializing_if)
-        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert!(
-            parsed.get("model").is_none(),
-            "model field should be skipped when None"
-        );
+        assert_eq!(deserialized.model, "gpt-5");
     }
 
     #[test]
@@ -261,14 +226,13 @@ mod tests {
 
         let session: Session = serde_json::from_str(old_session_json).unwrap();
         assert_eq!(session.id, "old-session");
-        assert_eq!(session.model, None);
+        assert_eq!(session.model, "");
     }
 
     #[test]
     fn test_session_model_and_metadata_together() {
         // Test that model and metadata can coexist
-        let mut session = Session::new("test-session");
-        session.model = Some("gpt-4o".to_string());
+        let mut session = Session::new("test-session", "gpt-4o");
         session.metadata.insert("temperature".to_string(), "0.7".to_string());
         session.metadata.insert("max_tokens".to_string(), "4096".to_string());
 
@@ -281,7 +245,7 @@ mod tests {
         assert_eq!(parsed["metadata"]["max_tokens"], "4096");
 
         let deserialized: Session = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.model, Some("gpt-4o".to_string()));
+        assert_eq!(deserialized.model, "gpt-4o");
         assert_eq!(deserialized.metadata.get("temperature"), Some(&"0.7".to_string()));
     }
 }

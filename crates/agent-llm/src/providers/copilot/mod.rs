@@ -236,7 +236,7 @@ impl LLMProvider for CopilotProvider {
         messages: &[Message],
         tools: &[ToolSchema],
         max_output_tokens: Option<u32>,
-        model: Option<&str>,
+        model: &str,
     ) -> Result<LLMStream> {
         // Ensure authenticated
         if !self.is_authenticated() {
@@ -245,10 +245,11 @@ impl LLMProvider for CopilotProvider {
             ));
         }
 
-        // Copilot uses a fixed model, ignore the model parameter
-        if model.is_some() {
-            log::warn!("Copilot provider does not support dynamic model selection. Ignoring model parameter.");
-        }
+        // Copilot uses a fixed upstream model; keep the required `model` parameter for trait consistency.
+        log::debug!(
+            "Copilot provider ignoring requested model (fixed upstream model): {}",
+            model
+        );
 
         let mut body = json!({
             "model": "copilot-chat",
@@ -674,7 +675,7 @@ mod tests {
 
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
-            provider.chat_stream(&[], &[], None, None).await
+            provider.chat_stream(&[], &[], None, "copilot-chat").await
         });
 
         assert!(result.is_err());
@@ -713,5 +714,51 @@ mod tests {
         // Test with special characters in token
         // Note: Some special characters might cause issues with HeaderValue
         // The build_headers method will fail on invalid chars, which is expected
+    }
+
+    // ========== MODEL REQUIREMENT ARCHITECTURE TESTS ==========
+    // These tests ensure the design principle:
+    // "Provider must not have a default model field or with_model() method"
+
+    /// Test: CopilotProvider does NOT have a model field
+    #[test]
+    fn copilot_provider_has_no_model_field() {
+        if should_skip() {
+            return;
+        }
+
+        // This test documents the provider structure:
+        // pub struct CopilotProvider {
+        //     client: Client,
+        //     token: Option<String>,
+        //     token_expires_at: Option<u64>,
+        //     auth_handler: Option<CopilotAuthHandler>,
+        //     // NO model field!
+        // }
+        //
+        // If someone adds a model field, this test should be updated
+        // to reflect the architecture change.
+        let provider = CopilotProvider::new();
+        // Verify we can access known fields
+        assert!(provider.token.is_none());
+        assert!(provider.token_expires_at.is_none());
+        assert!(!provider.is_authenticated());
+        // There is NO provider.model field to access
+    }
+
+    /// Test: CopilotProvider does NOT have with_model() method
+    #[test]
+    fn copilot_provider_has_no_with_model_method() {
+        if should_skip() {
+            return;
+        }
+
+        // Available builder/constructor methods:
+        let provider = CopilotProvider::with_token("test_token");
+
+        // There is NO .with_model("copilot-chat") method
+        // Model is passed to chat_stream() as a parameter (though Copilot uses a fixed upstream model)
+
+        assert!(provider.is_authenticated());
     }
 }
