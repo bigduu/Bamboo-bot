@@ -44,7 +44,11 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
   const emptyCountRef = useRef(0);
   const MAX_EMPTY_COUNT = 3; // Stop polling after 3 consecutive empty responses
 
-  const setProcessing = useAppStore((state) => state.setProcessing);
+  const setChatProcessing = useAppStore((state) => state.setChatProcessing);
+  const chats = useAppStore((state) => state.chats);
+
+  // Find the chatId for this sessionId
+  const chatId = chats.find((chat) => chat.config.agentSessionId === sessionId)?.id;
 
   // Fetch pending question
   const fetchPendingQuestion = useCallback(async () => {
@@ -145,7 +149,9 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
 
         // Set processing flag to activate event subscription
         if (["started", "already_running"].includes(executeResult.status)) {
-          setProcessing(true);
+          if (chatId) {
+            setChatProcessing(chatId, true);
+          }
         }
       } catch (execError) {
         console.error(

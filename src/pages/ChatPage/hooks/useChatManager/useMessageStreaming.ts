@@ -15,9 +15,9 @@ export interface UseMessageStreaming {
 }
 
 interface UseMessageStreamingDeps {
-  currentChat: ChatItem | null;
+  chatId: string | null;
   addMessage: (chatId: string, message: Message) => Promise<void>;
-  setProcessing: (isProcessing: boolean) => void;
+  setChatProcessing: (chatId: string, isProcessing: boolean) => void;
   updateChat: (chatId: string, updates: Partial<ChatItem>) => void;
 }
 
@@ -47,6 +47,13 @@ export function useMessageStreaming(
   );
   const activeModel = useActiveModel();
 
+  // Fetch chat internally based on chatId
+  const currentChat = useAppStore((state) =>
+    deps.chatId
+      ? state.chats.find((chat) => chat.id === deps.chatId) || null
+      : null,
+  );
+
   useEffect(() => {
     startAgentHealthCheck();
   }, [startAgentHealthCheck]);
@@ -56,7 +63,7 @@ export function useMessageStreaming(
     abortRef.current?.abort();
 
     // Also tell backend to stop agent execution
-    const sessionId = deps.currentChat?.config?.agentSessionId;
+    const sessionId = currentChat?.config?.agentSessionId;
     if (sessionId) {
       agentClientRef.current.stopGeneration(sessionId).catch((error) => {
         console.error(
@@ -65,7 +72,7 @@ export function useMessageStreaming(
         );
       });
     }
-  }, [deps.currentChat?.config?.agentSessionId]);
+  }, [currentChat?.config?.agentSessionId]);
 
   /**
    * Send message using Agent Server
@@ -83,11 +90,11 @@ export function useMessageStreaming(
 
       try {
         const baseSystemPrompt = (
-          deps.currentChat?.config?.baseSystemPrompt || ""
+          currentChat?.config?.baseSystemPrompt || ""
         ).trim();
         const enhancePrompt = getSystemPromptEnhancementText().trim();
         // Normalize workspace path: remove trailing slashes, handle cross-platform
-        const rawWorkspacePath = deps.currentChat?.config?.workspacePath || "";
+        const rawWorkspacePath = currentChat?.config?.workspacePath || "";
         const workspacePath = rawWorkspacePath
           .trim()
           .replace(/\/+$/, "") // Remove trailing slashes (Unix/Windows)
@@ -96,7 +103,7 @@ export function useMessageStreaming(
         // Step 1: Send message to Agent
         const response = await agentClientRef.current.sendMessage({
           message: content,
-          session_id: deps.currentChat?.config?.agentSessionId,
+          session_id: currentChat?.config?.agentSessionId,
           system_prompt: baseSystemPrompt || undefined,
           enhance_prompt: enhancePrompt || undefined,
           workspace_path: workspacePath || undefined,
@@ -104,7 +111,7 @@ export function useMessageStreaming(
         });
 
         const { session_id } = response;
-        const currentConfig = deps.currentChat?.config;
+        const currentConfig = currentChat?.config;
         if (currentConfig && currentConfig.agentSessionId !== session_id) {
           deps.updateChat(chatId, {
             config: {
@@ -123,30 +130,38 @@ export function useMessageStreaming(
 
         // Step 3: Set processing flag to activate event subscription (handled by useAgentEventSubscription)
         if (["started", "already_running"].includes(executeResult.status)) {
-          deps.setProcessing(true);
+          deps.setChatProcessing(chatId, true);
         } else if (executeResult.status === "completed") {
           // Session already completed, no need to process
           console.log("[Agent] Session already completed");
-          deps.setProcessing(false);
+          deps.setChatProcessing(chatId, false);
         } else {
           // Error or other status
           console.error("[Agent] Execute failed:", executeResult.status);
-          deps.setProcessing(false);
+          deps.setChatProcessing(chatId, false);
           throw new Error(`Execute failed: ${executeResult.status}`);
         }
       } catch (error) {
         throw error; // Re-throw to trigger fallback
       }
     },
-    [deps, activeModel],
+    [deps, activeModel, currentChat],
   );
 
   const sendMessage = useCallback(
     async (content: string, images?: ImageFile[]) => {
-      if (!deps.currentChat) {
+      if (!currentChat) {
         modal.info({
           title: "No Active Chat",
           content: "Please create or select a chat before sending a message.",
+        });
+        return;
+      }
+
+      if (!deps.chatId) {
+        modal.info({
+          title: "No Chat ID",
+          content: "Chat ID is required to send a message.",
         });
         return;
       }
@@ -178,7 +193,7 @@ export function useMessageStreaming(
         return;
       }
 
-      const chatId = deps.currentChat.id;
+      const chatId = deps.chatId;
       const messageImages =
         images?.map((img) => ({
           id: img.id,
@@ -198,12 +213,12 @@ export function useMessageStreaming(
 
       await deps.addMessage(chatId, userMessage);
 
-      deps.setProcessing(true);
+      deps.setChatProcessing(chatId, true);
 
       try {
         console.log("[useChatStreaming] Using Agent Server");
         await sendWithAgent(content, chatId, userMessage);
-        // Note: Don't set isProcessing(false) here - let useAgentEventSubscription handle it
+        // Note: Don't set processing false here - let useAgentEventSubscription handle it
       } catch (error) {
         if (streamingMessageIdRef.current) {
           streamingMessageBus.clear(chatId, streamingMessageIdRef.current);
@@ -218,7 +233,7 @@ export function useMessageStreaming(
           appMessage.error("Failed to send message. Please try again.");
           setAgentAvailability(false);
         }
-        deps.setProcessing(false); // Only set false on error
+        deps.setChatProcessing(chatId, false); // Only set false on error
       } finally {
         abortRef.current = null;
         if (streamingMessageIdRef.current) {
@@ -226,7 +241,7 @@ export function useMessageStreaming(
         }
         streamingMessageIdRef.current = null;
         streamingContentRef.current = "";
-        // Removed: deps.setProcessing(false) - useAgentEventSubscription handles this
+        // Removed: deps.setChatProcessing(chatId, false) - useAgentEventSubscription handles this
       }
     },
     [
@@ -234,9 +249,11 @@ export function useMessageStreaming(
       appMessage,
       checkAgentAvailability,
       deps,
+      currentChat,
       modal,
       sendWithAgent,
       setAgentAvailability,
+      activeModel,
     ],
   );
 

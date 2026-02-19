@@ -17,7 +17,14 @@ const mockStoreState = {
   startAgentHealthCheck: vi.fn(),
   checkAgentAvailability: vi.fn<() => Promise<boolean>>(),
   setAgentAvailability: vi.fn(),
+  chats: [] as any[],
 };
+
+const mockActiveModel = "gpt-5";
+
+vi.mock("../../hooks/useActiveModel", () => ({
+  useActiveModel: () => mockActiveModel,
+}));
 
 vi.mock("antd", () => ({
   App: {
@@ -69,9 +76,9 @@ describe("useMessageStreaming", () => {
 
   it("starts global health-check polling once on mount", async () => {
     const deps = {
-      currentChat: null,
+      chatId: null,
       addMessage: vi.fn(),
-      setProcessing: vi.fn(),
+      setChatProcessing: vi.fn(),
       updateChat: vi.fn(),
     };
 
@@ -85,25 +92,29 @@ describe("useMessageStreaming", () => {
   it("verifies availability from store before sending when status is unknown", async () => {
     mockStoreState.checkAgentAvailability.mockResolvedValue(false);
 
-    const deps = {
-      currentChat: {
-        id: "chat-1",
-        title: "Test Chat",
-        createdAt: Date.now(),
-        messages: [],
-        config: {
-          systemPromptId: "general_assistant",
-          baseSystemPrompt: "",
-          lastUsedEnhancedPrompt: null,
-        },
-        currentInteraction: {
-          machineState: "idle",
-          streamingMessageId: null,
-          streamingContent: null,
-        },
+    const mockChat = {
+      id: "chat-1",
+      title: "Test Chat",
+      createdAt: Date.now(),
+      messages: [],
+      config: {
+        systemPromptId: "general_assistant",
+        baseSystemPrompt: "",
+        lastUsedEnhancedPrompt: null,
       },
+      currentInteraction: {
+        machineState: "idle",
+        streamingMessageId: null,
+        streamingContent: null,
+      },
+    };
+
+    mockStoreState.chats = [mockChat];
+
+    const deps = {
+      chatId: "chat-1",
       addMessage: vi.fn(),
-      setProcessing: vi.fn(),
+      setChatProcessing: vi.fn(),
       updateChat: vi.fn(),
     };
 
@@ -124,25 +135,29 @@ describe("useMessageStreaming", () => {
     mockStoreState.agentAvailability = true;
     mockAgentSendMessage.mockRejectedValueOnce(new Error("boom"));
 
-    const deps = {
-      currentChat: {
-        id: "chat-1",
-        title: "Test Chat",
-        createdAt: Date.now(),
-        messages: [],
-        config: {
-          systemPromptId: "general_assistant",
-          baseSystemPrompt: "",
-          lastUsedEnhancedPrompt: null,
-        },
-        currentInteraction: {
-          machineState: "idle",
-          streamingMessageId: null,
-          streamingContent: null,
-        },
+    const mockChat = {
+      id: "chat-1",
+      title: "Test Chat",
+      createdAt: Date.now(),
+      messages: [],
+      config: {
+        systemPromptId: "general_assistant",
+        baseSystemPrompt: "",
+        lastUsedEnhancedPrompt: null,
       },
+      currentInteraction: {
+        machineState: "idle",
+        streamingMessageId: null,
+        streamingContent: null,
+      },
+    };
+
+    mockStoreState.chats = [mockChat];
+
+    const deps = {
+      chatId: "chat-1",
       addMessage: vi.fn(async () => undefined),
-      setProcessing: vi.fn(),
+      setChatProcessing: vi.fn(),
       updateChat: vi.fn(),
     };
 
@@ -167,26 +182,30 @@ describe("useMessageStreaming", () => {
     });
     mockAgentStreamEvents.mockResolvedValue(undefined);
 
-    const deps = {
-      currentChat: {
-        id: "chat-1",
-        title: "Test Chat",
-        createdAt: Date.now(),
-        messages: [],
-        config: {
-          systemPromptId: "general_assistant",
-          baseSystemPrompt: "Base prompt",
-          workspacePath: "/tmp/workspace",
-          lastUsedEnhancedPrompt: null,
-        },
-        currentInteraction: {
-          machineState: "idle",
-          streamingMessageId: null,
-          streamingContent: null,
-        },
+    const mockChat = {
+      id: "chat-1",
+      title: "Test Chat",
+      createdAt: Date.now(),
+      messages: [],
+      config: {
+        systemPromptId: "general_assistant",
+        baseSystemPrompt: "Base prompt",
+        workspacePath: "/tmp/workspace",
+        lastUsedEnhancedPrompt: null,
       },
+      currentInteraction: {
+        machineState: "idle",
+        streamingMessageId: null,
+        streamingContent: null,
+      },
+    };
+
+    mockStoreState.chats = [mockChat];
+
+    const deps = {
+      chatId: "chat-1",
       addMessage: vi.fn(async () => undefined),
-      setProcessing: vi.fn(),
+      setChatProcessing: vi.fn(),
       updateChat: vi.fn(),
     };
 

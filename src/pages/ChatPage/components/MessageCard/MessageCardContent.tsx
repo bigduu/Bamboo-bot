@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Space, Typography, Button, Alert } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import ReactMarkdown from "react-markdown";
@@ -152,4 +152,4 @@ const MessageCardContent: React.FC<MessageCardContentProps> = ({
   );
 };
 
-export default MessageCardContent;
+export default memo(MessageCardContent);

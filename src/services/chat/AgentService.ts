@@ -297,76 +297,91 @@ export class AgentClient {
     abortController?: AbortController,
   ): Promise<void> {
     const signal = abortController?.signal;
-    const response = await agentApiClient.fetchRaw(`events/${sessionId}`, {
-      signal,
-    });
-
-    if (!response.ok) {
-      // Try to parse error details from response
-      let errorMessage = `Failed to subscribe to events: ${response.statusText}`;
-      try {
-        const body = await response.text();
-        if (body) {
-          try {
-            const errorData = JSON.parse(body);
-            errorMessage =
-              errorData.error ||
-              errorData.message ||
-              errorData.detail ||
-              errorMessage;
-          } catch {
-            errorMessage = body || errorMessage;
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse error response:", e);
-      }
-      throw new Error(errorMessage);
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("No response body");
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = "";
+    console.log("[AgentClient] Subscribing to events for session:", sessionId);
 
     try {
-      while (true) {
-        if (signal?.aborted) {
-          break;
-        }
+      const response = await agentApiClient.fetchRaw(`events/${sessionId}`, {
+        signal,
+      });
 
-        const { done, value } = await reader.read();
-        if (done) break;
+      console.log(
+        "[AgentClient] Events subscription response:",
+        response.status,
+        response.statusText,
+        "Content-Type:",
+        response.headers.get("content-type"),
+      );
 
-        buffer += decoder.decode(value, { stream: true });
-
-        // Process SSE lines
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || ""; // Keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-
-            // Check for [DONE] marker
-            if (data === "[DONE]") {
-              return;
-            }
-
+      if (!response.ok) {
+        // Try to parse error details from response
+        let errorMessage = `Failed to subscribe to events: ${response.statusText}`;
+        try {
+          const body = await response.text();
+          if (body) {
             try {
-              const event: AgentEvent = JSON.parse(data);
-              this.handleEvent(event, handlers);
-            } catch (e) {
-              console.warn("Failed to parse event:", data, e);
+              const errorData = JSON.parse(body);
+              errorMessage =
+                errorData.error ||
+                errorData.message ||
+                errorData.detail ||
+                errorMessage;
+            } catch {
+              errorMessage = body || errorMessage;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to parse error response:", e);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      try {
+        while (true) {
+          if (signal?.aborted) {
+            break;
+          }
+
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process SSE lines
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6);
+
+              // Check for [DONE] marker
+              if (data === "[DONE]") {
+                return;
+              }
+
+              try {
+                const event: AgentEvent = JSON.parse(data);
+                this.handleEvent(event, handlers);
+              } catch (e) {
+                console.warn("Failed to parse event:", data, e);
+              }
             }
           }
         }
+      } finally {
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
+    } catch (error) {
+      console.error("[AgentClient] Events subscription error:", error);
+      throw error;
     }
   }
 

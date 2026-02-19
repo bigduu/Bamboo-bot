@@ -62,12 +62,16 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
   const { token } = useToken();
   const screens = useBreakpoint();
   const currentChatId = useAppStore((state) => state.currentChatId);
-  const currentChat = useAppStore(selectCurrentChat);
   const updateChat = useAppStore((state) => state.updateChat);
-  const isProcessing = useAppStore((state) => state.isProcessing);
   const addFavorite = useAppStore((state) => state.addFavorite);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState<boolean>(false);
+
+  // Select only the boolean we need, not the whole Set
+  const isProcessing = useAppStore((state) => {
+    const id = state.currentChatId;
+    return id ? state.processingChats.has(id) : false;
+  });
 
   const sendMessage = useCallback((content: string) => {
     if (typeof window === "undefined") {
@@ -124,13 +128,7 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
 
   const messageText = useMemo(() => getMessageText(message), [message]);
 
-  const onFixMermaid = useMessageCardMermaidFix({
-    message,
-    messageId,
-    currentChatId,
-    currentChat,
-    updateChat,
-  });
+  const onFixMermaid = useMessageCardMermaidFix(messageId);
 
   const {
     contextMenuItems,
@@ -164,10 +162,18 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
   const markdownPlugins = useMemo(() => [remarkGfm, remarkBreaks], []);
   const rehypePlugins = useMemo(() => [rehypeSanitize], []);
 
+  const actionButtons = useMemo(
+    () => [
+      createCopyButton(() => copyToClipboard(messageText)),
+      createFavoriteButton(addMessageToFavorites),
+      createReferenceButton(referenceMessage),
+    ],
+    [messageText, copyToClipboard, addMessageToFavorites, referenceMessage],
+  );
+
   const { handleExecutePlan, handleRefinePlan, handleQuestionAnswer } =
     useMessageCardPlanActions({
       currentChatId,
-      currentChat,
       updateChat,
       sendMessage,
     });
@@ -282,11 +288,7 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
             <ActionButtonGroup
               isVisible={isHovering}
               position={{ bottom: token.paddingXS, right: token.paddingXS }}
-              buttons={[
-                createCopyButton(() => copyToClipboard(messageText)),
-                createFavoriteButton(addMessageToFavorites),
-                createReferenceButton(referenceMessage),
-              ]}
+              buttons={actionButtons}
             />
           </Space>
         </Card>

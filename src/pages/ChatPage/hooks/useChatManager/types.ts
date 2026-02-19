@@ -18,7 +18,7 @@ export interface UseChatState {
   unpinChat: (chatId: string) => void;
   updateChat: (chatId: string, updates: Partial<ChatItem>) => void;
   loadChats: () => Promise<void>;
-  setProcessing: (isProcessing: boolean) => void;
+  setChatProcessing: (chatId: string, isProcessing: boolean) => void;
 }
 
 export interface UseChatTitleGeneration {

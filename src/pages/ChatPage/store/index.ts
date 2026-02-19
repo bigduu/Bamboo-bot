@@ -11,6 +11,10 @@ import {
   createTokenBudgetSlice,
 } from "./slices/tokenBudgetSlice";
 import { TodoListSlice, createTodoListSlice } from "./slices/todoListSlice";
+import {
+  InputStateSlice,
+  createInputStateSlice,
+} from "./slices/inputStateSlice";
 import { AgentClient } from "../services/AgentService";
 import { serviceFactory } from "../../../services/common/ServiceFactory";
 import { readStoredProxyAuth } from "../../../shared/utils/proxyAuth";
@@ -45,6 +49,7 @@ export type AppState = ChatSlice &
   SkillSlice &
   TokenBudgetSlice &
   TodoListSlice &
+  InputStateSlice &
   AgentAvailabilitySlice;
 
 export const useAppStore = create<AppState>()(
@@ -58,6 +63,7 @@ export const useAppStore = create<AppState>()(
       ...createSkillSlice(set, get, api),
       ...createTokenBudgetSlice(set, get, api),
       ...createTodoListSlice(set, get, api),
+      ...createInputStateSlice(set, get, api),
       agentAvailability: null,
       setAgentAvailability: (available) => {
         set({ agentAvailability: available });

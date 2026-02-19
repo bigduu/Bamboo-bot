@@ -4,25 +4,50 @@ import { useChatTitleGeneration } from "../../hooks/useChatManager/useChatTitleG
 
 export const ChatAutoTitleEffect: React.FC = () => {
   const chats = useAppStore((state) => state.chats);
-  const currentChatId = useAppStore((state) => state.currentChatId);
   const updateChat = useAppStore((state) => state.updateChat);
   const { generateChatTitle } = useChatTitleGeneration({ chats, updateChat });
-  const lastAutoTitleMessageIdRef = useRef<string | null>(null);
+
+  // Track last processed message ID per chat
+  const lastAutoTitleMessageIdsRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
-    if (!currentChatId) return;
-    const currentChat = chats.find((chat) => chat.id === currentChatId);
-    if (!currentChat) return;
-    const messages = currentChat.messages;
-    if (messages.length === 0) return;
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.role !== "assistant") return;
-    if (lastMessage.id === lastAutoTitleMessageIdRef.current) return;
-    lastAutoTitleMessageIdRef.current = lastMessage.id;
-    generateChatTitle(currentChatId).catch((error) => {
-      console.warn("Auto title generation failed:", error);
+    // Process ALL chats, not just current
+    chats.forEach((chat) => {
+      const chatId = chat.id;
+      const messages = chat.messages;
+
+      if (messages.length === 0) return;
+
+      const lastMessage = messages[messages.length - 1];
+
+      // Skip if not assistant message
+      if (lastMessage.role !== "assistant") return;
+
+      // Skip if already processed this message
+      const lastProcessedId = lastAutoTitleMessageIdsRef.current.get(chatId);
+      if (lastMessage.id === lastProcessedId) return;
+
+      // Mark as processed
+      lastAutoTitleMessageIdsRef.current.set(chatId, lastMessage.id);
+
+      // Generate title
+      generateChatTitle(chatId).catch((error) => {
+        console.warn("Auto title generation failed for chat", chatId, ":", error);
+      });
     });
-  }, [chats, currentChatId, generateChatTitle]);
+  }, [chats, generateChatTitle]);
+
+  // Clean up refs for deleted chats
+  useEffect(() => {
+    const currentChatIds = new Set(chats.map((c) => c.id));
+    const trackedIds = Array.from(lastAutoTitleMessageIdsRef.current.keys());
+
+    trackedIds.forEach((chatId) => {
+      if (!currentChatIds.has(chatId)) {
+        lastAutoTitleMessageIdsRef.current.delete(chatId);
+      }
+    });
+  }, [chats]);
 
   return null;
 };

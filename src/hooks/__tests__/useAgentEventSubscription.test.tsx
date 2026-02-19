@@ -10,7 +10,9 @@ vi.mock("../../pages/ChatPage/store", () => ({
 }));
 
 vi.mock("../../services/chat/AgentService", () => ({
-  AgentClient: vi.fn(),
+  AgentClient: vi.fn().mockImplementation(() => ({
+    subscribeToEvents: vi.fn(),
+  })),
 }));
 
 // Type for mock selectors
@@ -18,14 +20,14 @@ type MockSelector = (state: any) => any;
 
 describe("useAgentEventSubscription", () => {
   let mockSubscribeToEvents: any;
-  let mockSetProcessing: any;
+  let mockSetChatProcessing: any;
   let mockAddMessage: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockSubscribeToEvents = vi.fn();
-    mockSetProcessing = vi.fn();
+    mockSetChatProcessing = vi.fn();
     mockAddMessage = vi.fn();
 
     (AgentClient as any).mockImplementation(() => ({
@@ -42,22 +44,28 @@ describe("useAgentEventSubscription", () => {
             },
           },
         ],
-        currentChatId: "chat-1",
-        isProcessing: false,
+        processingChats: new Set<string>(),
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
+        updateTokenUsage: vi.fn(),
+        setTruncationInfo: vi.fn(),
+        updateChat: vi.fn(),
+        setTodoList: vi.fn(),
+        updateTodoListDelta: vi.fn(),
+        setEvaluationState: vi.fn(),
+        clearEvaluationState: vi.fn(),
       };
       return selector(state);
     });
   });
 
-  it("should not subscribe when isProcessing is false", () => {
+  it("should not subscribe when processingChats is empty", () => {
     renderHook(() => useAgentEventSubscription());
 
     expect(mockSubscribeToEvents).not.toHaveBeenCalled();
   });
 
-  it("should subscribe when isProcessing is true and session exists", async () => {
+  it("should subscribe when chat is processing and session exists", async () => {
     (useAppStore as any).mockImplementation((selector: MockSelector) => {
       const state = {
         chats: [
@@ -68,10 +76,16 @@ describe("useAgentEventSubscription", () => {
             },
           },
         ],
-        currentChatId: "chat-1",
-        isProcessing: true, // Processing is true
+        processingChats: new Set(["chat-1"]), // Chat is processing
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
+        updateTokenUsage: vi.fn(),
+        setTruncationInfo: vi.fn(),
+        updateChat: vi.fn(),
+        setTodoList: vi.fn(),
+        updateTodoListDelta: vi.fn(),
+        setEvaluationState: vi.fn(),
+        clearEvaluationState: vi.fn(),
       };
       return selector(state);
     });
@@ -113,7 +127,7 @@ describe("useAgentEventSubscription", () => {
         currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
       };
       return selector(state);
     });
@@ -140,7 +154,7 @@ describe("useAgentEventSubscription", () => {
         currentChatId: "chat-1",
         isProcessing: false,
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
       };
       return selector(state);
     });
@@ -165,7 +179,7 @@ describe("useAgentEventSubscription", () => {
         currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
       };
       return selector(state);
     });
@@ -183,7 +197,7 @@ describe("useAgentEventSubscription", () => {
       );
 
       // Should reset processing state on error
-      expect(mockSetProcessing).toHaveBeenCalledWith(false);
+      expect(mockSetChatProcessing).toHaveBeenCalledWith("chat-1", false);
     });
 
     consoleSpy.mockRestore();
@@ -210,7 +224,7 @@ describe("useAgentEventSubscription", () => {
         currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
       };
       return selector(state);
     });
@@ -229,7 +243,7 @@ describe("useAgentEventSubscription", () => {
     });
 
     await waitFor(() => {
-      expect(mockSetProcessing).toHaveBeenCalledWith(false);
+      expect(mockSetChatProcessing).toHaveBeenCalledWith("chat-1", false);
     });
   });
 
@@ -254,7 +268,7 @@ describe("useAgentEventSubscription", () => {
         currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
       };
       return selector(state);
     });
@@ -280,7 +294,7 @@ describe("useAgentEventSubscription", () => {
         "Something went wrong",
       );
       expect(mockAddMessage).toHaveBeenCalled();
-      expect(mockSetProcessing).toHaveBeenCalledWith(false);
+      expect(mockSetChatProcessing).toHaveBeenCalledWith("chat-1", false);
     });
 
     consoleSpy.mockRestore();
@@ -300,7 +314,7 @@ describe("useAgentEventSubscription", () => {
         currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
       };
       return selector(state);
     });
@@ -342,7 +356,7 @@ describe("useAgentEventSubscription", () => {
         currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
       };
       return selector(state);
     });
@@ -378,7 +392,7 @@ describe("useAgentEventSubscription", () => {
         currentChatId: "chat-1",
         isProcessing: true,
         addMessage: mockAddMessage,
-        setProcessing: mockSetProcessing,
+        setChatProcessing: mockSetChatProcessing,
       };
       return selector(state);
     });

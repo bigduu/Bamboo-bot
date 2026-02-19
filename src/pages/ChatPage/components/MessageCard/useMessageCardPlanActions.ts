@@ -1,21 +1,26 @@
 import { useCallback } from "react";
+import { useAppStore } from "../../store";
 import type { ChatItem } from "../../types/chat";
 
 interface UseMessageCardPlanActionsProps {
   currentChatId?: string | null;
-  currentChat?: ChatItem | null;
   updateChat: (chatId: string, update: Partial<ChatItem>) => void;
   sendMessage: (message: string) => Promise<void>;
 }
 
 export const useMessageCardPlanActions = ({
   currentChatId,
-  currentChat,
   updateChat,
   sendMessage,
 }: UseMessageCardPlanActionsProps) => {
   const handleExecutePlan = useCallback(async () => {
-    if (!currentChatId || !currentChat) return;
+    if (!currentChatId) return;
+
+    // Get current chat state lazily at execution time
+    const state = useAppStore.getState();
+    const currentChat = state.chats.find((c) => c.id === currentChatId);
+    if (!currentChat) return;
+
     try {
       updateChat(currentChatId, {
         config: {
@@ -26,7 +31,7 @@ export const useMessageCardPlanActions = ({
     } catch (error) {
       console.error("Failed to switch to Actor role:", error);
     }
-  }, [currentChat, currentChatId, updateChat]);
+  }, [currentChatId, updateChat]);
 
   const handleRefinePlan = useCallback(
     async (feedback: string) => {

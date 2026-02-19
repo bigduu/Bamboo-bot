@@ -49,7 +49,7 @@ export const ChatView: React.FC = () => {
   );
   const deleteMessage = useAppStore((state) => state.deleteMessage);
   const updateChat = useAppStore((state) => state.updateChat);
-  const isProcessing = useAppStore((state) => state.isProcessing);
+  const processingChats = useAppStore((state) => state.processingChats);
   const tokenUsages = useAppStore((state) => state.tokenUsages);
   const truncationOccurred = useAppStore((state) => state.truncationOccurred);
   const segmentsRemoved = useAppStore((state) => state.segmentsRemoved);
@@ -57,6 +57,11 @@ export const ChatView: React.FC = () => {
     () => currentChat?.messages || [],
     [currentChat],
   );
+
+  const isProcessing = currentChatId
+    ? processingChats.has(currentChatId)
+    : false;
+
   const interactionState = useMemo(() => {
     const value: "IDLE" | "THINKING" | "AWAITING_APPROVAL" = isProcessing
       ? "THINKING"
@@ -221,8 +226,10 @@ export const ChatView: React.FC = () => {
         {agentSessionId && (
           <div
             style={{
-              padding: `0 ${getContainerPadding()}px`,
               paddingTop: getContainerPadding(),
+              paddingRight: getContainerPadding(),
+              paddingBottom: 0,
+              paddingLeft: getContainerPadding(),
               maxWidth: getContainerMaxWidth(),
               margin: "0 auto",
               width: "100%",
@@ -236,10 +243,12 @@ export const ChatView: React.FC = () => {
         {currentTokenUsage && currentTokenUsage.budgetLimit > 0 && (
           <div
             style={{
-              padding: `0 ${getContainerPadding()}px`,
               paddingTop: agentSessionId
                 ? token.paddingXS
                 : getContainerPadding(),
+              paddingRight: getContainerPadding(),
+              paddingBottom: 0,
+              paddingLeft: getContainerPadding(),
               maxWidth: getContainerMaxWidth(),
               margin: "0 auto",
               width: "100%",
