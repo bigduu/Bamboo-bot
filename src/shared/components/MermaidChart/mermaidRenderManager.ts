@@ -38,6 +38,11 @@ export function getCachedMermaid(chartKey: string) {
   return v;
 }
 
+export function clearMermaidRenderCache() {
+  resultCache.clear();
+  inFlight.clear();
+}
+
 export function renderMermaidCached(
   chartKey: string,
   normalizedChart: string,
@@ -50,16 +55,6 @@ export function renderMermaidCached(
 
   const p = (async () => {
     const mermaid = await getMermaid();
-
-    // Initialize mermaid (only once)
-    try {
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: "default",
-      });
-    } catch {
-      // Already initialized
-    }
 
     await mermaid.parse(normalizedChart);
 

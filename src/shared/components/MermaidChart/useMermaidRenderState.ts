@@ -3,6 +3,7 @@ import {
   getCachedMermaid,
   renderMermaidCached,
 } from "./mermaidRenderManager";
+import { normalizeMermaidChart } from "./mermaidConfig";
 
 export interface MermaidRenderState {
   svg: string;
@@ -13,11 +14,7 @@ export interface MermaidRenderState {
   isLoading: boolean;
 }
 
-function normalizeMermaidChart(input: string) {
-  return input.trim();
-}
-
-// 稳定的 hash 函数（避免随机 id）
+// 稳定的 hash 函数(避免随机 id)
 function hashString(s: string) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
@@ -50,7 +47,7 @@ export const useMermaidRenderState = (chart: string, enabled: boolean) => {
           svgWidth: 800,
           svgHeight: 200,
           error: "",
-          isLoading: false,
+          isLoading: enabled, // Set isLoading based on enabled state
         };
   });
 

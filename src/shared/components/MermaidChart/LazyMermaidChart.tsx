@@ -3,7 +3,21 @@ import { Spin } from "antd";
 import type { MermaidChartProps } from "./index";
 
 // 全局"见过"集合，避免组件 remount 后再建 observer
+// 使用 LRU 策略限制大小，避免内存泄漏
+const MAX_SEEN = 100;
 const seen = new Set<string>();
+
+function addToSeen(key: string) {
+  if (seen.has(key)) {
+    seen.delete(key); // Refresh position
+  }
+  seen.add(key);
+  if (seen.size > MAX_SEEN) {
+    // Remove oldest entry
+    const first = seen.values().next().value;
+    if (first) seen.delete(first);
+  }
+}
 
 // 简单 hash 函数
 function hashChart(chart: string) {
@@ -28,7 +42,7 @@ const LazyMermaidChart: React.FC<MermaidChartProps> = (props) => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          seen.add(chartKey);
+          addToSeen(chartKey);
           setShouldRender(true);
           observer.disconnect();
         }
@@ -64,9 +78,17 @@ const LazyMermaidChartRenderer: React.FC<MermaidChartProps> = (props) => {
   >(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     import("./index").then((module) => {
-      setMermaidChartComponent(() => module.MermaidChart);
+      if (!cancelled) {
+        setMermaidChartComponent(() => module.MermaidChart);
+      }
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!MermaidChartComponent) {
