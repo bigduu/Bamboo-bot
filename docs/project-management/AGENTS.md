@@ -167,6 +167,51 @@ pub type Result<T> = std::result::Result<T, AppError>;
 - **Type safety** is priority - leverage TypeScript and Rust's type systems
 - **Simplicity first** - avoid over-engineering solutions
 
+## Git Workflow
+
+This repository requires changes to be submitted through Pull Requests. Direct pushes to main branch are blocked by repository rules.
+
+### Standard Workflow
+
+1. **Create feature branch:**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make commits with descriptive messages:**
+   - Follow conventional commit format: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`
+   - Include "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>" in commit message
+
+3. **Push feature branch:**
+   ```bash
+   git push -u origin feature/your-feature-name
+   ```
+
+4. **Create Pull Request:**
+   ```bash
+   gh pr create --title "feat: your feature description" --body "Description of changes..."
+   ```
+
+5. **Merge the PR:**
+   - Claude should merge PRs directly when requested: `gh pr merge <number> --merge --delete-branch`
+   - This automatically deletes the remote feature branch
+
+6. **Pull latest changes:**
+   ```bash
+   git pull origin main
+   ```
+
+### User Instructions
+
+When the user says "合并" or "merge" or "push到远程", they want:
+1. Create a feature branch if not already on one
+2. Push the branch to remote
+3. Create a Pull Request
+4. Merge the PR immediately
+5. Pull latest main branch changes
+
+Do NOT ask for confirmation at each step - execute the full workflow.
+
 ## OpenSpec Integration
 
 For larger changes (features, architecture shifts, breaking changes):
