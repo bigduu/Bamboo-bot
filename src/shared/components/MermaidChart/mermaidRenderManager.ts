@@ -109,12 +109,6 @@ export function renderMermaidCached(
     // 关键：cache 不依赖组件 mounted
     lruSet(chartKey, out);
 
-    console.log("[MermaidManager] Rendered and cached", {
-      chartKey: chartKey.substring(0, 20),
-      width,
-      height,
-    });
-
     return out;
   })().finally(() => {
     inFlight.delete(chartKey);

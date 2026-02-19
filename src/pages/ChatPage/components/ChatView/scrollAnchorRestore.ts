@@ -68,14 +68,6 @@ export function restoreScrollAnchorUntilStable(args: {
 
       const timedOut = performance.now() - startTs > RESTORE_TIMEOUT_MS;
       if (stable >= STABLE_FRAMES || timedOut) {
-        console.log("[ScrollAnchorRestore] Stabilized", {
-          index,
-          offsetPx,
-          finalScrollTop: scrollEl.scrollTop,
-          stable,
-          timedOut,
-          duration: `${(performance.now() - startTs).toFixed(0)}ms`,
-        });
         resolve();
         return;
       }

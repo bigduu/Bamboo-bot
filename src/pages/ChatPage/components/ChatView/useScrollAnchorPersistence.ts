@@ -209,12 +209,9 @@ export function useScrollAnchorPersistence(args: {
 
     const saved = loadScrollAnchor(currentChatId);
     if (!saved) {
-      console.log("[ScrollAnchor] No saved anchor for", currentChatId.substring(0, 8));
       restoredChatsRef.current.add(currentChatId);
       return;
     }
-
-    console.log("[ScrollAnchor] Will restore", saved.anchorId.substring(0, 8), "offset:", saved.offsetPx);
 
     const byId = idToIndex.get(saved.anchorId);
     const index =
@@ -223,7 +220,6 @@ export function useScrollAnchorPersistence(args: {
         : resolveIndexFromDeletedAnchor(saved, renderableMessages);
 
     if (index == null) {
-      console.log("[ScrollAnchor] Cannot resolve index, skipping restore");
       restoredChatsRef.current.add(currentChatId);
       return;
     }

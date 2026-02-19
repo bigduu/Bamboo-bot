@@ -149,13 +149,7 @@ export const useChatViewScroll = ({
     const currentState = interactionState.value;
     const previousState = previousStateRef.current;
 
-    console.log("[StateChange] Interaction state changed", {
-      previousState,
-      currentState,
-    });
-
     if (previousState === "IDLE" && currentState === "THINKING") {
-      console.log("[StateChange] IDLE -> THINKING, resetting scroll and scrolling to bottom");
       resetUserScroll();
       scrollToBottom();
     }
@@ -166,26 +160,15 @@ export const useChatViewScroll = ({
   useEffect(() => {
     return streamingMessageBus.subscribe((update) => {
       if (update.chatId !== currentChatId) return;
-      if (userHasScrolledUpRef.current) {
-        console.log("[StreamingScroll] User scrolled up, skipping auto-scroll");
-        return;
-      }
+      if (userHasScrolledUpRef.current) return;
       if (!update.content) return;
-      console.log("[StreamingScroll] Streaming, scrolling to bottom");
       scrollToBottom();
     });
   }, [currentChatId, scrollToBottom]);
 
   useEffect(() => {
     // Only auto-scroll when streaming, not on initial load
-    console.log("[AutoScroll] Effect triggered", {
-      userHasScrolledUp: userHasScrolledUpRef.current,
-      messagesLength: renderableMessages.length,
-      isFirstLoad: isFirstLoadRef.current,
-    });
-
     if (!userHasScrolledUpRef.current && renderableMessages.length > 0 && !isFirstLoadRef.current) {
-      console.log("[AutoScroll] Scrolling to bottom");
       scrollToBottom();
     }
     isFirstLoadRef.current = false;
@@ -218,7 +201,6 @@ export const useChatViewScroll = ({
 
   // Reset first load flag when switching chats
   useEffect(() => {
-    console.log("[ScrollReset] Switching chat, resetting flags", { currentChatId });
     isFirstLoadRef.current = true;
     userHasScrolledUpRef.current = false;
   }, [currentChatId]);

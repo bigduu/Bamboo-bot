@@ -28,7 +28,6 @@ const LazyMermaidChart: React.FC<MermaidChartProps> = (props) => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          console.log("[LazyMermaid] Chart entering viewport", chartKey.substring(0, 20));
           seen.add(chartKey);
           setShouldRender(true);
           observer.disconnect();

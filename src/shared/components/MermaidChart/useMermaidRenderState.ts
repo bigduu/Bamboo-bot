@@ -85,7 +85,6 @@ export const useMermaidRenderState = (chart: string, enabled: boolean) => {
     // Already cached?
     const cached = getCachedMermaid(chartKey);
     if (cached) {
-      console.log("[MermaidState] Using cached chart", chartKey.substring(0, 20));
       return;
     }
 
