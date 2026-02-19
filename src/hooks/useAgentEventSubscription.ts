@@ -48,6 +48,9 @@ export function useAgentEventSubscription() {
     Map<string, { chatId: string; messageId: string; content: string }>
   >(new Map());
 
+  // toolCallId -> toolName mapping for tracking tool names across start/complete
+  const toolNamesByCallIdRef = useRef<Map<string, string>>(new Map());
+
   // Chats that are processing but we couldn't subscribe yet (missing sessionId)
   const pendingChatIdsRef = useRef<Set<string>>(new Set());
 
@@ -106,6 +109,9 @@ export function useAgentEventSubscription() {
             },
 
             onToolStart: (toolCallId, toolName, args) => {
+              // Track tool name for later use in onToolComplete
+              toolNamesByCallIdRef.current.set(toolCallId, toolName);
+
               void addMessage(chatId, {
                 id: crypto.randomUUID(),
                 role: "assistant",
@@ -116,7 +122,10 @@ export function useAgentEventSubscription() {
             },
 
             onToolComplete: (toolCallId, result: AgentEvent["result"]) => {
-              const toolName = result?.tool_name || "unknown";
+              // Retrieve tool name tracked in onToolStart
+              const toolName = toolNamesByCallIdRef.current.get(toolCallId) || "unknown";
+              toolNamesByCallIdRef.current.delete(toolCallId);
+
               const displayPreference =
                 (result?.display_preference as
                   | "Default"
