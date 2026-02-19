@@ -179,7 +179,16 @@ export const ChatView: React.FC = () => {
     count: renderableMessagesWithDraft.length,
     getScrollElement: () => messagesListRef.current,
     estimateSize: () => 320,
-    overscan: 2, // Reduced from 6 to 2 to minimize pre-rendering of Mermaid charts
+    overscan: 2,
+    getItemKey: (index) => {
+      const entry = renderableMessagesWithDraft[index];
+      if (!entry) return index;
+
+      // stable key: matches React row key logic
+      if ("type" in entry && entry.type === "tool_session") return entry.id;
+      if ("message" in entry && entry.message) return entry.message.id;
+      return index;
+    },
   });
 
   const rowGap = token.marginMD;

@@ -1,31 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
+import type { Virtualizer } from "@tanstack/react-virtual";
 import { streamingMessageBus } from "../../utils/streamingMessageBus";
-import type { Message } from "../../types/chat";
-import { useScrollPositionPersistence } from "./useScrollPositionPersistence";
+import type { RenderableEntry } from "./useChatViewMessages";
+import { useScrollAnchorPersistence } from "./useScrollAnchorPersistence";
 
 type InteractionState = {
   value: "IDLE" | "THINKING" | "AWAITING_APPROVAL";
   matches: (stateName: "IDLE" | "THINKING" | "AWAITING_APPROVAL") => boolean;
 };
 
-type ScrollEntry = {
-  message?: Message;
-  type?: string;
-  id?: string;
-};
-
 type UseChatViewScrollArgs = {
   currentChatId: string | null;
   interactionState: InteractionState;
   messagesListRef: RefObject<HTMLDivElement>;
-  renderableMessages: ScrollEntry[];
-  rowVirtualizer: {
-    scrollToIndex: (
-      index: number,
-      options?: { align?: "start" | "center" | "end" },
-    ) => void;
-  };
+  renderableMessages: RenderableEntry[];
+  rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
 };
 
 export const useChatViewScroll = ({
@@ -40,12 +30,13 @@ export const useChatViewScroll = ({
   const userHasScrolledUpRef = useRef(false);
   const isFirstLoadRef = useRef(true);
 
-  // Use scroll position persistence
-  const { handleScroll: handleScrollPersistence } = useScrollPositionPersistence(
+  // Use scroll anchor persistence
+  const { handleScroll: handleScrollPersistence } = useScrollAnchorPersistence({
     currentChatId,
     messagesListRef,
-    renderableMessages.length,
-  );
+    renderableMessages,
+    rowVirtualizer,
+  });
 
   const handleMessagesScroll = useCallback(
     (e: React.UIEvent<HTMLElement>) => {
@@ -113,9 +104,15 @@ export const useChatViewScroll = ({
         return;
       }
 
-      const targetIndex = renderableMessages.findIndex(
-        (item) => item.message?.id === messageId || item.id === messageId,
-      );
+      const targetIndex = renderableMessages.findIndex((item) => {
+        if ("message" in item && item.message) {
+          return item.message.id === messageId;
+        }
+        if ("id" in item) {
+          return item.id === messageId;
+        }
+        return false;
+      });
 
       if (targetIndex === -1) {
         console.warn("Message not found for navigation:", messageId);
