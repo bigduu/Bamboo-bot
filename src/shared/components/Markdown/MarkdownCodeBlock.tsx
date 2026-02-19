@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button, Card, message } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
-import { MermaidChart } from "../MermaidChart";
+import LazyMermaidChart from "../MermaidChart/LazyMermaidChart";
 import {
   getSyntaxTheme,
   registeredLanguages,
@@ -119,7 +119,7 @@ export const renderCodeBlock = (
         console.warn("Empty Mermaid chart content");
         return null;
       }
-      return <MermaidChart chart={trimmedChart} onFix={onFixMermaid} />;
+      return <LazyMermaidChart chart={trimmedChart} onFix={onFixMermaid} />;
     }
 
     return (

@@ -11,7 +11,7 @@ import {
   createFavoriteButton,
   createReferenceButton,
 } from "../ActionButtonGroup";
-import { selectCurrentChat, useAppStore } from "../../store";
+import { useAppStore } from "../../store";
 import {
   isTodoListMessage,
   isUserFileReferenceMessage,
