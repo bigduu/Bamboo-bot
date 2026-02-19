@@ -1,30 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
+import type { Virtualizer } from "@tanstack/react-virtual";
 import { streamingMessageBus } from "../../utils/streamingMessageBus";
-import type { Message } from "../../types/chat";
+import type { RenderableEntry } from "./useChatViewMessages";
+import { useScrollAnchorPersistence } from "./useScrollAnchorPersistence";
 
 type InteractionState = {
   value: "IDLE" | "THINKING" | "AWAITING_APPROVAL";
   matches: (stateName: "IDLE" | "THINKING" | "AWAITING_APPROVAL") => boolean;
 };
 
-type ScrollEntry = {
-  message?: Message;
-  type?: string;
-  id?: string;
-};
-
 type UseChatViewScrollArgs = {
   currentChatId: string | null;
   interactionState: InteractionState;
   messagesListRef: RefObject<HTMLDivElement>;
-  renderableMessages: ScrollEntry[];
-  rowVirtualizer: {
-    scrollToIndex: (
-      index: number,
-      options?: { align?: "start" | "center" | "end" },
-    ) => void;
-  };
+  renderableMessages: RenderableEntry[];
+  rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
 };
 
 export const useChatViewScroll = ({
@@ -37,32 +28,48 @@ export const useChatViewScroll = ({
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const userHasScrolledUpRef = useRef(false);
+  const isFirstLoadRef = useRef(true);
 
-  const handleMessagesScroll = useCallback(() => {
-    const el = messagesListRef.current;
-    if (!el) return;
-    // 没有消息时不显示滚动按钮
-    if (renderableMessages.length === 0) {
-      setShowScrollToBottom(false);
-      setShowScrollToTop(false);
-      return;
-    }
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const scrollTop = el.scrollTop;
-    // 使用统一的阈值：距离底部 150px 以内都视为"在底部"
-    const bottomThreshold = 150;
-    const topThreshold = 150;
-    const atBottom = distanceFromBottom < bottomThreshold;
-    const atTop = scrollTop < topThreshold;
-    setShowScrollToBottom(!atBottom);
-    setShowScrollToTop(!atTop && renderableMessages.length > 3);
-    // 用户主动向上滚动超过阈值时，标记为已滚动
-    if (distanceFromBottom > bottomThreshold * 2) {
-      userHasScrolledUpRef.current = true;
-    } else if (atBottom) {
-      userHasScrolledUpRef.current = false;
-    }
-  }, [renderableMessages.length]);
+  // Use scroll anchor persistence
+  const { handleScroll: handleScrollPersistence } = useScrollAnchorPersistence({
+    currentChatId,
+    messagesListRef,
+    renderableMessages,
+    rowVirtualizer,
+  });
+
+  const handleMessagesScroll = useCallback(
+    (e: React.UIEvent<HTMLElement>) => {
+      const el = messagesListRef.current;
+      if (!el) return;
+      // 没有消息时不显示滚动按钮
+      if (renderableMessages.length === 0) {
+        setShowScrollToBottom(false);
+        setShowScrollToTop(false);
+        return;
+      }
+      const distanceFromBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight;
+      const scrollTop = el.scrollTop;
+      // 使用统一的阈值：距离底部 150px 以内都视为"在底部"
+      const bottomThreshold = 150;
+      const topThreshold = 150;
+      const atBottom = distanceFromBottom < bottomThreshold;
+      const atTop = scrollTop < topThreshold;
+      setShowScrollToBottom(!atBottom);
+      setShowScrollToTop(!atTop && renderableMessages.length > 3);
+      // 用户主动向上滚动超过阈值时，标记为已滚动
+      if (distanceFromBottom > bottomThreshold * 2) {
+        userHasScrolledUpRef.current = true;
+      } else if (atBottom) {
+        userHasScrolledUpRef.current = false;
+      }
+
+      // Save scroll position (pass event to handler)
+      handleScrollPersistence(e);
+    },
+    [renderableMessages.length, handleScrollPersistence],
+  );
 
   const scrollToBottom = useCallback(() => {
     const el = messagesListRef.current;
@@ -97,9 +104,15 @@ export const useChatViewScroll = ({
         return;
       }
 
-      const targetIndex = renderableMessages.findIndex(
-        (item) => item.message?.id === messageId || item.id === messageId,
-      );
+      const targetIndex = renderableMessages.findIndex((item) => {
+        if ("message" in item && item.message) {
+          return item.message.id === messageId;
+        }
+        if ("id" in item) {
+          return item.id === messageId;
+        }
+        return false;
+      });
 
       if (targetIndex === -1) {
         console.warn("Message not found for navigation:", messageId);
@@ -154,9 +167,11 @@ export const useChatViewScroll = ({
   }, [currentChatId, scrollToBottom]);
 
   useEffect(() => {
-    if (!userHasScrolledUpRef.current && renderableMessages.length > 0) {
+    // Only auto-scroll when streaming, not on initial load
+    if (!userHasScrolledUpRef.current && renderableMessages.length > 0 && !isFirstLoadRef.current) {
       scrollToBottom();
     }
+    isFirstLoadRef.current = false;
   }, [renderableMessages.length, scrollToBottom]);
 
   // 当消息数量变化或切换聊天时，主动检查是否应该显示滚动按钮
@@ -183,6 +198,12 @@ export const useChatViewScroll = ({
     setShowScrollToBottom(!atBottom);
     setShowScrollToTop(!atTop && renderableMessages.length > 3);
   }, [renderableMessages.length, currentChatId]);
+
+  // Reset first load flag when switching chats
+  useEffect(() => {
+    isFirstLoadRef.current = true;
+    userHasScrolledUpRef.current = false;
+  }, [currentChatId]);
 
   return {
     handleMessagesScroll,

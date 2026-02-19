@@ -17,7 +17,7 @@ type ChatMessagesListProps = {
   currentChatId: string | null;
   convertRenderableEntry: (entry: RenderableEntry) => ConvertedEntry;
   handleDeleteMessage: (messageId: string) => void;
-  handleMessagesScroll: () => void;
+  handleMessagesScroll: (e: React.UIEvent<HTMLElement>) => void;
   hasSystemPrompt: boolean;
   messagesListRef: React.RefObject<HTMLDivElement>;
   renderableMessages: RenderableEntry[];

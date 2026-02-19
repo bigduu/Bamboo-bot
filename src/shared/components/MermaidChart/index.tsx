@@ -19,14 +19,15 @@ export const MermaidChart: React.FC<MermaidChartProps> = React.memo(
   ({ chart, id: _id, className, style, onFix }) => {
     const { token } = useToken();
     const userSettings = useMermaidSettings();
-    const { renderState } = useMermaidRenderState(chart);
-    const { svg, height, svgWidth, error, isLoading } = renderState;
     const [isFixing, setIsFixing] = useState(false);
     const [fixError, setFixError] = useState("");
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Always enabled when rendered (LazyMermaidChart controls when to render)
+    const { renderState } = useMermaidRenderState(chart, true);
+    const { svg, height, svgWidth, error, isLoading } = renderState;
+
     const calculateInitialScale = () => {
-      // Use user-configured default scale
       const baseScale = userSettings.defaultScale;
 
       if (svgWidth > 1200) {

@@ -10,6 +10,7 @@ import { Message } from "../pages/ChatPage/types/chat";
 import { useSettingsViewStore } from "../shared/store/settingsViewStore";
 import { useMermaidTheme } from "../shared/components/MermaidChart/useMermaidTheme";
 import { mermaidCache } from "../shared/components/MermaidChart/mermaidConfig";
+import { clearMermaidRenderCache } from "../shared/components/MermaidChart/mermaidRenderManager";
 import { useMermaidSettings } from "../shared/store/mermaidSettingsStore";
 
 export const MainLayout: React.FC<{
@@ -30,12 +31,14 @@ export const MainLayout: React.FC<{
   useEffect(() => {
     console.log("🔄 Theme changed, clearing Mermaid cache");
     mermaidCache.clear();
+    clearMermaidRenderCache();
   }, [themeMode]);
 
   // Clear Mermaid cache when user settings change
   useEffect(() => {
     console.log("🔄 Mermaid settings changed, clearing cache");
     mermaidCache.clear();
+    clearMermaidRenderCache();
   }, [mermaidSettings]);
 
   // Memoize currentMessages to avoid infinite loop
