@@ -52,8 +52,10 @@ function App() {
         return;
       }
 
-      const frameBudgetMs = 16;
-      if (actualDuration > frameBudgetMs) {
+      // Only log renders that take longer than 50ms (3+ frames)
+      // This reduces noise from frequent updates like streaming
+      const slowRenderThresholdMs = 50;
+      if (actualDuration > slowRenderThresholdMs) {
         // eslint-disable-next-line no-console -- Development-only performance trace
         console.info(
           `[Profiler:${id}] phase=${phase} actual=${actualDuration.toFixed(

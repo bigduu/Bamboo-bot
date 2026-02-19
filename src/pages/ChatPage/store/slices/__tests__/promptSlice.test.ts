@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import type { UserSystemPrompt } from "../../types/chat";
+import type { UserSystemPrompt } from "../../../types/chat";
 
 // Mock localStorage
 const localStorageMock = (() => {

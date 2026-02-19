@@ -30,9 +30,9 @@ export const useChatManager = () => {
 
   // Phase 4: Message streaming (Agent Server)
   const streaming = useMessageStreaming({
-    currentChat: state.currentChat,
+    chatId: state.currentChatId,
     addMessage: state.addMessage,
-    setProcessing: state.setProcessing,
+    setChatProcessing: state.setChatProcessing,
     updateChat: state.updateChat,
   });
 

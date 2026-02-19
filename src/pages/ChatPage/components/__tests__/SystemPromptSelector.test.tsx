@@ -1,7 +1,7 @@
 import { render, screen, waitFor, act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SystemPromptSelector from "../SystemPromptSelector";
-import type { UserSystemPrompt } from "../../../types/chat";
+import type { UserSystemPrompt } from "../../types/chat";
 
 // Mock the zustand store
 const mockSetLastSelectedPromptId = vi.fn();
@@ -268,7 +268,7 @@ describe("SystemPromptSelector", () => {
   });
 
   it("should call onSelect with selected prompt when Create New Chat is clicked", async () => {
-    const { container } = render(
+    render(
       <SystemPromptSelector
         open={true}
         onClose={mockOnClose}

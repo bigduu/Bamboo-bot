@@ -30,7 +30,7 @@ export interface UseChatState {
   unpinChat: (chatId: string) => void;
   updateChat: (chatId: string, updates: Partial<ChatItem>) => void;
   loadChats: () => Promise<void>;
-  setProcessing: (isProcessing: boolean) => void;
+  setChatProcessing: (chatId: string, isProcessing: boolean) => void;
 }
 
 export function useChatState(): UseChatState {
@@ -47,8 +47,8 @@ export function useChatState(): UseChatState {
     pinChat,
     unpinChat,
     loadChats,
-    isProcessing,
-    setProcessing,
+    processingChats,
+    setChatProcessing,
   } = useAppStore(
     useShallow((state) => ({
       chats: state.chats,
@@ -63,10 +63,15 @@ export function useChatState(): UseChatState {
       pinChat: state.pinChat,
       unpinChat: state.unpinChat,
       loadChats: state.loadChats,
-      isProcessing: state.isProcessing,
-      setProcessing: state.setProcessing,
+      processingChats: state.processingChats,
+      setChatProcessing: state.setChatProcessing,
     })),
   );
+
+  // Derived processing state for current chat
+  const isProcessing = currentChatId
+    ? processingChats.has(currentChatId)
+    : false;
 
   // --- DERIVED STATE ---
   const baseMessages = useMemo(
@@ -107,6 +112,6 @@ export function useChatState(): UseChatState {
     unpinChat,
     updateChat,
     loadChats,
-    setProcessing,
+    setChatProcessing,
   };
 }

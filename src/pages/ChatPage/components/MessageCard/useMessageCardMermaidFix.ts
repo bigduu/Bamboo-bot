@@ -1,15 +1,7 @@
-import { useMemo } from "react";
+import { useCallback } from "react";
 import { getOpenAIClient } from "../../services/openaiClient";
-import type { ChatItem, Message } from "../../types/chat";
+import { useAppStore } from "../../store";
 import { useActiveModel } from "../../hooks/useActiveModel";
-
-interface UseMessageCardMermaidFixProps {
-  message: Message;
-  messageId: string;
-  currentChatId?: string | null;
-  currentChat?: ChatItem | null;
-  updateChat: (chatId: string, update: Partial<ChatItem>) => void;
-}
 
 const extractMermaidCode = (content: string) => {
   const match = content.match(/```mermaid\s*([\s\S]*?)```/i);
@@ -59,37 +51,31 @@ const fixMermaidWithAI = async (chart: string, model?: string | null) => {
   return extractMermaidCode(content);
 };
 
-export const useMessageCardMermaidFix = ({
-  message,
-  messageId,
-  currentChatId,
-  currentChat,
-  updateChat,
-}: UseMessageCardMermaidFixProps) => {
+export const useMessageCardMermaidFix = (messageId: string) => {
   const activeModel = useActiveModel();
-  const canFixMermaid =
-    message.role === "assistant" &&
-    message.type === "text" &&
-    Boolean(currentChatId && currentChat);
 
-  return useMemo(() => {
-    if (!canFixMermaid) return undefined;
+  return useCallback(
+    async (chart: string) => {
+      const state = useAppStore.getState();
+      const currentChatId = state.currentChatId;
+      const currentChat = state.chats.find((c) => c.id === currentChatId);
 
-    return async (chart: string) => {
       if (!currentChatId || !currentChat) {
         throw new Error("No active chat available");
       }
-      if (message.role !== "assistant" || message.type !== "text") {
-        throw new Error("Mermaid fix is only available for assistant messages");
+
+      const msg = currentChat.messages.find((m) => m.id === messageId);
+      if (!msg || msg.role !== "assistant" || msg.type !== "text") {
+        throw new Error(
+          "Mermaid fix is only available for assistant text messages",
+        );
       }
 
       const fixedChart = await fixMermaidWithAI(chart, activeModel);
-      if (!fixedChart) {
-        throw new Error("AI did not return a Mermaid fix");
-      }
+      if (!fixedChart) throw new Error("AI did not return a Mermaid fix");
 
       const updatedContent = replaceMermaidBlock(
-        message.content,
+        msg.content,
         chart,
         fixedChart,
       );
@@ -97,25 +83,12 @@ export const useMessageCardMermaidFix = ({
         throw new Error("Unable to locate Mermaid block to update");
       }
 
-      const updatedMessages = currentChat.messages.map((msg) => {
-        if (
-          msg.id === messageId &&
-          msg.role === "assistant" &&
-          msg.type === "text"
-        ) {
-          return { ...msg, content: updatedContent };
-        }
-        return msg;
-      });
-      updateChat(currentChatId, { messages: updatedMessages });
-    };
-  }, [
-    canFixMermaid,
-    currentChat,
-    currentChatId,
-    message,
-    messageId,
-    activeModel,
-    updateChat,
-  ]);
+      const updatedMessages = currentChat.messages.map((m) =>
+        m.id === messageId ? { ...m, content: updatedContent } : m,
+      );
+
+      state.updateChat(currentChatId, { messages: updatedMessages });
+    },
+    [messageId, activeModel],
+  );
 };

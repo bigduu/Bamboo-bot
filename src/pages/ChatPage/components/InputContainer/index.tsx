@@ -1,10 +1,10 @@
 import React, {
-  useState,
   useMemo,
   useEffect,
   lazy,
   Suspense,
   useRef,
+  useCallback,
 } from "react";
 import { Space, theme, Tag, Alert, message as antdMessage, Spin } from "antd";
 import type { TextAreaRef } from "antd/es/input/TextArea";
@@ -57,8 +57,6 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   isCenteredLayout = false,
   onWorkflowDraftChange,
 }) => {
-  const [content, setContent] = useState("");
-  const [referenceText, setReferenceText] = useState<string | null>(null);
   const textAreaRef = useRef<TextAreaRef>(null); // Add ref for cursor position
   const { token } = useToken();
   const currentChatId = useAppStore((state) => state.currentChatId);
@@ -67,18 +65,49 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   const addMessage = useAppStore((state) => state.addMessage);
   const updateChat = useAppStore((state) => state.updateChat);
   const deleteMessage = useAppStore((state) => state.deleteMessage);
-  const isProcessing = useAppStore((state) => state.isProcessing);
-  const setProcessing = useAppStore((state) => state.setProcessing);
+  const processingChats = useAppStore((state) => state.processingChats);
+  const setChatProcessing = useAppStore((state) => state.setChatProcessing);
   const activeModel = useActiveModel();
+
+  // Get input state from Zustand slice (persisted per session)
+  const inputState = useAppStore((state) =>
+    currentChatId ? state.inputStates[currentChatId] : undefined,
+  );
+  const setInputContent = useAppStore((state) => state.setInputContent);
+  const setReferenceText = useAppStore((state) => state.setReferenceText);
+
+  // Use persisted state or empty defaults
+  const content = inputState?.content || "";
+  const referenceText = inputState?.referenceText || null;
+  const setContent = useCallback(
+    (newContent: string) => {
+      if (currentChatId) {
+        setInputContent(currentChatId, newContent);
+      }
+    },
+    [currentChatId, setInputContent],
+  );
+  const setReferenceTextPersisted = useCallback(
+    (newRefText: string | null) => {
+      if (currentChatId) {
+        setReferenceText(currentChatId, newRefText);
+      }
+    },
+    [currentChatId, setReferenceText],
+  );
+
+  const isProcessing = currentChatId
+    ? processingChats.has(currentChatId)
+    : false;
 
   const {
     sendMessage,
     cancel: cancelMessage,
     agentAvailable,
   } = useMessageStreaming({
-    currentChat,
+    chatId: currentChatId,
     addMessage,
-    setProcessing,
+    setChatProcessing,
     updateChat,
   });
 
@@ -184,7 +213,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
     recordEntry,
     clearWorkflowDraft: commandState.clearCommandDraft,
     setContent,
-    setReferenceText,
+    setReferenceText: setReferenceTextPersisted,
     setAttachments,
     setFileReferences: fileReferenceState.setFileReferences,
   });
@@ -216,7 +245,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
     return { color: "red", icon: <RobotOutlined />, text: "Agent Unavailable" };
   }, [activeModel, agentAvailable]);
 
-  const handleCloseReferencePreview = () => setReferenceText(null);
+  const handleCloseReferencePreview = () => setReferenceTextPersisted(null);
 
   const placeholder = useMemo(() => {
     return getInputContainerPlaceholder({

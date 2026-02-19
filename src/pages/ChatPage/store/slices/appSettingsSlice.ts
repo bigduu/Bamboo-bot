@@ -25,7 +25,10 @@ export const createSessionSlice: StateCreator<
 
   cancelCurrentRequest: () => {
     get().currentRequestController?.abort();
-    get().setProcessing(false);
+    // Clear all processing chats since we don't have a specific chatId context
+    get().processingChats.forEach((chatId) => {
+      get().setChatProcessing(chatId, false);
+    });
     set({ currentRequestController: null });
   },
 });

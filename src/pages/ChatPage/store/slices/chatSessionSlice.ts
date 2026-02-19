@@ -13,7 +13,7 @@ export interface ChatSlice {
   chats: ChatItem[];
   currentChatId: string | null;
   latestActiveChatId: string | null; // Store the last active chat ID
-  isProcessing: boolean;
+  processingChats: Set<string>; // Track which chats are currently processing
   autoGenerateTitles: boolean;
   isUpdatingAutoTitlePreference: boolean;
 
@@ -37,7 +37,8 @@ export interface ChatSlice {
 
   loadChats: () => Promise<void>;
 
-  setProcessing: (isProcessing: boolean) => void;
+  setChatProcessing: (chatId: string, isProcessing: boolean) => void;
+  isChatProcessing: (chatId: string) => boolean;
   setAutoGenerateTitlesPreference: (enabled: boolean) => Promise<void>;
 }
 
@@ -49,7 +50,7 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
   chats: [],
   currentChatId: null,
   latestActiveChatId: null,
-  isProcessing: false,
+  processingChats: new Set<string>(),
   autoGenerateTitles: true,
   isUpdatingAutoTitlePreference: false,
 
@@ -246,13 +247,25 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
       chats: storedChats,
       latestActiveChatId,
       currentChatId,
-      isProcessing: false,
+      processingChats: new Set<string>(),
       autoGenerateTitles,
     });
   },
 
-  setProcessing: (isProcessing) => {
-    set({ isProcessing });
+  setChatProcessing: (chatId, isProcessing) => {
+    set((state) => {
+      const processingChats = new Set(state.processingChats);
+      if (isProcessing) {
+        processingChats.add(chatId);
+      } else {
+        processingChats.delete(chatId);
+      }
+      return { processingChats };
+    });
+  },
+
+  isChatProcessing: (chatId) => {
+    return get().processingChats.has(chatId);
   },
 
   setAutoGenerateTitlesPreference: async (enabled) => {

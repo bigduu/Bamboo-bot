@@ -12,7 +12,10 @@ const mockStoreState = {
   ],
   deleteMessage: vi.fn(),
   updateChat: vi.fn(),
-  isProcessing: false,
+  processingChats: new Set<string>(),
+  tokenUsages: {},
+  truncationOccurred: {},
+  segmentsRemoved: {},
 };
 
 vi.mock("antd", async () => {
