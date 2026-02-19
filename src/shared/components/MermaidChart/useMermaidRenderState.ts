@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
-import mermaid, { mermaidCache, normalizeMermaidChart } from "./mermaidConfig";
-import { formatMermaidError } from "./mermaidErrorUtils";
+import { useEffect, useMemo, useState } from "react";
+import {
+  getCachedMermaid,
+  renderMermaidCached,
+} from "./mermaidRenderManager";
 
 export interface MermaidRenderState {
   svg: string;
@@ -11,179 +13,116 @@ export interface MermaidRenderState {
   isLoading: boolean;
 }
 
-export const useMermaidRenderState = (chart: string) => {
-  const chartKey = chart.trim();
-  const initialCached = mermaidCache.get(chartKey);
-  const [renderState, setRenderState] = useState<MermaidRenderState>({
-    svg: initialCached?.svg || "",
-    height: initialCached?.height || 200,
-    svgWidth: initialCached?.svgWidth || 800,
-    svgHeight: initialCached?.svgHeight || 200,
-    error: "",
-    isLoading: !initialCached,
+function normalizeMermaidChart(input: string) {
+  return input.trim();
+}
+
+// 稳定的 hash 函数（避免随机 id）
+function hashString(s: string) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h = (h ^ s.charCodeAt(i)) * 16777619;
+  }
+  return (h >>> 0).toString(36);
+}
+
+export const useMermaidRenderState = (chart: string, enabled: boolean) => {
+  const normalizedChart = useMemo(() => normalizeMermaidChart(chart), [chart]);
+  const chartKey = useMemo(
+    () => hashString(normalizedChart),
+    [normalizedChart],
+  );
+
+  const [renderState, setRenderState] = useState<MermaidRenderState>(() => {
+    const cached = getCachedMermaid(chartKey);
+    return cached
+      ? {
+          svg: cached.svg,
+          height: cached.height + 80, // Add padding
+          svgWidth: cached.width,
+          svgHeight: cached.height,
+          error: "",
+          isLoading: false,
+        }
+      : {
+          svg: "",
+          height: 200,
+          svgWidth: 800,
+          svgHeight: 200,
+          error: "",
+          isLoading: false,
+        };
   });
 
+  // chartKey 变化时先同步到 cache/idle
   useEffect(() => {
-    const cached = mermaidCache.get(chartKey);
+    const cached = getCachedMermaid(chartKey);
     if (cached) {
       setRenderState({
         svg: cached.svg,
-        height: cached.height,
-        svgWidth: cached.svgWidth,
-        svgHeight: cached.svgHeight,
+        height: cached.height + 80,
+        svgWidth: cached.width,
+        svgHeight: cached.height,
         error: "",
         isLoading: false,
       });
-      return;
+    } else {
+      setRenderState({
+        svg: "",
+        height: 200,
+        svgWidth: 800,
+        svgHeight: 200,
+        error: "",
+        isLoading: false,
+      });
     }
-
-    setRenderState((prev) => ({
-      ...prev,
-      svg: "",
-      height: 200,
-      svgWidth: 800,
-      svgHeight: 200,
-      error: "",
-      isLoading: true,
-    }));
   }, [chartKey]);
 
+  // 渲染逻辑（in-flight 去重）
   useEffect(() => {
-    if (mermaidCache.has(chartKey)) {
-      console.log("✅ Using cached Mermaid chart");
+    if (!enabled) return;
+
+    // Already cached?
+    const cached = getCachedMermaid(chartKey);
+    if (cached) {
+      console.log("[MermaidState] Using cached chart", chartKey.substring(0, 20));
       return;
     }
 
-    if (!renderState.isLoading) {
-      console.log("⏭️ Skipping render - already rendered");
-      return;
-    }
+    let cancelled = false;
 
-    let isMounted = true;
+    setRenderState((prev) => ({ ...prev, isLoading: true }));
 
-    const renderChart = async () => {
-      try {
-        const normalizedChart = normalizeMermaidChart(chart);
-        console.log(
-          "🔍 Attempting to render Mermaid chart:",
-          chart.substring(0, 100) + "...",
-        );
-
-        let parseResult;
-        try {
-          parseResult = await mermaid.parse(normalizedChart, {
-            suppressErrors: false,
-          });
-        } catch (parseError) {
-          console.error("❌ Mermaid parse error details:", {
-            error: parseError,
-            message:
-              parseError instanceof Error
-                ? parseError.message
-                : String(parseError),
-            stack: parseError instanceof Error ? parseError.stack : undefined,
-            chart: chart.substring(0, 200) + (chart.length > 200 ? "..." : ""),
-          });
-          throw parseError;
-        }
-
-        if (!parseResult) {
-          const error = new Error(
-            "Invalid Mermaid syntax - parse returned false",
-          );
-          console.error("❌ Parse result is false for chart:", chart);
-          throw error;
-        }
-
-        console.log("✅ Mermaid parse successful, attempting render...");
-
-        const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 11)}`;
-
-        let renderedSvg;
-        try {
-          const renderResult = await mermaid.render(uniqueId, normalizedChart);
-          renderedSvg = renderResult.svg;
-          console.log("✅ Mermaid render successful");
-        } catch (renderError) {
-          console.error("❌ Mermaid render error details:", {
-            error: renderError,
-            message:
-              renderError instanceof Error
-                ? renderError.message
-                : String(renderError),
-            stack: renderError instanceof Error ? renderError.stack : undefined,
-            uniqueId,
-            chart: chart.substring(0, 200) + (chart.length > 200 ? "..." : ""),
-          });
-          throw renderError;
-        }
-
-        if (isMounted) {
-          const tempDiv = document.createElement("div");
-          tempDiv.style.position = "absolute";
-          tempDiv.style.visibility = "hidden";
-          tempDiv.style.width = "800px";
-          tempDiv.innerHTML = renderedSvg;
-          document.body.appendChild(tempDiv);
-
-          const svgElement = tempDiv.querySelector("svg");
-          let finalHeight = 300;
-          let svgWidth = 800;
-          let svgHeight = 300;
-
-          if (svgElement) {
-            const rect = svgElement.getBoundingClientRect();
-            svgWidth = rect.width;
-            svgHeight = rect.height;
-            // Add sufficient padding (80px) for container padding, margins, and zoom controls
-            finalHeight = Math.max(rect.height + 80, 300);
-          }
-
-          document.body.removeChild(tempDiv);
-
-          mermaidCache.set(chartKey, {
-            svg: renderedSvg,
-            height: finalHeight,
-            svgWidth,
-            svgHeight,
-          });
-
+    renderMermaidCached(chartKey, normalizedChart)
+      .then((res) => {
+        if (!cancelled) {
           setRenderState({
-            svg: renderedSvg,
-            height: finalHeight,
-            svgWidth,
-            svgHeight,
+            svg: res.svg,
+            height: res.height + 80,
+            svgWidth: res.width,
+            svgHeight: res.height,
             error: "",
             isLoading: false,
           });
         }
-      } catch (err) {
-        console.error("❌ Mermaid rendering error:", {
-          error: err,
-          message: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined,
-          chart: chart.substring(0, 300) + (chart.length > 300 ? "..." : ""),
-          chartLength: chart.length,
-        });
-
-        if (isMounted) {
-          const combinedError = formatMermaidError(chart, chartKey, err);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("[MermaidState] Render error:", err);
+          const errorMessage =
+            err instanceof Error ? err.message : String(err);
           setRenderState((prev) => ({
             ...prev,
-            error: combinedError,
+            error: errorMessage || "Failed to render Mermaid diagram",
             isLoading: false,
           }));
         }
-      }
-    };
-
-    renderChart();
+      });
 
     return () => {
-      isMounted = false;
-      console.log("🧹 Cleaning up Mermaid render");
+      cancelled = true;
     };
-  }, [chart, chartKey, renderState.isLoading]);
+  }, [chartKey, normalizedChart, enabled]);
 
   return { renderState, chartKey };
 };

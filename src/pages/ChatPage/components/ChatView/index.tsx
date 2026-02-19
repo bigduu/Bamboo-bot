@@ -179,7 +179,7 @@ export const ChatView: React.FC = () => {
     count: renderableMessagesWithDraft.length,
     getScrollElement: () => messagesListRef.current,
     estimateSize: () => 320,
-    overscan: 6,
+    overscan: 2, // Reduced from 6 to 2 to minimize pre-rendering of Mermaid charts
   });
 
   const rowGap = token.marginMD;

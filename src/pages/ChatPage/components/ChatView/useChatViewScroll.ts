@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { streamingMessageBus } from "../../utils/streamingMessageBus";
 import type { Message } from "../../types/chat";
+import { useScrollPositionPersistence } from "./useScrollPositionPersistence";
 
 type InteractionState = {
   value: "IDLE" | "THINKING" | "AWAITING_APPROVAL";
@@ -37,32 +38,47 @@ export const useChatViewScroll = ({
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const userHasScrolledUpRef = useRef(false);
+  const isFirstLoadRef = useRef(true);
 
-  const handleMessagesScroll = useCallback(() => {
-    const el = messagesListRef.current;
-    if (!el) return;
-    // 没有消息时不显示滚动按钮
-    if (renderableMessages.length === 0) {
-      setShowScrollToBottom(false);
-      setShowScrollToTop(false);
-      return;
-    }
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const scrollTop = el.scrollTop;
-    // 使用统一的阈值：距离底部 150px 以内都视为"在底部"
-    const bottomThreshold = 150;
-    const topThreshold = 150;
-    const atBottom = distanceFromBottom < bottomThreshold;
-    const atTop = scrollTop < topThreshold;
-    setShowScrollToBottom(!atBottom);
-    setShowScrollToTop(!atTop && renderableMessages.length > 3);
-    // 用户主动向上滚动超过阈值时，标记为已滚动
-    if (distanceFromBottom > bottomThreshold * 2) {
-      userHasScrolledUpRef.current = true;
-    } else if (atBottom) {
-      userHasScrolledUpRef.current = false;
-    }
-  }, [renderableMessages.length]);
+  // Use scroll position persistence
+  const { handleScroll: handleScrollPersistence } = useScrollPositionPersistence(
+    currentChatId,
+    messagesListRef,
+    renderableMessages.length,
+  );
+
+  const handleMessagesScroll = useCallback(
+    (e: React.UIEvent<HTMLElement>) => {
+      const el = messagesListRef.current;
+      if (!el) return;
+      // 没有消息时不显示滚动按钮
+      if (renderableMessages.length === 0) {
+        setShowScrollToBottom(false);
+        setShowScrollToTop(false);
+        return;
+      }
+      const distanceFromBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight;
+      const scrollTop = el.scrollTop;
+      // 使用统一的阈值：距离底部 150px 以内都视为"在底部"
+      const bottomThreshold = 150;
+      const topThreshold = 150;
+      const atBottom = distanceFromBottom < bottomThreshold;
+      const atTop = scrollTop < topThreshold;
+      setShowScrollToBottom(!atBottom);
+      setShowScrollToTop(!atTop && renderableMessages.length > 3);
+      // 用户主动向上滚动超过阈值时，标记为已滚动
+      if (distanceFromBottom > bottomThreshold * 2) {
+        userHasScrolledUpRef.current = true;
+      } else if (atBottom) {
+        userHasScrolledUpRef.current = false;
+      }
+
+      // Save scroll position (pass event to handler)
+      handleScrollPersistence(e);
+    },
+    [renderableMessages.length, handleScrollPersistence],
+  );
 
   const scrollToBottom = useCallback(() => {
     const el = messagesListRef.current;
@@ -136,7 +152,13 @@ export const useChatViewScroll = ({
     const currentState = interactionState.value;
     const previousState = previousStateRef.current;
 
+    console.log("[StateChange] Interaction state changed", {
+      previousState,
+      currentState,
+    });
+
     if (previousState === "IDLE" && currentState === "THINKING") {
+      console.log("[StateChange] IDLE -> THINKING, resetting scroll and scrolling to bottom");
       resetUserScroll();
       scrollToBottom();
     }
@@ -147,16 +169,29 @@ export const useChatViewScroll = ({
   useEffect(() => {
     return streamingMessageBus.subscribe((update) => {
       if (update.chatId !== currentChatId) return;
-      if (userHasScrolledUpRef.current) return;
+      if (userHasScrolledUpRef.current) {
+        console.log("[StreamingScroll] User scrolled up, skipping auto-scroll");
+        return;
+      }
       if (!update.content) return;
+      console.log("[StreamingScroll] Streaming, scrolling to bottom");
       scrollToBottom();
     });
   }, [currentChatId, scrollToBottom]);
 
   useEffect(() => {
-    if (!userHasScrolledUpRef.current && renderableMessages.length > 0) {
+    // Only auto-scroll when streaming, not on initial load
+    console.log("[AutoScroll] Effect triggered", {
+      userHasScrolledUp: userHasScrolledUpRef.current,
+      messagesLength: renderableMessages.length,
+      isFirstLoad: isFirstLoadRef.current,
+    });
+
+    if (!userHasScrolledUpRef.current && renderableMessages.length > 0 && !isFirstLoadRef.current) {
+      console.log("[AutoScroll] Scrolling to bottom");
       scrollToBottom();
     }
+    isFirstLoadRef.current = false;
   }, [renderableMessages.length, scrollToBottom]);
 
   // 当消息数量变化或切换聊天时，主动检查是否应该显示滚动按钮
@@ -183,6 +218,13 @@ export const useChatViewScroll = ({
     setShowScrollToBottom(!atBottom);
     setShowScrollToTop(!atTop && renderableMessages.length > 3);
   }, [renderableMessages.length, currentChatId]);
+
+  // Reset first load flag when switching chats
+  useEffect(() => {
+    console.log("[ScrollReset] Switching chat, resetting flags", { currentChatId });
+    isFirstLoadRef.current = true;
+    userHasScrolledUpRef.current = false;
+  }, [currentChatId]);
 
   return {
     handleMessagesScroll,
