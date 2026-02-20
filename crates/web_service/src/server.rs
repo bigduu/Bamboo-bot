@@ -1,6 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use actix_cors::Cors;
+use actix_files as fs;
 use actix_web::{http::header, web, App, HttpServer};
 use agent_llm::LLMProvider;
 use agent_metrics::{MetricsBus, MetricsStorage, MetricsWorker};
@@ -493,6 +494,82 @@ pub async fn run_with_bind(app_data_dir: PathBuf, port: u16, bind: &str) -> Resu
             .wrap(build_cors(&bind_for_cors, port))
             .configure(app_config)
             .configure(agent_api_config)
+    })
+    .workers(DEFAULT_WORKER_COUNT)
+    .bind(format!("{}:{}", bind_for_closure, port))
+    .map_err(|e| format!("Failed to bind server: {e}"))?
+    .run();
+
+    info!("Web service running on http://{}:{}", bind, port);
+
+    if let Err(e) = server.await {
+        error!("Web server error: {}", e);
+        return Err(format!("Web server error: {e}"));
+    }
+
+    // Stop metrics worker on shutdown
+    metrics_state.stop();
+
+    Ok(())
+}
+
+/// Run server with custom bind address and static file serving (for Docker deployment)
+pub async fn run_with_bind_and_static(
+    app_data_dir: PathBuf,
+    port: u16,
+    bind: &str,
+    static_dir: Option<PathBuf>,
+) -> Result<(), String> {
+    info!("Starting web service on {}:{}...", bind, port);
+
+    // Initialize metrics infrastructure
+    let metrics_state = MetricsState::spawn(app_data_dir.clone()).await;
+
+    let config = Config::new();
+
+    // Create provider based on configuration
+    let provider = agent_llm::create_provider_with_dir(&config, app_data_dir.clone())
+        .await
+        .map_err(|e| format!("Failed to create provider: {}", e))?;
+
+    let agent_state = web::Data::new(
+        build_agent_state(app_data_dir.clone(), port, &config).await?
+    );
+
+    let app_state = web::Data::new(AppState {
+        app_data_dir,
+        provider: Arc::new(RwLock::new(provider)),
+        config: Arc::new(RwLock::new(config)),
+        metrics_bus: Some(metrics_state.bus.clone()),
+    });
+
+    // Move bind_addr into the closure
+    let bind_addr = bind.to_string();
+    let bind_for_closure = bind_addr.clone();
+    let bind_for_cors = bind_addr.clone();
+
+    let server = HttpServer::new(move || {
+        let mut app = App::new()
+            .app_data(app_state.clone())
+            .app_data(agent_state.clone())
+            .wrap(build_cors(&bind_for_cors, port))
+            .configure(app_config)
+            .configure(agent_api_config);
+
+        // Add static file serving if directory is provided
+        if let Some(static_path) = &static_dir {
+            info!("Serving static files from: {:?}", static_path);
+
+            // Serve static files at root, with index.html fallback for SPA
+            app = app
+                .service(
+                    fs::Files::new("/", static_path)
+                        .index_file("index.html")
+                        .prefer_utf8(true)
+                );
+        }
+
+        app
     })
     .workers(DEFAULT_WORKER_COUNT)
     .bind(format!("{}:{}", bind_for_closure, port))

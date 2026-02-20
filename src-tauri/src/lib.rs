@@ -8,19 +8,21 @@ use crate::command::slash_commands::{
 };
 use crate::command::workflows::{delete_workflow, save_workflow};
 use crate::process::ProcessRegistryState;
+use crate::sidecar::web_service_manager::WebServiceSidecar;
 use chrono::{SecondsFormat, Utc};
 use log::{info, LevelFilter};
 use reqwest::StatusCode;
 use serde_json::Value;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::Manager;
 use tauri::{App, Runtime};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 use tauri_plugin_log::{Target, TargetKind};
-use web_service::server::run as start_server;
 
 pub mod app_settings;
 pub mod claude;
+pub mod sidecar;
 
 pub mod claude_binary {
     pub use crate::claude::*;
@@ -33,6 +35,9 @@ pub mod proxy_auth_dialog;
 const WEB_SERVICE_PROXY_AUTH_URL: &str = "http://127.0.0.1:8080/v1/bamboo/proxy-auth";
 const WEB_SERVICE_PROXY_AUTH_RETRIES: u8 = 8;
 const SETUP_VERSION: &str = "1.0";
+
+// Sidecar state wrapper for Tauri state management
+pub struct SidecarState(pub Arc<WebServiceSidecar>);
 
 // Note: Active network detection has been removed to avoid security/firewall concerns.
 // Proxy detection now only checks environment variables (passive detection).
@@ -284,10 +289,22 @@ fn setup<R: Runtime>(app: &mut App<R>) -> std::result::Result<(), Box<dyn std::e
 
     app.manage(ProcessRegistryState::default());
 
-    let server_data_dir = app_data_dir.clone();
-    tauri::async_runtime::spawn(async {
-        let _ = start_server(server_data_dir, 8080).await;
+    // Start web service as sidecar
+    let sidecar = Arc::new(sidecar::web_service_manager::WebServiceSidecar::new(
+        8080,
+        app_data_dir.clone(),
+    ));
+
+    let app_handle = app.handle().clone();
+    let sidecar_clone = Arc::clone(&sidecar);
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = sidecar_clone.start(&app_handle).await {
+            log::error!("Failed to start web service sidecar: {}", e);
+        }
     });
+
+    // Manage sidecar state for later access
+    app.manage(SidecarState(sidecar));
 
     // Keep startup detection/logging, but do not show interactive dialogs.
     let app_handle = app.handle().clone();
