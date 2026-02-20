@@ -8,7 +8,7 @@
  * - /v1/*       - Standard web_service routes (models, bamboo/*, workspace/*, mcp/*, claude/*)
  * - /api/v1/*   - Agent server routes (chat, stream, todo, respond, sessions, metrics)
  */
-import { getBackendBaseUrl } from "../../shared/utils/backendBaseUrl";
+import { getBackendBaseUrlSync } from "../../shared/utils/backendBaseUrl";
 
 export interface ApiClientConfig {
   baseUrl?: string;
@@ -43,7 +43,7 @@ export class ApiClient {
   }
 
   private resolveBaseUrl(): string {
-    let normalized = getBackendBaseUrl().trim().replace(/\/+$/, "");
+    let normalized = getBackendBaseUrlSync().trim().replace(/\/+$/, "");
 
     // Default to /v1 (standard web_service routes)
     if (normalized.endsWith("/v1")) {
@@ -239,7 +239,7 @@ export const apiClient = new ApiClient();
  */
 export const agentApiClient = new ApiClient({
   baseUrl: (() => {
-    let normalized = getBackendBaseUrl().trim().replace(/\/+$/, "");
+    let normalized = getBackendBaseUrlSync().trim().replace(/\/+$/, "");
     // Remove /v1 suffix if present, then add /api/v1
     if (normalized.endsWith("/v1")) {
       normalized = normalized.slice(0, -3);

@@ -33,7 +33,7 @@ pub async fn generate_content(
     let gemini_model = path.into_inner();
 
     // Resolve model mapping
-    let resolution = match resolve_model(&gemini_model).await {
+    let resolution = match resolve_model(&state.app_data_dir, &gemini_model).await {
         Ok(res) => res,
         Err(e) => {
             log::warn!("Failed to resolve model mapping for '{}': {}", gemini_model, e);
@@ -157,7 +157,7 @@ pub async fn stream_generate_content(
     let gemini_model = path.into_inner();
 
     // Resolve model mapping
-    let resolution = match resolve_model(&gemini_model).await {
+    let resolution = match resolve_model(&state.app_data_dir, &gemini_model).await {
         Ok(res) => res,
         Err(e) => {
             log::warn!("Failed to resolve model mapping for '{}': {}", gemini_model, e);

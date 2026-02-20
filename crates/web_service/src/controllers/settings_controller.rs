@@ -1,7 +1,8 @@
 use crate::{error::AppError, server::AppState};
-use actix_web::{get, post, web, HttpResponse};
-use chat_core::paths::{config_json_path, workflows_dir};
+use actix_web::{delete, get, post, web, HttpResponse};
+use chat_core::keyword_masking::{KeywordEntry, KeywordMaskingConfig};
 use chat_core::ProxyAuth;
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -26,8 +27,8 @@ struct WorkflowGetResponse {
     modified_at: Option<String>,
 }
 
-fn config_path(_app_state: &AppState) -> PathBuf {
-    config_json_path()
+fn config_path(app_state: &AppState) -> PathBuf {
+    app_state.app_data_dir.join("config.json")
 }
 
 fn strip_proxy_auth(mut config: Value) -> Value {
@@ -107,8 +108,8 @@ fn is_safe_workflow_name(name: &str) -> bool {
 }
 
 #[get("/bamboo/workflows")]
-pub async fn list_workflows(_app_state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
-    let dir = workflows_dir();
+pub async fn list_workflows(app_state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
+    let dir = app_state.app_data_dir.join("workflows");
 
     fs::create_dir_all(&dir).await?;
 
@@ -152,15 +153,15 @@ pub async fn list_workflows(_app_state: web::Data<AppState>) -> Result<HttpRespo
 
 #[get("/bamboo/workflows/{name}")]
 pub async fn get_workflow(
-    _app_state: web::Data<AppState>,
-    path: web::Path<String>,
+    app_state: web::Data<AppState>,
+    workflow_name: web::Path<String>,
 ) -> Result<HttpResponse, AppError> {
-    let name = path.into_inner();
+    let name = workflow_name.into_inner();
     if !is_safe_workflow_name(&name) {
         return Err(AppError::NotFound("Workflow".to_string()));
     }
 
-    let dir = workflows_dir();
+    let dir = app_state.app_data_dir.join("workflows");
     fs::create_dir_all(&dir).await?;
 
     let filename = format!("{name}.md");
@@ -183,6 +184,228 @@ pub async fn get_workflow(
         size: metadata.len(),
         modified_at: None,
     }))
+}
+
+#[derive(Deserialize)]
+struct SaveWorkflowRequest {
+    name: String,
+    content: String,
+}
+
+#[post("/bamboo/workflows")]
+pub async fn save_workflow(
+    app_state: web::Data<AppState>,
+    payload: web::Json<SaveWorkflowRequest>,
+) -> Result<HttpResponse, AppError> {
+    let name = payload.name.trim();
+    if !is_safe_workflow_name(name) {
+        return Err(AppError::BadRequest("Invalid workflow name".to_string()));
+    }
+
+    let dir = app_state.app_data_dir.join("workflows");
+    fs::create_dir_all(&dir).await?;
+
+    let file_path = dir.join(format!("{}.md", name));
+    fs::write(&file_path, &payload.content).await?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "success": true,
+        "path": file_path.to_string_lossy()
+    })))
+}
+
+#[delete("/bamboo/workflows/{name}")]
+pub async fn delete_workflow(
+    app_state: web::Data<AppState>,
+    workflow_name: web::Path<String>,
+) -> Result<HttpResponse, AppError> {
+    let name = workflow_name.into_inner();
+    if !is_safe_workflow_name(&name) {
+        return Err(AppError::BadRequest("Invalid workflow name".to_string()));
+    }
+
+    let dir = app_state.app_data_dir.join("workflows");
+    let file_path = dir.join(format!("{}.md", name));
+
+    if !file_path.exists() {
+        return Err(AppError::NotFound(format!("Workflow '{}'", name)));
+    }
+
+    fs::remove_file(&file_path).await?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
+}
+
+// Setup status endpoints
+
+#[derive(Serialize)]
+struct SetupStatus {
+    is_complete: bool,
+    has_proxy_config: bool,
+    has_proxy_env: bool,
+    message: String,
+}
+
+fn has_proxy_config(config: &Value) -> bool {
+    let has_http_proxy = config
+        .get("http_proxy")
+        .and_then(|value| value.as_str())
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false);
+    let has_https_proxy = config
+        .get("https_proxy")
+        .and_then(|value| value.as_str())
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false);
+
+    has_http_proxy || has_https_proxy
+}
+
+fn collect_proxy_environment_flags() -> Vec<&'static str> {
+    ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"]
+        .iter()
+        .copied()
+        .filter(|key| {
+            std::env::var(key)
+                .ok()
+                .map(|value| !value.trim().is_empty())
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
+fn is_setup_completed(config: &Value) -> bool {
+    config
+        .get("setup")
+        .and_then(|setup| setup.get("completed"))
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+}
+
+fn should_show_setup(setup_completed: bool, _has_proxy_config: bool, _has_proxy_env: bool) -> bool {
+    !setup_completed
+}
+
+fn setup_status_message(
+    setup_completed: bool,
+    has_proxy_config: bool,
+    proxy_environment_flags: &[&str],
+) -> String {
+    if setup_completed {
+        return "Setup has already been completed in config.json.".to_string();
+    }
+
+    if has_proxy_config {
+        return "Proxy configuration already exists in config.json. Setup is not required."
+            .to_string();
+    }
+
+    if !proxy_environment_flags.is_empty() {
+        return format!(
+            "Detected proxy environment variables: {}. Please confirm proxy settings in setup.",
+            proxy_environment_flags.join(", ")
+        );
+    }
+
+    "No proxy configuration or proxy environment variables detected. Setup is not required."
+        .to_string()
+}
+
+#[get("/bamboo/setup/status")]
+pub async fn get_setup_status(
+    app_state: web::Data<AppState>,
+) -> Result<HttpResponse, AppError> {
+    let path = config_path(&app_state);
+    let config = match fs::read_to_string(&path).await {
+        Ok(content) => serde_json::from_str::<Value>(&content)?,
+        Err(_) => serde_json::json!({}),
+    };
+
+    let has_proxy_config = has_proxy_config(&config);
+    let proxy_environment_flags = collect_proxy_environment_flags();
+    let has_proxy_env = !proxy_environment_flags.is_empty();
+    let setup_completed = is_setup_completed(&config);
+
+    let is_complete = !should_show_setup(setup_completed, has_proxy_config, has_proxy_env);
+    let message = setup_status_message(setup_completed, has_proxy_config, &proxy_environment_flags);
+
+    Ok(HttpResponse::Ok().json(SetupStatus {
+        is_complete,
+        has_proxy_config,
+        has_proxy_env,
+        message,
+    }))
+}
+
+#[post("/bamboo/setup/complete")]
+pub async fn mark_setup_complete(
+    app_state: web::Data<AppState>,
+) -> Result<HttpResponse, AppError> {
+    let path = config_path(&app_state);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).await?;
+    }
+
+    let mut config = match fs::read_to_string(&path).await {
+        Ok(content) => serde_json::from_str::<Value>(&content)?,
+        Err(_) => serde_json::json!({}),
+    };
+
+    let completed_at = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+
+    // Mark setup complete in config
+    let config_obj = config
+        .as_object_mut()
+        .ok_or_else(|| AppError::BadRequest("config.json must be a JSON object".to_string()))?;
+
+    let setup_entry = config_obj
+        .entry("setup".to_string())
+        .or_insert_with(|| serde_json::json!({}));
+    let setup_obj = setup_entry
+        .as_object_mut()
+        .ok_or_else(|| AppError::BadRequest("config.setup must be a JSON object".to_string()))?;
+
+    setup_obj.insert("completed".to_string(), Value::Bool(true));
+    setup_obj.insert("completed_at".to_string(), Value::String(completed_at));
+    setup_obj.insert("version".to_string(), Value::Number(1.into()));
+
+    let content = serde_json::to_string_pretty(&config)?;
+    fs::write(&path, content).await?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
+}
+
+#[post("/bamboo/setup/incomplete")]
+pub async fn mark_setup_incomplete(
+    app_state: web::Data<AppState>,
+) -> Result<HttpResponse, AppError> {
+    let path = config_path(&app_state);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).await?;
+    }
+
+    let mut config = match fs::read_to_string(&path).await {
+        Ok(content) => serde_json::from_str::<Value>(&content)?,
+        Err(_) => serde_json::json!({}),
+    };
+
+    // If setup field exists and is an object, set completed to false
+    if let Some(config_obj) = config.as_object_mut() {
+        if let Some(setup_entry) = config_obj.get_mut("setup") {
+            if let Some(setup_obj) = setup_entry.as_object_mut() {
+                setup_obj.insert("completed".to_string(), Value::Bool(false));
+                setup_obj.insert(
+                    "reset_at".to_string(),
+                    Value::String(Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)),
+                );
+            }
+        }
+    }
+
+    let content = serde_json::to_string_pretty(&config)?;
+    fs::write(&path, content).await?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
 }
 
 #[get("/bamboo/config")]
@@ -349,21 +572,115 @@ pub async fn reset_bamboo_config(app_state: web::Data<AppState>) -> Result<HttpR
 
 #[get("/bamboo/anthropic-model-mapping")]
 pub async fn get_anthropic_model_mapping(
-    _app_state: web::Data<AppState>,
+    app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, AppError> {
     use crate::services::anthropic_model_mapping_service::load_anthropic_model_mapping;
-    let mapping = load_anthropic_model_mapping().await?;
+    let mapping = load_anthropic_model_mapping(&app_state.app_data_dir).await?;
     Ok(HttpResponse::Ok().json(mapping))
 }
 
 #[post("/bamboo/anthropic-model-mapping")]
 pub async fn set_anthropic_model_mapping(
-    _app_state: web::Data<AppState>,
+    app_state: web::Data<AppState>,
     payload: web::Json<crate::services::anthropic_model_mapping_service::AnthropicModelMapping>,
 ) -> Result<HttpResponse, AppError> {
     use crate::services::anthropic_model_mapping_service::save_anthropic_model_mapping;
-    let mapping = save_anthropic_model_mapping(payload.into_inner()).await?;
+    let mapping = save_anthropic_model_mapping(&app_state.app_data_dir, payload.into_inner()).await?;
     Ok(HttpResponse::Ok().json(mapping))
+}
+
+// Keyword masking endpoints
+
+#[derive(Debug, Serialize, Deserialize)]
+struct KeywordMaskingResponse {
+    entries: Vec<KeywordEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ValidationError {
+    index: usize,
+    message: String,
+}
+
+#[get("/bamboo/keyword-masking")]
+pub async fn get_keyword_masking_config(
+    app_state: web::Data<AppState>,
+) -> Result<HttpResponse, AppError> {
+    let path = app_state.app_data_dir.join("keyword_masking.json");
+
+    if !path.exists() {
+        return Ok(HttpResponse::Ok().json(KeywordMaskingResponse {
+            entries: Vec::new(),
+        }));
+    }
+
+    let content = fs::read_to_string(&path).await?;
+    let config: KeywordMaskingConfig = serde_json::from_str(&content)?;
+
+    Ok(HttpResponse::Ok().json(KeywordMaskingResponse {
+        entries: config.entries,
+    }))
+}
+
+#[post("/bamboo/keyword-masking")]
+pub async fn update_keyword_masking_config(
+    app_state: web::Data<AppState>,
+    payload: web::Json<Vec<KeywordEntry>>,
+) -> Result<HttpResponse, AppError> {
+    let entries = payload.into_inner();
+    let config = KeywordMaskingConfig { entries };
+
+    // Validate all entries
+    if let Err(errors) = config.validate() {
+        let validation_errors: Vec<ValidationError> = errors
+            .into_iter()
+            .map(|(idx, msg)| ValidationError {
+                index: idx,
+                message: msg,
+            })
+            .collect();
+        return Err(AppError::BadRequest(format!(
+            "Validation failed: {:?}",
+            validation_errors
+        )));
+    }
+
+    let path = app_state.app_data_dir.join("keyword_masking.json");
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).await?;
+    }
+
+    let content = serde_json::to_string_pretty(&config)?;
+    fs::write(&path, content).await?;
+
+    Ok(HttpResponse::Ok().json(KeywordMaskingResponse {
+        entries: config.entries,
+    }))
+}
+
+#[post("/bamboo/keyword-masking/validate")]
+pub async fn validate_keyword_entries(
+    payload: web::Json<Vec<KeywordEntry>>,
+) -> Result<HttpResponse, AppError> {
+    let entries = payload.into_inner();
+    let config = KeywordMaskingConfig { entries };
+
+    match config.validate() {
+        Ok(()) => Ok(HttpResponse::Ok().json(serde_json::json!({ "valid": true }))),
+        Err(errors) => {
+            let validation_errors: Vec<ValidationError> = errors
+                .into_iter()
+                .map(|(idx, msg)| ValidationError {
+                    index: idx,
+                    message: msg,
+                })
+                .collect();
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "valid": false,
+                "errors": validation_errors
+            })))
+        }
+    }
 }
 
 // Provider configuration endpoints
@@ -824,6 +1141,13 @@ pub async fn reload_provider_config(
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(list_workflows)
         .service(get_workflow)
+        .service(save_workflow)
+        .service(delete_workflow)
+        // Setup status endpoints
+        .service(get_setup_status)
+        .service(mark_setup_complete)
+        .service(mark_setup_incomplete)
+        // Config endpoints
         .service(get_bamboo_config)
         .service(set_bamboo_config)
         .service(reset_bamboo_config)
@@ -831,6 +1155,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(get_proxy_auth_status)
         .service(get_anthropic_model_mapping)
         .service(set_anthropic_model_mapping)
+        // Keyword masking endpoints
+        .service(get_keyword_masking_config)
+        .service(update_keyword_masking_config)
+        .service(validate_keyword_entries)
         // Provider configuration endpoints
         .service(get_provider_config)
         .service(update_provider_config)

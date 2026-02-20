@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Alert, Button, Card, Checkbox, Input, Spin, Steps } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
+import { ServiceFactory } from "../../services/common/ServiceFactory";
 
 import "./SetupPage.css";
 
@@ -11,13 +12,6 @@ interface SetupConfig {
   proxyUsername: string;
   proxyPassword: string;
   rememberProxyAuth: boolean;
-}
-
-interface SetupStatus {
-  is_complete: boolean;
-  has_proxy_config: boolean;
-  has_proxy_env: boolean;
-  message: string;
 }
 
 interface ProxyDetectionState {
@@ -78,7 +72,8 @@ export const SetupPage = () => {
 
       setIsDetecting(true);
       try {
-        const status = await invoke<SetupStatus>("get_setup_status");
+        const serviceFactory = ServiceFactory.getInstance();
+        const status = await serviceFactory.getSetupStatus();
         setDetectionResult({
           needsProxy: status.has_proxy_env,
           message: status.message,
@@ -126,7 +121,8 @@ export const SetupPage = () => {
         });
       }
 
-      await invoke("mark_setup_complete");
+      const serviceFactory = ServiceFactory.getInstance();
+      await serviceFactory.markSetupComplete();
       setIsComplete(true);
     } catch (error) {
       console.error("Failed to complete setup:", error);
@@ -144,7 +140,8 @@ export const SetupPage = () => {
     try {
       setErrorMessage(null);
       setIsSaving(true);
-      await invoke("mark_setup_complete");
+      const serviceFactory = ServiceFactory.getInstance();
+      await serviceFactory.markSetupComplete();
       setIsComplete(true);
     } catch (error) {
       console.error("Failed to mark setup complete:", error);

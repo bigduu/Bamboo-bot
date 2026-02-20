@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   buildBackendUrl,
   clearBackendBaseUrlOverride,
-  getBackendBaseUrl,
+  getBackendBaseUrlSync,
   getDefaultBackendBaseUrl,
   hasBackendBaseUrlOverride,
   normalizeBackendBaseUrl,
@@ -23,7 +23,7 @@ describe("backendBaseUrl", () => {
   it("uses fallback default when no env and no override exists", () => {
     clearBackendBaseUrlOverride();
     expect(getDefaultBackendBaseUrl()).toBe("http://127.0.0.1:8080/v1");
-    expect(getBackendBaseUrl()).toBe("http://127.0.0.1:8080/v1");
+    expect(getBackendBaseUrlSync()).toBe("http://127.0.0.1:8080/v1");
   });
 
   it("uses env default when set (and normalizes it)", () => {
@@ -44,7 +44,7 @@ describe("backendBaseUrl", () => {
 
     setBackendBaseUrl("http://localhost:8080/v1/");
     expect(hasBackendBaseUrlOverride()).toBe(true);
-    expect(getBackendBaseUrl()).toBe("http://localhost:8080/v1");
+    expect(getBackendBaseUrlSync()).toBe("http://localhost:8080/v1");
 
     clearBackendBaseUrlOverride();
     expect(hasBackendBaseUrlOverride()).toBe(false);

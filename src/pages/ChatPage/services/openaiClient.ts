@@ -1,12 +1,12 @@
 import OpenAI from "openai";
 
-import { getBackendBaseUrl } from "@shared/utils/backendBaseUrl";
+import { getBackendBaseUrlSync } from "@shared/utils/backendBaseUrl";
 
 let client: OpenAI | null = null;
 let currentBaseUrl: string | null = null;
 
 export const getOpenAIClient = (): OpenAI => {
-  const baseURL = getBackendBaseUrl();
+  const baseURL = getBackendBaseUrlSync();
   if (!client) {
     client = new OpenAI({
       apiKey: "local",

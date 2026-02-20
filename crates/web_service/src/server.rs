@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::{web, App, HttpServer};
+use actix_web::{http::header, web, App, HttpServer};
 use agent_llm::LLMProvider;
 use agent_metrics::{MetricsBus, MetricsStorage, MetricsWorker};
 use agent_server::handlers as agent_handlers;
@@ -97,6 +97,39 @@ impl MetricsState {
 }
 
 const DEFAULT_WORKER_COUNT: usize = 10;
+
+/// Build CORS configuration based on bind address and port
+fn build_cors(bind_addr: &str, port: u16) -> Cors {
+    let mut cors = Cors::default()
+        .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+        .allowed_headers(vec![
+            header::AUTHORIZATION,
+            header::ACCEPT,
+            header::CONTENT_TYPE,
+        ])
+        .max_age(3600);
+
+    // Allowlist origins based on mode
+    if bind_addr == "127.0.0.1" || bind_addr == "localhost" {
+        // Development/Desktop mode - allow Vite dev server and Tauri origins
+        cors = cors
+            .allowed_origin("http://localhost:1420")  // Vite dev server
+            .allowed_origin("http://127.0.0.1:1420")
+            .allowed_origin("tauri://localhost")       // Tauri desktop
+            .allowed_origin("https://tauri.localhost");
+        info!("CORS configured for development/desktop mode");
+    } else if bind_addr == "0.0.0.0" {
+        // Docker production mode (localhost only via reverse proxy)
+        cors = cors.allowed_origin(&format!("http://localhost:{}", port));
+        info!("CORS configured for Docker production mode (localhost only)");
+    } else {
+        // Custom bind address - be restrictive
+        cors = cors.allowed_origin(&format!("http://{}", bind_addr));
+        info!("CORS configured for custom bind address: {}", bind_addr);
+    }
+
+    cors
+}
 
 pub fn app_config(cfg: &mut web::ServiceConfig) {
     // OpenAI and other endpoints under /v1
@@ -282,7 +315,7 @@ pub async fn run(app_data_dir: PathBuf, port: u16) -> Result<(), String> {
         App::new()
             .app_data(app_state.clone())
             .app_data(agent_state.clone())
-            .wrap(Cors::permissive())
+            .wrap(build_cors("127.0.0.1", port))
             .configure(app_config)
             .configure(agent_api_config)
     })
@@ -354,7 +387,7 @@ impl WebService {
             App::new()
                 .app_data(app_state.clone())
                 .app_data(agent_state.clone())
-                .wrap(Cors::permissive())
+                .wrap(build_cors("127.0.0.1", port))
                 .configure(app_config)
                 .configure(agent_api_config)
         })
@@ -423,7 +456,10 @@ impl Drop for WebService {
 
 /// Run server with custom bind address (for Docker deployment)
 pub async fn run_with_bind(app_data_dir: PathBuf, port: u16, bind: &str) -> Result<(), String> {
-    info!("Starting web service on {}:{}...", bind, port);
+    // Convert to owned String to avoid lifetime issues with closure
+    let bind_addr = bind.to_string();
+
+    info!("Starting web service on {}:{}...", bind_addr, port);
 
     // Initialize metrics infrastructure
     let metrics_state = MetricsState::spawn(app_data_dir.clone()).await;
@@ -446,16 +482,20 @@ pub async fn run_with_bind(app_data_dir: PathBuf, port: u16, bind: &str) -> Resu
         metrics_bus: Some(metrics_state.bus.clone()),
     });
 
+    // Move bind_addr into the closure
+    let bind_for_closure = bind_addr.clone();
+    let bind_for_cors = bind_addr.clone();
+
     let server = HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
             .app_data(agent_state.clone())
-            .wrap(Cors::permissive())
+            .wrap(build_cors(&bind_for_cors, port))
             .configure(app_config)
             .configure(agent_api_config)
     })
     .workers(DEFAULT_WORKER_COUNT)
-    .bind(format!("{}:{}", bind, port))
+    .bind(format!("{}:{}", bind_for_closure, port))
     .map_err(|e| format!("Failed to bind server: {e}"))?
     .run();
 

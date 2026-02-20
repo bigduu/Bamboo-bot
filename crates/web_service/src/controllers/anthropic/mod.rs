@@ -196,7 +196,7 @@ pub async fn messages(
     let request = req.into_inner();
     let response_model = request.model.clone();
 
-    let resolution = match resolve_model(&response_model).await {
+    let resolution = match resolve_model(&app_state.app_data_dir, &response_model).await {
         Ok(resolution) => resolution,
         Err(err) => {
             return Ok(anthropic_error_response(err));
@@ -425,7 +425,7 @@ pub async fn complete(
     let request = req.into_inner();
     let response_model = request.model.clone();
 
-    let resolution = match resolve_model(&response_model).await {
+    let resolution = match resolve_model(&app_state.app_data_dir, &response_model).await {
         Ok(resolution) => resolution,
         Err(err) => {
             return Ok(anthropic_error_response(err));
@@ -714,8 +714,8 @@ impl AnthropicError {
     }
 }
 
-async fn resolve_model(model: &str) -> Result<ModelResolution, AnthropicError> {
-    let mapping = load_anthropic_model_mapping().await.map_err(|err| {
+async fn resolve_model(data_dir: &std::path::PathBuf, model: &str) -> Result<ModelResolution, AnthropicError> {
+    let mapping = load_anthropic_model_mapping(data_dir).await.map_err(|err| {
         AnthropicError::new(
             StatusCode::INTERNAL_SERVER_ERROR,
             "api_error",
