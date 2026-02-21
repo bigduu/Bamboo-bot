@@ -84,18 +84,75 @@ These fixes prevent:
 - Information disclosure via static file serving
 - XSS, clickjacking, and MIME sniffing attacks in Docker deployments
 
+## Important Security Improvements (Completed 2026-02-21)
+
+Following the critical fixes, 6 additional important security improvements were implemented:
+
+### 4. Request Size Limits (IMPORTANT)
+**File**: `crates/web_service/src/server.rs`
+
+**Issue**: No limits on request body sizes, vulnerable to DoS via large payloads
+
+**Fix**: Added request size limits:
+- JSON payloads: 1MB maximum
+- General payloads: 10MB maximum
+- Applied to both `run_with_bind` and `run_with_bind_and_static`
+
+### 5. Input Validation in Keyword Masking (IMPORTANT)
+**File**: `crates/web_service/src/controllers/settings_controller.rs:654-687`
+
+**Issue**: No limits on number of entries or pattern lengths, vulnerable to DoS via:
+- Memory exhaustion from unlimited entries
+- Catastrophic backtracking from long regex patterns
+
+**Fix**: Added validation limits:
+- Maximum 100 entries
+- Maximum 500 characters per pattern
+- Clear error messages on limit violations
+
+### 6. API Key Masking (IMPORTANT)
+**File**: `crates/web_service/src/controllers/settings_controller.rs:863-881`
+
+**Issue**: Previous masking revealed key length (short keys showed `***`, longer keys showed partial content)
+
+**Fix**: Consistent fixed-length mask `****...****` for all keys to prevent information disclosure
+
+### 7. Request Timeouts (IMPORTANT)
+**File**: `src/services/api/client.ts`
+
+**Issue**: No timeout on fetch requests, could hang indefinitely
+
+**Fix**: Added 30-second timeout to all HTTP methods:
+- GET, POST, PUT, DELETE all use AbortController
+- Properly cleaned up timeouts in finally block
+- Prevents indefinite hangs
+
+### 8. IPv6 CORS Support (IMPORTANT)
+**File**: `crates/web_service/src/server.rs:130`
+
+**Issue**: Development CORS only allowed IPv4 localhost, not IPv6 (`::1`)
+
+**Fix**: Added IPv6 localhost support:
+- `http://[::1]:1420` added to development allowlist
+- Consistent with modern networking practices
+
+### 9. Port Availability Race Condition Fixed (IMPORTANT)
+**File**: `src-tauri/src/sidecar/web_service_manager.rs`
+
+**Issue**: TOCTOU (Time-of-check to time-of-use) vulnerability - port checked before bind, race condition
+
+**Fix**: Removed preemptive port check, handle bind failures gracefully:
+- Check if service already running via health endpoint
+- Better error messages for port conflicts
+- Removed PID tracking (using health checks instead)
+
 ## Remaining Work
 
-The code review identified 8 Important issues and 12 Suggestions that should be addressed in future iterations:
+The code review identified 2 remaining Important issues and 12 Suggestions:
 
-**Important (Next Sprint)**:
-- Input validation limits in keyword masking (DoS prevention)
-- API key masking improvements
+**Important (Not Yet Implemented)**:
 - Rate limiting on authentication endpoints
-- Request size limits
-- Port availability race condition
-- Missing request timeouts
-- Retry logic for transient failures
+- Retry logic for transient failures (exponential backoff)
 
 **Suggestions (Backlog)**:
 - OpenAPI documentation
@@ -108,4 +165,6 @@ The code review identified 8 Important issues and 12 Suggestions that should be 
 
 - Code Review: Performed by Claude Code agent on 2026-02-21
 - Review Scope: All phases (0-4) of sidecar architecture refactoring
-- Total Issues Found: 3 Critical, 8 Important, 12 Suggestions
+- **Total Issues Found**: 3 Critical, 8 Important, 12 Suggestions
+- **Issues Fixed**: 3 Critical + 6 Important = 9 total
+- **Issues Remaining**: 2 Important, 12 Suggestions

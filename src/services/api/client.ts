@@ -108,23 +108,32 @@ export class ApiClient {
   }
 
   /**
-   * Make a GET request
+   * Make a GET request with timeout
    */
   async get<T>(path: string, options?: RequestInit): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method: "GET",
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-    });
-    return this.handleResponse<T>(response);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        method: "GET",
+        headers: {
+          ...this.defaultHeaders,
+          ...options?.headers,
+        },
+        signal: controller.signal,
+      });
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
-   * Make a POST request
+   * Make a POST request with timeout
    */
   async post<T>(
     path: string,
@@ -132,20 +141,29 @@ export class ApiClient {
     options?: RequestInit,
   ): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method: "POST",
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        method: "POST",
+        headers: {
+          ...this.defaultHeaders,
+          ...options?.headers,
+        },
+        body: data ? JSON.stringify(data) : undefined,
+        signal: controller.signal,
+      });
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
-   * Make a PUT request
+   * Make a PUT request with timeout
    */
   async put<T>(
     path: string,
@@ -153,36 +171,54 @@ export class ApiClient {
     options?: RequestInit,
   ): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method: "PUT",
-      headers: {
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        method: "PUT",
+        headers: {
         ...this.defaultHeaders,
         ...options?.headers,
       },
       body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
+        signal: controller.signal,
+      });
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
-   * Make a DELETE request
+   * Make a DELETE request with timeout
    */
   async delete<T>(path: string, options?: RequestInit): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method: "DELETE",
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-    });
-    return this.handleResponse<T>(response);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        method: "DELETE",
+        headers: {
+          ...this.defaultHeaders,
+          ...options?.headers,
+        },
+        signal: controller.signal,
+      });
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
-   * Make a request with custom method
+   * Make a request with custom method and timeout
    */
   async request<T>(
     method: string,
@@ -190,15 +226,24 @@ export class ApiClient {
     options?: RequestInit,
   ): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method,
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-    });
-    return this.handleResponse<T>(response);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        method,
+        headers: {
+          ...this.defaultHeaders,
+          ...options?.headers,
+        },
+        signal: controller.signal,
+      });
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**

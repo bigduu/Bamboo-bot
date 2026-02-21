@@ -657,6 +657,31 @@ pub async fn update_keyword_masking_config(
     payload: web::Json<Vec<KeywordEntry>>,
 ) -> Result<HttpResponse, AppError> {
     let entries = payload.into_inner();
+
+    // Input validation limits to prevent DoS
+    const MAX_ENTRIES: usize = 100;
+    const MAX_PATTERN_LENGTH: usize = 500;
+
+    if entries.len() > MAX_ENTRIES {
+        return Err(AppError::BadRequest(format!(
+            "Too many entries: {} (max {})",
+            entries.len(),
+            MAX_ENTRIES
+        )));
+    }
+
+    // Validate pattern lengths
+    for (idx, entry) in entries.iter().enumerate() {
+        if entry.pattern.len() > MAX_PATTERN_LENGTH {
+            return Err(AppError::BadRequest(format!(
+                "Pattern at index {} too long: {} chars (max {})",
+                idx,
+                entry.pattern.len(),
+                MAX_PATTERN_LENGTH
+            )));
+        }
+    }
+
     let config = KeywordMaskingConfig { entries };
 
     // Validate all entries
@@ -844,15 +869,9 @@ fn mask_api_keys_in_providers(providers: &Value) -> Value {
             if let Some(config_obj) = provider_config.as_object_mut() {
                 if let Some(api_key) = config_obj.get_mut("api_key") {
                     if let Some(key_str) = api_key.as_str() {
-                        if key_str.len() > 8 {
-                            let masked_key = format!(
-                                "{}...{}",
-                                &key_str[..4],
-                                &key_str[key_str.len() - 4..]
-                            );
-                            *api_key = Value::String(masked_key);
-                        } else if !key_str.is_empty() {
-                            *api_key = Value::String("***".to_string());
+                        // Always use fixed-length mask to prevent information disclosure
+                        if !key_str.is_empty() {
+                            *api_key = Value::String("****...****".to_string());
                         }
                     }
                 }

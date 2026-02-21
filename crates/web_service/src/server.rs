@@ -123,14 +123,15 @@ fn build_cors(bind_addr: &str, port: u16) -> Cors {
         .max_age(3600);
 
     // Allowlist origins based on mode
-    if bind_addr == "127.0.0.1" || bind_addr == "localhost" {
+    if bind_addr == "127.0.0.1" || bind_addr == "localhost" || bind_addr == "::1" {
         // Development/Desktop mode - allow Vite dev server and Tauri origins
         cors = cors
             .allowed_origin("http://localhost:1420")  // Vite dev server
             .allowed_origin("http://127.0.0.1:1420")
+            .allowed_origin("http://[::1]:1420")      // IPv6 localhost
             .allowed_origin("tauri://localhost")       // Tauri desktop
             .allowed_origin("https://tauri.localhost");
-        info!("CORS configured for development/desktop mode");
+        info!("CORS configured for development/desktop mode (includes IPv6)");
     } else if bind_addr == "0.0.0.0" {
         // Docker production mode (localhost only via reverse proxy)
         cors = cors.allowed_origin(&format!("http://localhost:{}", port));
@@ -501,9 +502,13 @@ pub async fn run_with_bind(app_data_dir: PathBuf, port: u16, bind: &str) -> Resu
 
     let server = HttpServer::new(move || {
         App::new()
+            // Request size limits to prevent DoS
+            .app_data(web::JsonConfig::default().limit(1024 * 1024)) // 1MB JSON limit
+            .app_data(web::PayloadConfig::new(10 * 1024 * 1024)) // 10MB payload limit
             .app_data(app_state.clone())
             .app_data(agent_state.clone())
             .wrap(build_cors(&bind_for_cors, port))
+            .wrap(build_security_headers())
             .configure(app_config)
             .configure(agent_api_config)
     })
@@ -562,6 +567,9 @@ pub async fn run_with_bind_and_static(
 
     let server = HttpServer::new(move || {
         let mut app = App::new()
+            // Request size limits to prevent DoS
+            .app_data(web::JsonConfig::default().limit(1024 * 1024)) // 1MB JSON limit
+            .app_data(web::PayloadConfig::new(10 * 1024 * 1024)) // 10MB payload limit
             .app_data(app_state.clone())
             .app_data(agent_state.clone())
             .wrap(build_cors(&bind_for_cors, port))
