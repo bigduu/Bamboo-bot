@@ -7,6 +7,7 @@ const { useBreakpoint } = Grid;
 
 export interface ActionButton {
   key: string;
+  "data-testid"?: string;
   icon: React.ReactNode;
   title: string;
   onClick: () => void;
@@ -63,6 +64,7 @@ export const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
       {buttons.map((button) => (
         <Tooltip key={button.key} title={button.title}>
           <Button
+            data-testid={(button as any)["data-testid"] || button.key}
             icon={button.icon}
             size={getActionButtonSize()}
             type="text"
@@ -82,6 +84,7 @@ export const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
 // Predefined common action button configurations
 export const createCopyButton = (onCopy: () => void): ActionButton => ({
   key: "copy",
+  "data-testid": "copy-message",
   icon: <CopyOutlined />,
   title: "Copy message",
   onClick: onCopy,

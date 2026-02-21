@@ -212,6 +212,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
       title="Keyword Masking"
       extra={
         <Button
+          data-testid="add-keyword"
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAddEntry}
@@ -244,6 +245,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
                 editingIndex === index
                   ? [
                       <Button
+                        data-testid="save-keyword"
                         key="save"
                         type="primary"
                         icon={<SaveOutlined />}
@@ -260,6 +262,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
                         onClick={() => handleEditEntry(index)}
                       />,
                       <Button
+                        data-testid={`delete-keyword-${index}`}
                         key="delete"
                         danger
                         icon={<DeleteOutlined />}
@@ -273,6 +276,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
                   // Edit mode
                   <>
                     <Input
+                      data-testid="keyword-pattern-input"
                       placeholder="Enter pattern to match"
                       value={editPattern}
                       onChange={(e) => setEditPattern(e.target.value)}

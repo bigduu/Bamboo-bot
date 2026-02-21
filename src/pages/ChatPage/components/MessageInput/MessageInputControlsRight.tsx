@@ -42,6 +42,7 @@ const MessageInputControlsRight: React.FC<MessageInputControlsRightProps> = ({
     >
       {allowRetry && hasMessages && (
         <Button
+          data-testid="regenerate-button"
           type="text"
           icon={<SyncOutlined spin={isStreaming} />}
           onClick={onRetry}
@@ -59,6 +60,7 @@ const MessageInputControlsRight: React.FC<MessageInputControlsRightProps> = ({
       )}
 
       <Button
+        data-testid={isStreaming ? "cancel-button" : "send-button"}
         type="primary"
         icon={isStreaming ? <StopOutlined /> : <SendOutlined />}
         onClick={isStreaming ? onCancel : onSubmit}

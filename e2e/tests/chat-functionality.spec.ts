@@ -139,4 +139,168 @@ test.describe('Chat Functionality', () => {
     // Note: responses might be the same, but the action should complete successfully
     expect(newResponse).toBeTruthy();
   });
+
+  // ==================== 新增测试场景 ====================
+
+  test('should handle multi-turn conversation', async ({ page }) => {
+    await page.goto('/chat');
+
+    // First turn
+    await page.fill('[data-testid="chat-input"]', 'My name is Alice');
+    await page.click('[data-testid="send-button"]');
+    await expect(page.locator('[data-testid="assistant-message"]').first()).toBeVisible();
+
+    // Second turn - context should be maintained
+    await page.fill('[data-testid="chat-input"]', 'What is my name?');
+    await page.click('[data-testid="send-button"]');
+    await expect(page.locator('[data-testid="assistant-message"]').nth(1)).toBeVisible();
+
+    // Verify context is maintained
+    const secondResponse = await page.locator('[data-testid="assistant-message"]').nth(1).textContent();
+    expect(secondResponse?.toLowerCase()).toContain('alice');
+  });
+
+  test('should handle long messages', async ({ page }) => {
+    await page.goto('/chat');
+
+    const longMessage = 'A'.repeat(1000);
+    await page.fill('[data-testid="chat-input"]', longMessage);
+    await page.click('[data-testid="send-button"]');
+
+    // Should handle long message without error
+    await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible({
+      timeout: 30000
+    });
+  });
+
+  test('should handle special characters in messages', async ({ page }) => {
+    await page.goto('/chat');
+
+    const specialMessage = 'Hello! @#$%^&*()_+{}|:<>?~`-=[]\\;\'",./';
+    await page.fill('[data-testid="chat-input"]', specialMessage);
+    await page.click('[data-testid="send-button"]');
+
+    await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible({
+      timeout: 30000
+    });
+  });
+
+  test('should handle unicode and emoji', async ({ page }) => {
+    await page.goto('/chat');
+
+    const unicodeMessage = 'Hello 世界! 🌍🎉👋';
+    await page.fill('[data-testid="chat-input"]', unicodeMessage);
+    await page.click('[data-testid="send-button"]');
+
+    await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible({
+      timeout: 30000
+    });
+  });
+
+  test('should clear input after sending', async ({ page }) => {
+    await page.goto('/chat');
+
+    await page.fill('[data-testid="chat-input"]', 'This should be cleared');
+    await page.click('[data-testid="send-button"]');
+
+    // Verify input is cleared
+    const inputValue = await page.inputValue('[data-testid="chat-input"]');
+    expect(inputValue).toBe('');
+  });
+
+  test('should disable send button when input is empty', async ({ page }) => {
+    await page.goto('/chat');
+
+    // Clear input
+    await page.fill('[data-testid="chat-input"]', '');
+
+    // Check if send button is disabled
+    const sendButton = page.locator('[data-testid="send-button"]');
+    await expect(sendButton).toBeDisabled();
+  });
+
+  test('should show user message immediately', async ({ page }) => {
+    await page.goto('/chat');
+
+    const userMessage = 'Test user message';
+    await page.fill('[data-testid="chat-input"]', userMessage);
+    await page.click('[data-testid="send-button"]');
+
+    // Verify user message appears immediately
+    await expect(page.locator('[data-testid="user-message"]').filter({ hasText: userMessage })).toBeVisible();
+  });
+
+  test('should handle rapid message sending', async ({ page }) => {
+    await page.goto('/chat');
+
+    // Send multiple messages rapidly
+    for (let i = 0; i < 3; i++) {
+      await page.fill('[data-testid="chat-input"]', `Message ${i + 1}`);
+      await page.click('[data-testid="send-button"]');
+      await page.waitForTimeout(500);
+    }
+
+    // Verify all messages are displayed
+    const userMessages = await page.locator('[data-testid="user-message"]').count();
+    expect(userMessages).toBeGreaterThanOrEqual(3);
+  });
+
+  test('should preserve conversation after page reload', async ({ page }) => {
+    await page.goto('/chat');
+
+    // Send a message
+    await page.fill('[data-testid="chat-input"]', 'Remember this: 12345');
+    await page.click('[data-testid="send-button"]');
+    await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible();
+
+    // Reload page
+    await page.reload();
+
+    // Verify conversation is preserved
+    await expect(page.locator('[data-testid="user-message"]').filter({ hasText: 'Remember this: 12345' })).toBeVisible();
+  });
+
+  test('should handle code block formatting', async ({ page }) => {
+    await page.goto('/chat');
+
+    await page.fill('[data-testid="chat-input"]', 'Write a Python function to calculate factorial');
+    await page.click('[data-testid="send-button"]');
+
+    // Wait for response with Python code block
+    await expect(page.locator('[data-testid="assistant-message"] pre code')).toBeVisible({
+      timeout: 30000
+    });
+
+    // Verify code block has proper formatting
+    const codeBlock = page.locator('[data-testid="assistant-message"] pre code');
+    await expect(codeBlock).toBeVisible();
+  });
+
+  test('should show loading state while waiting for response', async ({ page }) => {
+    await page.goto('/chat');
+
+    await page.fill('[data-testid="chat-input"]', 'Explain quantum computing in detail');
+    await page.click('[data-testid="send-button"]');
+
+    // Should show streaming indicator or loading state
+    await expect(page.locator('[data-testid="streaming-indicator"]')).toBeVisible();
+  });
+
+  test('should handle conversation branching', async ({ page }) => {
+    await page.goto('/chat');
+
+    // Start conversation
+    await page.fill('[data-testid="chat-input"]', 'Tell me about dogs');
+    await page.click('[data-testid="send-button"]');
+    await expect(page.locator('[data-testid="assistant-message"]').first()).toBeVisible();
+
+    // Continue on same topic
+    await page.fill('[data-testid="chat-input"]', 'What about cats?');
+    await page.click('[data-testid="send-button"]');
+    await expect(page.locator('[data-testid="assistant-message"]').nth(1)).toBeVisible();
+
+    // Verify conversation flow
+    const messages = await page.locator('[data-testid="assistant-message"]').count();
+    expect(messages).toBeGreaterThanOrEqual(2);
+  });
 });

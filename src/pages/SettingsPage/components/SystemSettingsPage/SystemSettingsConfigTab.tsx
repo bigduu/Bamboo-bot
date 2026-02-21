@@ -133,8 +133,8 @@ export const SystemSettingsConfigTab: React.FC<
               gap: token.marginSM,
             }}
           >
-            <Button onClick={handleResetBackendUrl}>Reset to Default</Button>
-            <Button type="primary" onClick={handleSaveBackendUrl}>
+            <Button data-testid="reset-to-defaults" onClick={handleResetBackendUrl}>Reset to Default</Button>
+            <Button data-testid="save-api-settings" type="primary" onClick={handleSaveBackendUrl}>
               Save
             </Button>
           </div>

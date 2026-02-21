@@ -1,5 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
+/**
+ * Playwright configuration for Bodhi E2E tests
+ *
+ * Usage:
+ * - Browser mode: E2E_BASE_URL=http://localhost:1420 yarn test:e2e
+ * - Docker mode: E2E_BASE_URL=http://localhost:8080 yarn test:e2e
+ * - With server auto-start: E2E_START_SERVER="cargo run -p web_service_standalone -- --port 8080" yarn test:e2e
+ */
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -11,17 +20,34 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:8080',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Increase timeouts for CI/slower environments
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
   },
   projects: [
     {
-      name: 'desktop',
+      name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // Uncomment to test other browsers
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
   ],
-  webServer: {
-    command: process.env.E2E_START_SERVER || 'echo "Server should be running"',
-    url: 'http://localhost:8080/api/v1/health',
-    reuseExistingServer: !process.env.E2E_START_SERVER,
-    timeout: 120000,
-  },
+  // Only use webServer if E2E_START_SERVER is set
+  ...(process.env.E2E_START_SERVER ? {
+    webServer: {
+      command: process.env.E2E_START_SERVER,
+      url: 'http://localhost:8080/api/v1/health',
+      reuseExistingServer: false,
+      timeout: 120000,
+    },
+  } : {}),
+  globalSetup: require.resolve('./global-setup'),
+  globalTeardown: require.resolve('./global-teardown'),
 });

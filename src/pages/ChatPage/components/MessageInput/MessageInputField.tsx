@@ -98,6 +98,7 @@ const MessageInputField: React.FC<MessageInputFieldProps> = ({
         </div>
       ) : null}
       <TextArea
+        data-testid="chat-input"
         ref={textAreaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}

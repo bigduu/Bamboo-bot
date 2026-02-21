@@ -6,7 +6,10 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "test:browser": "E2E_BASE_URL=http://localhost:1420 playwright test",
+    "test:docker": "E2E_BASE_URL=http://localhost:8080 playwright test",
+    "test:with-server": "E2E_START_SERVER='cargo run -p web_service_standalone -- --port 8080 --data-dir /tmp/test-data' playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",

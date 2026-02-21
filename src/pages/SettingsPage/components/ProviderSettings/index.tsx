@@ -382,7 +382,7 @@ export const ProviderSettings: React.FC = () => {
                 { required: true, message: "Please enter your OpenAI API key" },
               ]}
             >
-              <Password placeholder="sk-..." prefix={<KeyOutlined />} />
+              <Input.Password data-testid="api-key-input" placeholder="sk-..." prefix={<KeyOutlined />} />
             </Form.Item>
             <Form.Item
               name={["providers", "openai", "base_url"]}
@@ -689,6 +689,7 @@ export const ProviderSettings: React.FC = () => {
 
         <Space size="middle">
           <Button
+            data-testid="save-api-settings"
             type="primary"
             htmlType="submit"
             icon={<SaveOutlined />}

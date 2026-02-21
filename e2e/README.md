@@ -1,8 +1,8 @@
 # E2E Testing
 
-End-to-end testing infrastructure for Bamboo using Playwright.
+End-to-end testing infrastructure for Bodhi using Playwright.
 
-## Setup
+## Quick Start
 
 1. Install dependencies:
    ```bash
@@ -11,46 +11,57 @@ End-to-end testing infrastructure for Bamboo using Playwright.
    npx playwright install
    ```
 
-2. Set up environment:
+2. Start the backend:
    ```bash
-   cp .env.test.example .env.test
-   # Edit .env.test with your configuration
+   cargo run -p web_service_standalone -- --port 8080 --data-dir /tmp/test-data
    ```
 
-## Running Tests
+3. Run tests:
+   ```bash
+   # If backend is running on port 8080
+   yarn test
 
-### Browser Mode
-Requires backend + frontend running separately:
+   # Browser mode (frontend on port 1420)
+   yarn test:browser
+
+   # Docker mode
+   yarn test:docker
+
+   # Auto-start backend
+   yarn test:with-server
+   ```
+
+## Test Scripts
+
+| Script | Description |
+|--------|-------------|
+| `yarn test` | Run tests (requires backend running on :8080) |
+| `yarn test:browser` | Test against browser dev server (:1420) |
+| `yarn test:docker` | Test against Docker container (:8080) |
+| `yarn test:with-server` | Auto-start backend and run tests |
+| `yarn test:ui` | Run tests in interactive UI mode |
+| `yarn test:debug` | Run tests with debugger |
+| `yarn test:report` | Show HTML test report |
+
+## Configuration
+
+### Environment Variables
+
+- `E2E_BASE_URL` - Base URL for tests (default: http://localhost:8080)
+- `E2E_START_SERVER` - Command to start server (optional)
+- `CI` - Set to enable CI mode (retries, screenshots)
+
+### Examples
+
 ```bash
-# Terminal 1: Start backend
-cargo run -p web_service_standalone -- --port 8080 --data-dir /tmp/test-data
+# Test against browser dev server
+E2E_BASE_URL=http://localhost:1420 yarn test
 
-# Terminal 2: Start frontend
-yarn dev
+# Test against custom backend
+E2E_BASE_URL=http://localhost:9000 yarn test
 
-# Terminal 3: Run tests
-yarn test:e2e:browser
-```
-
-### Docker Mode
-Test the integrated Docker container:
-```bash
-# Build and run Docker container
-cd docker
-docker-compose up -d
-
-# Run tests
-yarn test:e2e:docker
-```
-
-### Desktop Mode
-Test the Tauri desktop application:
-```bash
-# Start Tauri app
-yarn tauri dev
-
-# Run tests (in another terminal)
-yarn test:e2e
+# Auto-start backend before tests
+E2E_START_SERVER="cargo run -p web_service_standalone -- --port 8080" yarn test
 ```
 
 ## Test Structure
@@ -67,216 +78,101 @@ e2e/
 │       ├── browser-mode.spec.ts  # Browser-specific tests
 │       ├── desktop-mode.spec.ts  # Desktop-only features
 │       └── docker-mode.spec.ts   # Docker deployment tests
-├── fixtures/
-│   ├── test-workflow.md          # Sample workflow file
-│   └── test-config.json          # Test configuration
+├── fixtures/                     # Test data files
 ├── utils/
-│   ├── api-helpers.ts            # API utilities
-│   └── test-helpers.ts           # Test utilities
-└── playwright.config.ts          # Playwright configuration
-```
-
-## Test Categories
-
-### Setup Flow Tests
-- Initial setup wizard
-- API key validation
-- Configuration persistence
-
-### Chat Functionality Tests
-- Message sending/receiving
-- Response streaming
-- Error handling
-- Chat history management
-- Message operations (copy, regenerate, cancel)
-
-### Workflow Tests
-- Create/edit/delete workflows
-- Workflow validation
-- Import/export workflows
-- Search functionality
-
-### Keyword Masking Tests
-- Add/remove keywords
-- Masking in responses
-- Case-insensitive masking
-- Bulk operations
-
-### Settings Tests
-- Configuration management
-- Theme settings
-- API configuration
-- Import/export settings
-
-### Mode-Specific Tests
-
-#### Browser Mode
-- Web Clipboard API
-- CORS handling
-- WebSocket connections
-- Graceful fallbacks for desktop features
-
-#### Desktop Mode
-- Native clipboard (Tauri)
-- Native file picker
-- System tray (if implemented)
-- Secure storage
-- Window state persistence
-
-#### Docker Mode
-- Static file serving
-- SPA routing
-- Proxy configuration
-- Health checks
-- Performance under load
-
-## Debugging
-
-### UI Mode
-Interactive test runner with time-travel debugging:
-```bash
-yarn test:e2e:ui
-```
-
-### Debug Mode
-Step through tests with Playwright Inspector:
-```bash
-yarn test:e2e:debug
-```
-
-### View Report
-After tests run, view the HTML report:
-```bash
-yarn test:e2e:report
-```
-
-### Screenshots
-Failed tests automatically capture screenshots in `test-results/`
-
-### Traces
-First retry captures trace files that can be viewed in:
-```bash
-npx playwright show-trace trace.zip
+│   └── api-helpers.ts           # API utilities
+├── playwright.config.ts         # Playwright configuration
+├── global-setup.ts              # Global test setup
+└── global-teardown.ts           # Global test teardown
 ```
 
 ## Writing Tests
 
-### Basic Test Structure
+### Basic Test
+
 ```typescript
 import { test, expect } from '@playwright/test';
 
-test.describe('Feature Name', () => {
-  test.beforeEach(async ({ page }) => {
-    // Setup
-  });
-
-  test('should do something', async ({ page }) => {
-    // Arrange
-    await page.goto('/');
-
-    // Act
-    await page.click('[data-testid="button"]');
-
-    // Assert
-    await expect(page.locator('[data-testid="result"]')).toBeVisible();
-  });
-});
-```
-
-### Using Test Helpers
-```typescript
-import { completeSetupIfNeeded, waitForToast } from '../utils/test-helpers';
-
-test('example with helpers', async ({ page }) => {
-  await completeSetupIfNeeded(page);
-  await page.fill('[data-testid="input"]', 'test');
-  await page.click('[data-testid="submit"]');
-  await waitForToast(page, 'Success');
+test('should do something', async ({ page }) => {
+  await page.goto('/');
+  await page.click('[data-testid="button"]');
+  await expect(page.locator('[data-testid="result"]')).toBeVisible();
 });
 ```
 
 ### Using API Helpers
+
 ```typescript
 import { createTestWorkflow, cleanupTestData } from '../utils/api-helpers';
 
-test.beforeEach(async ({ request }) => {
-  await createTestWorkflow(request, 'test-workflow', '# Test');
-});
+test('workflow test', async ({ page, request }) => {
+  // Setup
+  await createTestWorkflow(request, 'test', '# Content');
 
-test.afterEach(async ({ request }) => {
-  await cleanupTestData(request);
-});
-```
+  // Test
+  await page.goto('/settings/workflows');
+  await expect(page.locator('text=test')).toBeVisible();
 
-### Mocking API Responses
-```typescript
-import { mockApiError, mockApiResponse } from '../utils/test-helpers';
-
-test('handles API error', async ({ page }) => {
-  await mockApiError(page, 'chat', 500);
-  await page.goto('/chat');
-  // Test error handling
+  // Cleanup is handled automatically by globalTeardown
 });
 ```
 
-## Best Practices
+## API Endpoints
 
-1. **Use data-testid attributes** for reliable selectors
-2. **Wait for network idle** when loading pages
-3. **Clean up test data** in afterEach hooks
-4. **Use API helpers** for setup/teardown
-5. **Test accessibility** with checkAccessibility helper
-6. **Measure performance** for critical paths
-7. **Take screenshots** on failure for debugging
-8. **Use retries** for flaky operations
+Tests use these backend endpoints:
 
-## CI Integration
+- `GET /v1/health` - Health check
+- `GET /bamboo/workflows` - List workflows
+- `POST /bamboo/workflows` - Create workflow
+- `DELETE /bamboo/workflows/{name}` - Delete workflow
+- `GET /bamboo/setup/status` - Setup status
+- `POST /bamboo/setup/complete` - Mark setup complete
 
-Tests run automatically in GitHub Actions:
+## Debugging
 
-- **Browser Mode**: Runs on every PR and push to main
-- **Docker Mode**: Runs on every PR and push to main
-- **Desktop Mode**: Manual trigger (requires special setup)
+### UI Mode
+```bash
+yarn test:ui
+```
 
-See `.github/workflows/e2e-tests.yml` for configuration.
+### Debug Mode
+```bash
+yarn test:debug
+```
+
+### View Report
+```bash
+yarn test:report
+```
 
 ## Troubleshooting
 
-### Tests fail with timeout
-- Increase timeout in playwright.config.ts
-- Check if backend is running
-- Verify network connectivity
+### Backend not running
+```
+❌ Backend health check failed
+```
+Start the backend:
+```bash
+cargo run -p web_service_standalone -- --port 8080 --data-dir /tmp/test-data
+```
 
-### Flaky tests
-- Use `waitForLoadState('networkidle')`
-- Add explicit waits for elements
-- Check for race conditions
+### Port already in use
+Change the port:
+```bash
+cargo run -p web_service_standalone -- --port 8081 --data-dir /tmp/test-data
+E2E_BASE_URL=http://localhost:8081 yarn test
+```
 
-### Clipboard tests fail
-- Grant clipboard permissions: `await context.grantPermissions(['clipboard-read'])`
-- Check browser compatibility
-
-### File upload tests fail
-- Verify file paths are correct
-- Check file permissions
-- Use setInputFiles for file inputs
-
-### Desktop mode tests fail
-- Ensure Tauri is running
-- Check if desktop app is accessible
-- Verify Chromium is used (not Firefox/WebKit)
-
-## Coverage Goals
-
-- Setup flow: 100%
-- Chat functionality: 80%
-- Workflows: 90%
-- Keyword masking: 90%
-- Settings: 70%
-- Mode-specific features: 80%
+### Tests timeout
+Increase timeout in `playwright.config.ts`:
+```typescript
+use: {
+  actionTimeout: 30000,
+  navigationTimeout: 60000,
+}
+```
 
 ## Resources
 
 - [Playwright Documentation](https://playwright.dev/)
-- [Best Practices](https://playwright.dev/docs/best-practices)
 - [API Reference](https://playwright.dev/docs/api/class-page)

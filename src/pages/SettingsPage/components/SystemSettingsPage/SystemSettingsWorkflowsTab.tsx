@@ -168,10 +168,15 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
             >
               Refresh
             </Button>
-            <Button icon={<PlusOutlined />} onClick={handleCreateNew}>
+            <Button
+              data-testid="create-workflow"
+              icon={<PlusOutlined />}
+              onClick={handleCreateNew}
+            >
               New Workflow
             </Button>
             <Button
+              data-testid="save-workflow"
               type="primary"
               icon={<SaveOutlined />}
               onClick={handleSave}
@@ -207,6 +212,7 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
                   onClick={() => handleSelectWorkflow(workflow)}
                   actions={[
                     <Button
+                      data-testid={`delete-workflow-${workflow.name}`}
                       key="delete"
                       type="text"
                       danger
@@ -236,6 +242,7 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
               style={{ width: "100%" }}
             >
               <Input
+                data-testid="workflow-name"
                 placeholder="Workflow name"
                 value={editorName}
                 onChange={(e) => {
@@ -246,6 +253,7 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
                 prefix={<EditOutlined />}
               />
               <TextArea
+                data-testid="workflow-content"
                 placeholder="# Workflow Title\n\nDescribe the workflow steps here."
                 value={editorContent}
                 onChange={(e) => {

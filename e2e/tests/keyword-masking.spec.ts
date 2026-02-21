@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+/**
+ * Keyword Masking Tests
+ *
+ * Note: Backend uses /v1/bamboo/keyword-masking endpoint, not /api/v1/bamboo/keywords
+ * The endpoint accepts/returns { entries: [{ pattern: string, replacement?: string }] }
+ */
+
 test.describe('Keyword Masking', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings/keywords');
@@ -14,10 +21,12 @@ test.describe('Keyword Masking', () => {
     await expect(page.locator('text=secret-key')).toBeVisible();
   });
 
-  test('should remove keyword from mask list', async ({ page }) => {
-    // Add a keyword first
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'remove-me' }
+  test('should remove keyword from mask list', async ({ page, request }) => {
+    // Add a keyword first via API
+    await request.post('/v1/bamboo/keyword-masking', {
+      data: {
+        entries: [{ pattern: 'remove-me', replacement: '***' }]
+      }
     });
 
     await page.reload();
@@ -29,10 +38,12 @@ test.describe('Keyword Masking', () => {
     await expect(page.locator('text=remove-me')).not.toBeVisible();
   });
 
-  test('should mask keywords in chat responses', async ({ page }) => {
-    // Add keyword
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'confidential' }
+  test('should mask keywords in chat responses', async ({ page, request }) => {
+    // Add keyword via API
+    await request.post('/v1/bamboo/keyword-masking', {
+      data: {
+        entries: [{ pattern: 'confidential', replacement: '***' }]
+      }
     });
 
     // Go to chat
@@ -62,10 +73,12 @@ test.describe('Keyword Masking', () => {
     await expect(page.locator('[data-testid="validation-error"]')).toBeVisible();
   });
 
-  test('should prevent duplicate keywords', async ({ page }) => {
-    // Add keyword
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'duplicate' }
+  test('should prevent duplicate keywords', async ({ page, request }) => {
+    // Add keyword via API
+    await request.post('/v1/bamboo/keyword-masking', {
+      data: {
+        entries: [{ pattern: 'duplicate', replacement: '***' }]
+      }
     });
 
     await page.reload();
@@ -78,10 +91,12 @@ test.describe('Keyword Masking', () => {
     await expect(page.locator('text=already exists')).toBeVisible();
   });
 
-  test('should mask keywords case-insensitively', async ({ page }) => {
-    // Add keyword
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'Secret' }
+  test('should mask keywords case-insensitively', async ({ page, request }) => {
+    // Add keyword via API
+    await request.post('/v1/bamboo/keyword-masking', {
+      data: {
+        entries: [{ pattern: 'Secret', replacement: '***' }]
+      }
     });
 
     await page.goto('/chat');
@@ -100,16 +115,16 @@ test.describe('Keyword Masking', () => {
     expect(responseText).not.toContain('secret');
   });
 
-  test('should display keyword list', async ({ page }) => {
-    // Add multiple keywords
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'keyword-1' }
-    });
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'keyword-2' }
-    });
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'keyword-3' }
+  test('should display keyword list', async ({ page, request }) => {
+    // Add multiple keywords via API
+    await request.post('/v1/bamboo/keyword-masking', {
+      data: {
+        entries: [
+          { pattern: 'keyword-1', replacement: '***' },
+          { pattern: 'keyword-2', replacement: '***' },
+          { pattern: 'keyword-3', replacement: '***' }
+        ]
+      }
     });
 
     await page.goto('/settings/keywords');
@@ -133,13 +148,15 @@ test.describe('Keyword Masking', () => {
     await expect(page.locator('text=bulk3')).toBeVisible();
   });
 
-  test('should export keyword list', async ({ page }) => {
-    // Add some keywords
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'export1' }
-    });
-    await page.request.post('/api/v1/bamboo/keywords', {
-      data: { keyword: 'export2' }
+  test('should export keyword list', async ({ page, request }) => {
+    // Add some keywords via API
+    await request.post('/v1/bamboo/keyword-masking', {
+      data: {
+        entries: [
+          { pattern: 'export1', replacement: '***' },
+          { pattern: 'export2', replacement: '***' }
+        ]
+      }
     });
 
     await page.reload();
