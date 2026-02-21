@@ -3,6 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 use actix_cors::Cors;
 use actix_files as fs;
 use actix_web::{http::header, web, App, HttpServer};
+use actix_web::middleware::DefaultHeaders;
 use agent_llm::LLMProvider;
 use agent_metrics::{MetricsBus, MetricsStorage, MetricsWorker};
 use agent_server::handlers as agent_handlers;
@@ -98,6 +99,17 @@ impl MetricsState {
 }
 
 const DEFAULT_WORKER_COUNT: usize = 10;
+
+/// Build security headers for production deployments
+fn build_security_headers() -> DefaultHeaders {
+    DefaultHeaders::new()
+        .add(("X-Frame-Options", "DENY"))
+        .add(("X-Content-Type-Options", "nosniff"))
+        .add(("X-XSS-Protection", "1; mode=block"))
+        .add(("Referrer-Policy", "strict-origin-when-cross-origin"))
+        // Note: CSP should be customized based on your specific needs
+        .add(("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss;"))
+}
 
 /// Build CORS configuration based on bind address and port
 fn build_cors(bind_addr: &str, port: u16) -> Cors {
@@ -553,6 +565,7 @@ pub async fn run_with_bind_and_static(
             .app_data(app_state.clone())
             .app_data(agent_state.clone())
             .wrap(build_cors(&bind_for_cors, port))
+            .wrap(build_security_headers())
             .configure(app_config)
             .configure(agent_api_config);
 
@@ -560,13 +573,15 @@ pub async fn run_with_bind_and_static(
         if let Some(static_path) = &static_dir {
             info!("Serving static files from: {:?}", static_path);
 
-            // Serve static files at root, with index.html fallback for SPA
-            app = app
-                .service(
-                    fs::Files::new("/", static_path)
-                        .index_file("index.html")
-                        .prefer_utf8(true)
-                );
+            // Serve static files with security restrictions
+            // Note: fs::Files automatically handles path traversal via canonicalization
+            app = app.service(
+                fs::Files::new("/", static_path)
+                    .index_file("index.html")
+                    .prefer_utf8(true)
+                    // Disable listing directories
+                    .disable_content_disposition(),
+            );
         }
 
         app

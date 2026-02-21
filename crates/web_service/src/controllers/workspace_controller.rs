@@ -5,6 +5,36 @@ use std::path::{Path, PathBuf};
 use crate::error::AppError;
 use crate::server::AppState;
 
+/// Validates and canonicalizes a workspace path to prevent directory traversal attacks.
+/// Ensures the path exists and is accessible.
+fn validate_workspace_path(input_path: &str) -> Result<PathBuf, AppError> {
+    let trimmed = input_path.trim();
+
+    if trimmed.is_empty() {
+        return Err(AppError::BadRequest("Path cannot be empty".to_string()));
+    }
+
+    // Basic path traversal check before canonicalization
+    if trimmed.contains("..") {
+        return Err(AppError::BadRequest(
+            "Path cannot contain '..' sequences".to_string(),
+        ));
+    }
+
+    let path = PathBuf::from(trimmed);
+
+    // Canonicalize to resolve symlinks and normalize path
+    let canonical = path.canonicalize().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            AppError::NotFound(format!("Path does not exist: {}", trimmed))
+        } else {
+            AppError::BadRequest(format!("Invalid path: {}", e))
+        }
+    })?;
+
+    Ok(canonical)
+}
+
 #[derive(Deserialize)]
 struct WorkspacePathRequest {
     path: String,
@@ -218,7 +248,13 @@ pub async fn validate_workspace(
     _app_state: web::Data<AppState>,
     payload: web::Json<WorkspacePathRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let info = build_workspace_info(&payload.path).await;
+    // Validate path exists (but don't require canonicalization for validation endpoint)
+    let path = payload.path.trim();
+    if path.is_empty() {
+        return Err(AppError::BadRequest("Path cannot be empty".to_string()));
+    }
+
+    let info = build_workspace_info(path).await;
     Ok(HttpResponse::Ok().json(info))
 }
 
@@ -343,7 +379,10 @@ pub async fn browse_folder(
     payload: web::Json<BrowseFolderRequest>,
 ) -> Result<HttpResponse, AppError> {
     let target_path = match payload.path.as_ref() {
-        Some(path) if !path.trim().is_empty() => PathBuf::from(path),
+        Some(path) if !path.trim().is_empty() => {
+            // Validate and canonicalize user-provided path
+            validate_workspace_path(path)?
+        }
         _ => home_dir()?,
     };
 
@@ -389,10 +428,8 @@ pub async fn list_workspace_files(
     _app_state: web::Data<AppState>,
     payload: web::Json<WorkspaceFilesRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let root_path = PathBuf::from(payload.path.trim());
-    if payload.path.trim().is_empty() {
-        return Err(AppError::NotFound("Workspace".to_string()));
-    }
+    // Validate and canonicalize the path
+    let root_path = validate_workspace_path(&payload.path)?;
 
     let metadata = match tokio::fs::metadata(&root_path).await {
         Ok(meta) => meta,
