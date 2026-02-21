@@ -4,17 +4,13 @@ import {
   useWorkspaceApiService,
 } from "../WorkspaceApiService";
 
-// Mock fetch globally
-global.fetch = vi.fn();
-
-// Mock AbortSignal.timeout for older environments
-if (!global.AbortSignal.timeout) {
-  global.AbortSignal.timeout = vi.fn(() => {
-    const controller = new AbortController();
-    // Don't actually timeout for tests
-    return controller.signal;
-  });
-}
+// Mock the apiClient module - must be inside factory function
+vi.mock("../../../../services/api", () => ({
+  apiClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+  },
+}));
 
 // Mock console methods
 global.console = {
@@ -24,9 +20,15 @@ global.console = {
 };
 
 describe("WorkspaceApiService", () => {
-  beforeEach(() => {
+  let mockApiClient: any;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
     localStorage.clear();
+
+    // Get the mocked apiClient
+    const apiModule = await import("../../../../services/api");
+    mockApiClient = apiModule.apiClient;
   });
 
   describe("validateWorkspacePath", () => {
@@ -38,41 +40,29 @@ describe("WorkspaceApiService", () => {
         workspace_name: "workspace",
       };
 
-      (fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResult,
-        headers: new Headers({ "content-type": "application/json" }),
-      });
+      mockApiClient.post.mockResolvedValueOnce(mockResult);
 
       const result =
         await workspaceApiService.validateWorkspacePath("/valid/workspace");
 
-      expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:8080/v1/workspace/validate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ path: "/valid/workspace" }),
-        },
-      );
+      expect(mockApiClient.post).toHaveBeenCalledWith("workspace/validate", {
+        path: "/valid/workspace",
+      });
 
       expect(result).toEqual(mockResult);
     });
 
     it("should handle validation errors", async () => {
-      (fetch as any).mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        statusText: "Bad Request",
-        text: async () => "Invalid path",
-      });
+      const apiError = new Error("Invalid path");
+      (apiError as any).status = 400;
+      (apiError as any).statusText = "Bad Request";
+      (apiError as any).body = "Invalid path";
+
+      mockApiClient.post.mockRejectedValueOnce(apiError);
 
       await expect(
         workspaceApiService.validateWorkspacePath("/invalid/path"),
       ).rejects.toMatchObject({
-        // Error message now includes detailed backend response body
         message: "Invalid path",
         status: 400,
       });
@@ -86,23 +76,15 @@ describe("WorkspaceApiService", () => {
         { path: "/workspace2", is_valid: true },
       ];
 
-      (fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockWorkspaces,
-        headers: new Headers({ "content-type": "application/json" }),
-      });
+      mockApiClient.get.mockResolvedValueOnce(mockWorkspaces);
 
       const result = await workspaceApiService.getRecentWorkspaces();
 
-      expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:8080/v1/workspace/recent",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        "workspace/recent",
+        expect.objectContaining({
           signal: expect.any(AbortSignal),
-        },
+        }),
       );
 
       expect(result).toEqual(mockWorkspaces);
@@ -111,29 +93,16 @@ describe("WorkspaceApiService", () => {
 
   describe("addRecentWorkspace", () => {
     it("should add recent workspace", async () => {
-      (fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-        headers: new Headers({ "content-type": "application/json" }),
-      });
+      mockApiClient.post.mockResolvedValueOnce(undefined);
 
       await workspaceApiService.addRecentWorkspace("/new/workspace", {
         workspace_name: "new-workspace",
       });
 
-      expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:8080/v1/workspace/recent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            path: "/new/workspace",
-            metadata: { workspace_name: "new-workspace" },
-          }),
-        },
-      );
+      expect(mockApiClient.post).toHaveBeenCalledWith("workspace/recent", {
+        path: "/new/workspace",
+        metadata: { workspace_name: "new-workspace" },
+      });
     });
   });
 
@@ -150,23 +119,11 @@ describe("WorkspaceApiService", () => {
         ],
       };
 
-      (fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSuggestions,
-        headers: new Headers({ "content-type": "application/json" }),
-      });
+      mockApiClient.get.mockResolvedValueOnce(mockSuggestions);
 
       const result = await workspaceApiService.getPathSuggestions();
 
-      expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:8080/v1/workspace/suggestions",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      expect(mockApiClient.get).toHaveBeenCalledWith("workspace/suggestions");
 
       expect(result).toEqual(mockSuggestions);
     });
@@ -179,29 +136,16 @@ describe("WorkspaceApiService", () => {
         { path: "/workspace/folder", name: "folder", type: "directory" },
       ];
 
-      (fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockFiles,
-        headers: new Headers({ "content-type": "application/json" }),
-      });
+      mockApiClient.post.mockResolvedValueOnce(mockFiles);
 
       const result = await workspaceApiService.listWorkspaceFiles("/workspace");
 
-      expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:8080/v1/workspace/files",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            path: "/workspace",
-            max_depth: 3,
-            max_entries: 500,
-            include_hidden: false,
-          }),
-        },
-      );
+      expect(mockApiClient.post).toHaveBeenCalledWith("workspace/files", {
+        path: "/workspace",
+        max_depth: 3,
+        max_entries: 500,
+        include_hidden: false,
+      });
 
       expect(result).toEqual(mockFiles);
     });
@@ -210,17 +154,9 @@ describe("WorkspaceApiService", () => {
   describe("getHealthStatus", () => {
     it("should return available status when API is working", async () => {
       // Health check calls apiClient.get twice (once for health check, once in getRecent)
-      (fetch as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => [],
-          headers: new Headers({ "content-type": "application/json" }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => [],
-          headers: new Headers({ "content-type": "application/json" }),
-        });
+      mockApiClient.get
+        .mockResolvedValueOnce([])  // First call: health check
+        .mockResolvedValueOnce([]); // Second call: getRecent
 
       const status = await workspaceApiService.getHealthStatus();
 
@@ -230,7 +166,7 @@ describe("WorkspaceApiService", () => {
     });
 
     it("should return unavailable status when API fails", async () => {
-      (fetch as any).mockRejectedValueOnce(new Error("API unavailable"));
+      mockApiClient.get.mockRejectedValueOnce(new Error("API unavailable"));
 
       const status = await workspaceApiService.getHealthStatus();
 
@@ -244,17 +180,13 @@ describe("WorkspaceApiService", () => {
     it("should use unified apiClient with default base URL", async () => {
       const service = useWorkspaceApiService();
 
-      (fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-        headers: new Headers({ "content-type": "application/json" }),
-      });
+      mockApiClient.get.mockResolvedValueOnce([]);
 
       await service.getRecentWorkspaces();
 
       // Unified apiClient uses the global base URL with /v1 prefix
-      expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:8080/v1/workspace/recent",
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        "workspace/recent",
         expect.any(Object),
       );
     });
@@ -262,16 +194,12 @@ describe("WorkspaceApiService", () => {
     it("should use default base URL when no custom URL provided", async () => {
       const service = useWorkspaceApiService();
 
-      (fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-        headers: new Headers({ "content-type": "application/json" }),
-      });
+      mockApiClient.get.mockResolvedValueOnce([]);
 
       await service.getRecentWorkspaces();
 
-      expect(fetch).toHaveBeenCalledWith(
-        "http://127.0.0.1:8080/v1/workspace/recent",
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        "workspace/recent",
         expect.any(Object),
       );
     });

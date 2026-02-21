@@ -30,8 +30,15 @@ vi.mock("antd", async () => {
 });
 
 vi.mock("../../store", () => ({
-  useAppStore: (selector: (state: typeof mockStoreState) => unknown) =>
-    selector(mockStoreState),
+  useAppStore: Object.assign(
+    (selector: (state: typeof mockStoreState) => unknown) =>
+      selector(mockStoreState),
+    {
+      subscribe: vi.fn(() => vi.fn()), // Return unsubscribe function
+      getState: vi.fn(() => mockStoreState),
+      setState: vi.fn(),
+    },
+  ),
 }));
 
 vi.mock("../ChatView/useChatViewMessages", () => ({

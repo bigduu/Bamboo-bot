@@ -2,16 +2,16 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SystemSettingsKeywordMaskingTab from "../SystemSettingsKeywordMaskingTab";
 
-const mockInvoke = vi.fn();
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
-}));
+// Mock fetch globally
+global.fetch = vi.fn();
 
 describe("SystemSettingsKeywordMaskingTab", () => {
   beforeEach(() => {
-    mockInvoke.mockReset();
-    mockInvoke.mockResolvedValue({ entries: [] });
+    vi.clearAllMocks();
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({ entries: [] }),
+    });
   });
 
   it("applies example selection to pattern and match type", async () => {

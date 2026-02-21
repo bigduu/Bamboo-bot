@@ -67,6 +67,7 @@ describe("WorkspaceValidator", () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ path: "/valid/workspace" }),
+          signal: expect.any(AbortSignal),
         },
       );
 
