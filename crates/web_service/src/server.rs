@@ -2,6 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use actix_cors::Cors;
 use actix_files as fs;
+use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::{http::header, web, App, HttpServer};
 use actix_web::middleware::DefaultHeaders;
 use agent_llm::LLMProvider;
@@ -156,7 +157,41 @@ pub fn app_config(cfg: &mut web::ServiceConfig) {
             .configure(skill_controller::config)
             .configure(tools_controller::config)
             .configure(workspace_controller::config)
-            .configure(copilot_auth_controller::config), // Copilot auth endpoints
+            .configure(copilot_auth_controller::config),
+    );
+
+    // Anthropic endpoints under /anthropic/v1 (to match Anthropic SDK expectations)
+    cfg.service(
+        web::scope("/anthropic/v1").configure(anthropic_controller::config),
+    );
+
+    // Gemini endpoints under /gemini/v1beta (to match Gemini SDK expectations)
+    cfg.service(
+        web::scope("/gemini/v1beta").configure(gemini_controller::config),
+    );
+}
+
+/// Production config with rate limiting enabled
+pub fn app_config_with_rate_limiting(cfg: &mut web::ServiceConfig) {
+    // Build rate limiter for production: 10 req/sec, burst 20
+    let rate_limiter = GovernorConfigBuilder::default()
+        .per_second(10)
+        .burst_size(20)
+        .finish()
+        .expect("Failed to build rate limiter");
+
+    // OpenAI and other endpoints under /v1 with rate limiting
+    cfg.service(
+        web::scope("/v1")
+            .wrap(Governor::new(&rate_limiter))
+            .configure(agent_controller::config)
+            .configure(command_controller::config)
+            .configure(openai_controller::config)
+            .configure(settings_controller::config)
+            .configure(skill_controller::config)
+            .configure(tools_controller::config)
+            .configure(workspace_controller::config)
+            .configure(copilot_auth_controller::config),
     );
 
     // Anthropic endpoints under /anthropic/v1 (to match Anthropic SDK expectations)
@@ -330,7 +365,7 @@ pub async fn run(app_data_dir: PathBuf, port: u16) -> Result<(), String> {
             .app_data(app_state.clone())
             .app_data(agent_state.clone())
             .wrap(build_cors("127.0.0.1", port))
-            .configure(app_config)
+            .configure(app_config_with_rate_limiting)  // Enable rate limiting
             .configure(agent_api_config)
     })
     .workers(DEFAULT_WORKER_COUNT)
@@ -509,7 +544,7 @@ pub async fn run_with_bind(app_data_dir: PathBuf, port: u16, bind: &str) -> Resu
             .app_data(agent_state.clone())
             .wrap(build_cors(&bind_for_cors, port))
             .wrap(build_security_headers())
-            .configure(app_config)
+            .configure(app_config_with_rate_limiting)  // Enable rate limiting
             .configure(agent_api_config)
     })
     .workers(DEFAULT_WORKER_COUNT)
@@ -574,7 +609,7 @@ pub async fn run_with_bind_and_static(
             .app_data(agent_state.clone())
             .wrap(build_cors(&bind_for_cors, port))
             .wrap(build_security_headers())
-            .configure(app_config)
+            .configure(app_config_with_rate_limiting)  // Enable rate limiting
             .configure(agent_api_config);
 
         // Add static file serving if directory is provided

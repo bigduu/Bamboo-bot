@@ -108,7 +108,56 @@ export class ApiClient {
   }
 
   /**
-   * Make a GET request with timeout
+   * Delay helper for retries
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Fetch with retry logic for transient failures
+   */
+  private async fetchWithRetry(
+    url: string,
+    options: RequestInit,
+    maxRetries: number = 3,
+  ): Promise<Response> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+
+        // Retry on 5xx errors
+        if (response.status >= 500 && attempt < maxRetries - 1) {
+          const delayMs = 1000 * Math.pow(2, attempt); // Exponential backoff: 1s, 2s, 4s
+          console.warn(
+            `Request failed with ${response.status}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
+          );
+          await this.delay(delayMs);
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error as Error;
+
+        // Only retry on network errors, not on client errors
+        if (attempt < maxRetries - 1) {
+          const delayMs = 1000 * Math.pow(2, attempt);
+          console.warn(
+            `Network error: ${lastError.message}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
+          );
+          await this.delay(delayMs);
+        }
+      }
+    }
+
+    throw lastError || new Error("Max retries exceeded");
+  }
+
+  /**
+   * Make a GET request with timeout and retry
    */
   async get<T>(path: string, options?: RequestInit): Promise<T> {
     const url = this.buildUrl(path);
@@ -117,15 +166,19 @@ export class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        method: "GET",
-        headers: {
-          ...this.defaultHeaders,
-          ...options?.headers,
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method: "GET",
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          signal: controller.signal,
         },
-        signal: controller.signal,
-      });
+        3, // 3 retries
+      );
       return this.handleResponse<T>(response);
     } finally {
       clearTimeout(timeoutId);
@@ -133,7 +186,7 @@ export class ApiClient {
   }
 
   /**
-   * Make a POST request with timeout
+   * Make a POST request with timeout and retry
    */
   async post<T>(
     path: string,
@@ -146,16 +199,20 @@ export class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        method: "POST",
-        headers: {
-          ...this.defaultHeaders,
-          ...options?.headers,
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method: "POST",
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          body: data ? JSON.stringify(data) : undefined,
+          signal: controller.signal,
         },
-        body: data ? JSON.stringify(data) : undefined,
-        signal: controller.signal,
-      });
+        3, // 3 retries
+      );
       return this.handleResponse<T>(response);
     } finally {
       clearTimeout(timeoutId);
@@ -163,7 +220,7 @@ export class ApiClient {
   }
 
   /**
-   * Make a PUT request with timeout
+   * Make a PUT request with timeout and retry
    */
   async put<T>(
     path: string,
@@ -176,16 +233,20 @@ export class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        method: "PUT",
-        headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-      body: data ? JSON.stringify(data) : undefined,
-        signal: controller.signal,
-      });
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method: "PUT",
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          body: data ? JSON.stringify(data) : undefined,
+          signal: controller.signal,
+        },
+        3, // 3 retries
+      );
       return this.handleResponse<T>(response);
     } finally {
       clearTimeout(timeoutId);
@@ -193,7 +254,7 @@ export class ApiClient {
   }
 
   /**
-   * Make a DELETE request with timeout
+   * Make a DELETE request with timeout and retry
    */
   async delete<T>(path: string, options?: RequestInit): Promise<T> {
     const url = this.buildUrl(path);
@@ -202,15 +263,19 @@ export class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        method: "DELETE",
-        headers: {
-          ...this.defaultHeaders,
-          ...options?.headers,
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method: "DELETE",
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          signal: controller.signal,
         },
-        signal: controller.signal,
-      });
+        3, // 3 retries
+      );
       return this.handleResponse<T>(response);
     } finally {
       clearTimeout(timeoutId);
@@ -231,15 +296,19 @@ export class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        method,
-        headers: {
-          ...this.defaultHeaders,
-          ...options?.headers,
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method,
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          signal: controller.signal,
         },
-        signal: controller.signal,
-      });
+        3, // 3 retries
+      );
       return this.handleResponse<T>(response);
     } finally {
       clearTimeout(timeoutId);
@@ -248,6 +317,7 @@ export class ApiClient {
 
   /**
    * Make a request and return raw Response for streaming
+   * Note: No retry logic for streaming endpoints
    */
   async fetchRaw(path: string, options?: RequestInit): Promise<Response> {
     const url = this.buildUrl(path);

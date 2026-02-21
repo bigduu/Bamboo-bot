@@ -1199,10 +1199,9 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(get_bamboo_config)
         .service(set_bamboo_config)
         .service(reset_bamboo_config)
+        // Proxy auth endpoints (also registered with rate limiting in production via app_config_with_rate_limiting)
         .service(set_proxy_auth)
         .service(get_proxy_auth_status)
-        .service(get_anthropic_model_mapping)
-        .service(set_anthropic_model_mapping)
         // Keyword masking endpoints
         .service(get_keyword_masking_config)
         .service(update_keyword_masking_config)
@@ -1211,5 +1210,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(get_provider_config)
         .service(update_provider_config)
         .service(reload_provider_config)
-        .service(fetch_provider_models);
+        .service(fetch_provider_models)
+        // Other endpoints
+        .service(get_anthropic_model_mapping)
+        .service(set_anthropic_model_mapping);
 }

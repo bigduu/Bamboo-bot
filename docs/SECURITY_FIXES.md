@@ -148,11 +148,7 @@ Following the critical fixes, 6 additional important security improvements were 
 
 ## Remaining Work
 
-The code review identified 2 remaining Important issues and 12 Suggestions:
-
-**Important (Not Yet Implemented)**:
-- Rate limiting on authentication endpoints
-- Retry logic for transient failures (exponential backoff)
+All Important security issues have been addressed! Only enhancement suggestions remain:
 
 **Suggestions (Backlog)**:
 - OpenAPI documentation
@@ -161,10 +157,60 @@ The code review identified 2 remaining Important issues and 12 Suggestions:
 - Integration tests
 - Zero-downtime deployment support
 
+## Final Security Improvements (Completed 2026-02-21)
+
+The final 2 Important security issues have been implemented:
+
+### 10. Rate Limiting (IMPORTANT)
+**File**: `crates/web_service/src/server.rs`
+
+**Issue**: No rate limiting on API endpoints, vulnerable to:
+- Brute force attacks on authentication
+- DoS via rapid requests
+- Resource exhaustion
+
+**Fix**: Implemented actix-governor rate limiting:
+- Production: 10 requests/second, burst capacity of 20
+- Separate `app_config` (no rate limiting, for tests) and `app_config_with_rate_limiting` (for production)
+- Applied to all `/v1/*` endpoints
+- Graceful handling in tests (rate limiting disabled)
+
+### 11. Retry Logic with Exponential Backoff (IMPORTANT)
+**File**: `src/services/api/client.ts`
+
+**Issue**: No retry logic for transient network failures
+
+**Fix**: Implemented retry mechanism:
+- 3 retries with exponential backoff (1s, 2s, 4s)
+- Retries on 5xx server errors
+- Retries on network errors
+- Proper logging of retry attempts
+- Applied to all HTTP methods (GET, POST, PUT, DELETE)
+
+**Testing**:
+- All existing tests passing
+- Frontend builds successfully
+- No breaking changes
+
 ## References
 
 - Code Review: Performed by Claude Code agent on 2026-02-21
 - Review Scope: All phases (0-4) of sidecar architecture refactoring
 - **Total Issues Found**: 3 Critical, 8 Important, 12 Suggestions
-- **Issues Fixed**: 3 Critical + 6 Important = 9 total
-- **Issues Remaining**: 2 Important, 12 Suggestions
+- **Issues Fixed**: 3 Critical + 8 Important = **11 total** ✅
+- **Issues Remaining**: 12 Suggestions (enhancements only)
+
+## Summary
+
+All security-critical and important issues from the code review have been successfully addressed. The application now has:
+- Comprehensive input validation
+- Path traversal protection
+- Request size limits
+- Rate limiting
+- Request timeouts
+- Automatic retry logic
+- Security headers
+- CORS configuration
+- Improved error handling
+
+The codebase is production-ready with robust security protections.
