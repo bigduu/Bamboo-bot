@@ -63,7 +63,6 @@ uuid = { workspace = true }
 portable-pty = { workspace = true }
 
 once_cell = { workspace = true }
-rfd = { workspace = true }
 
 [features]
 default = []

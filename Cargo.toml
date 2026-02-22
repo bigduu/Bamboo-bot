@@ -101,7 +101,6 @@ crossbeam = "0.8"
 zstd = "0.13"
 webbrowser = "1"
 arboard = "3"
-rfd = "0.15"
 portable-pty = "0.8"
 toml = "0.8"
 

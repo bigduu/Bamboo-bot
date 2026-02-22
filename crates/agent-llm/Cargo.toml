@@ -26,7 +26,6 @@ lazy_static = "1.4"
 webbrowser = { workspace = true }
 chrono = { workspace = true }
 arboard = { workspace = true }
-rfd = { workspace = true }
 tauri = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
 

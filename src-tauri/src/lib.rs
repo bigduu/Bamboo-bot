@@ -1,5 +1,4 @@
 use crate::command::copy::copy_to_clipboard;
-use crate::command::file_picker::pick_folder;
 use crate::command::keyword_masking::{
     get_keyword_masking_config, update_keyword_masking_config, validate_keyword_entries,
 };
@@ -633,7 +632,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             copy_to_clipboard,
-            pick_folder,
             slash_commands_list,
             slash_command_get,
             slash_command_save,
