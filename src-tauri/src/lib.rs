@@ -663,7 +663,15 @@ pub fn run() {
                 let is_close_requested =
                     matches!(window_event, tauri::WindowEvent::CloseRequested { .. });
                 if should_exit_on_main_window_close(&label, is_close_requested) {
-                    log::info!("Main window close requested, exiting application...");
+                    log::info!("Main window close requested, stopping sidecar and exiting application...");
+
+                    // Stop the sidecar before exiting
+                    if let Some(sidecar_state) = app_handle.try_state::<SidecarState>() {
+                        if let Err(e) = tauri::async_runtime::block_on(sidecar_state.0.stop()) {
+                            log::error!("Failed to stop sidecar: {}", e);
+                        }
+                    }
+
                     app_handle.exit(0);
                 }
             }
