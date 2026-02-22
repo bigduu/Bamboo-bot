@@ -2,12 +2,17 @@ import { APIRequestContext } from '@playwright/test';
 
 /**
  * Setup test configuration via API
- * Note: Backend uses /v1/ routes, not /api/v1/bamboo/
+ * This marks setup as complete so tests can access /chat and other routes
  */
 export async function setupTestConfig(request: APIRequestContext) {
-  // Note: Config endpoints may need adjustment based on actual backend routes
-  // Current backend routes are under /v1/ not /api/v1/bamboo/
-  console.log('⚠️  setupTestConfig: Endpoint path may need verification');
+  try {
+    // Mark setup as complete
+    await markSetupComplete(request);
+    console.log('✅ Test setup marked as complete');
+  } catch (error) {
+    console.log('⚠️  Could not mark setup as complete:', error);
+    // This is OK - setup might already be complete
+  }
 }
 
 /**

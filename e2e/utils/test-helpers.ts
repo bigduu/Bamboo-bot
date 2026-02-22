@@ -199,3 +199,113 @@ export async function debugPageState(page: Page) {
     errors
   };
 }
+
+/**
+ * Fill a React controlled input and trigger proper events
+ * This ensures that React state updates correctly when filling inputs
+ */
+export async function fillReactInput(
+  page: Page,
+  selector: string,
+  value: string
+): Promise<void> {
+  // Use evaluate to bypass React's value interception
+  await page.evaluate((args) => {
+    const textarea = document.querySelector(args.selector) as HTMLTextAreaElement;
+    if (!textarea) {
+      throw new Error(`Element not found: ${args.selector}`);
+    }
+
+    // Get React's fiber node
+    const fiberKey = Object.keys(textarea).find(key => key.startsWith('__reactFiber'));
+    if (!fiberKey) {
+      throw new Error('React fiber not found on element');
+    }
+
+    // Get the native input value setter
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype,
+      'value'
+    )?.set;
+
+    if (!nativeInputValueSetter) {
+      throw new Error('Native input value setter not found');
+    }
+
+    // Set the value using the native setter (bypasses React's interception)
+    nativeInputValueSetter.call(textarea, args.value);
+
+    // Create and dispatch React-compatible events
+    const inputEvent = new Event('input', { bubbles: true });
+    Object.defineProperty(inputEvent, 'target', {
+      value: textarea,
+      writable: false
+    });
+    textarea.dispatchEvent(inputEvent);
+
+    // Also dispatch change event
+    textarea.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Trigger React's onChange handler by simulating character input
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+    textarea.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true }));
+    textarea.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+  }, { selector, value });
+
+  // Wait for React to process
+  await page.waitForTimeout(300);
+
+  // Verify the value was set
+  const input = page.locator(selector);
+  const actualValue = await input.inputValue();
+  console.log(`fillReactInput: Expected "${value}", got "${actualValue}"`);
+
+  if (actualValue !== value) {
+    throw new Error(`Failed to set input value. Expected "${value}", got "${actualValue}"`);
+  }
+}
+
+/**
+ * Wait for an input to be enabled (not disabled)
+ */
+export async function waitForInputEnabled(
+  page: Page,
+  selector: string,
+  timeout = 5000
+): Promise<void> {
+  const input = page.locator(selector);
+  await input.waitFor({ state: 'visible', timeout });
+
+  // Wait for the disabled attribute to be removed
+  await page.waitForFunction(
+    (sel) => {
+      const element = document.querySelector(sel);
+      return element && !element.hasAttribute('disabled');
+    },
+    selector,
+    { timeout }
+  );
+}
+
+/**
+ * Wait for a button to be enabled (not disabled)
+ */
+export async function waitForButtonEnabled(
+  page: Page,
+  selector: string,
+  timeout = 5000
+): Promise<void> {
+  const button = page.locator(selector);
+  await button.waitFor({ state: 'visible', timeout });
+
+  // Wait for the disabled attribute to be removed
+  await page.waitForFunction(
+    (sel) => {
+      const element = document.querySelector(sel);
+      return element && !element.hasAttribute('disabled');
+    },
+    selector,
+    { timeout }
+  );
+}
+

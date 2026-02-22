@@ -3,7 +3,7 @@ import {
   modelService,
   ProxyAuthRequiredError,
 } from "../../services/ModelService";
-import { configService } from "@services/config";
+import { serviceFactory } from "@services/common/ServiceFactory";
 import type { AppState } from "../";
 
 const SELECTED_MODEL_LS_KEY = "bamboo_selected_model_id";
@@ -50,7 +50,9 @@ export const createModelSlice: StateCreator<AppState, [], [], ModelSlice> = (
   // Keeping this for backward compatibility with Copilot model list
   loadConfigModel: async () => {
     try {
-      const configModel = await configService.getModel();
+      const config = await serviceFactory.getBambooConfig();
+      const configModel =
+        typeof config?.model === "string" ? config.model : undefined;
       if (configModel) {
         set({ configModel });
         // Don't write to localStorage anymore - provider-specific models are used now
@@ -75,7 +77,7 @@ export const createModelSlice: StateCreator<AppState, [], [], ModelSlice> = (
       try {
         // Check setup status before fetching models
         try {
-          const setupStatus = await configService.getSetupStatus();
+          const setupStatus = await serviceFactory.getSetupStatus();
           if (!setupStatus.is_complete) {
             console.log("Setup not complete, skipping model fetch");
             set({

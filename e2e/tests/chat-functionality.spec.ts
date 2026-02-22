@@ -1,17 +1,22 @@
 import { test, expect } from '@playwright/test';
+import { fillReactInput, waitForButtonEnabled } from '../utils/test-helpers';
 
 test.describe('Chat Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    // Ensure setup is complete
+    // Navigate to the app - setup is already completed in global-setup.ts
     await page.goto('/');
-    // ... setup completion logic
   });
 
   test('should send message and receive response', async ({ page }) => {
     await page.goto('/chat');
 
+    // Wait for input to be ready
+    const input = page.locator('[data-testid="chat-input"]');
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+
     // Type message
-    await page.fill('[data-testid="chat-input"]', 'Hello, AI!');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Hello, AI!');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Wait for response
@@ -23,7 +28,8 @@ test.describe('Chat Functionality', () => {
   test('should stream response correctly', async ({ page }) => {
     await page.goto('/chat');
 
-    await page.fill('[data-testid="chat-input"]', 'Tell me a story');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Tell me a story');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Verify streaming indicators
@@ -40,7 +46,8 @@ test.describe('Chat Functionality', () => {
     await context.route('**/api/v1/chat', route => route.abort());
 
     await page.goto('/chat');
-    await page.fill('[data-testid="chat-input"]', 'Test error');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Test error');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Should show error message
@@ -51,12 +58,14 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     // Send first message
-    await page.fill('[data-testid="chat-input"]', 'First message');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'First message');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]').first()).toBeVisible();
 
     // Send second message
-    await page.fill('[data-testid="chat-input"]', 'Second message');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Second message');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]').nth(1)).toBeVisible();
 
@@ -68,7 +77,8 @@ test.describe('Chat Functionality', () => {
   test('should allow message cancellation', async ({ page }) => {
     await page.goto('/chat');
 
-    await page.fill('[data-testid="chat-input"]', 'Long running request');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Long running request');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Wait for streaming to start
@@ -86,7 +96,8 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     // Request markdown content
-    await page.fill('[data-testid="chat-input"]', 'Show me a markdown example with code');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Show me a markdown example with code');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Wait for response with code block
@@ -102,7 +113,8 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     // Send a message
-    await page.fill('[data-testid="chat-input"]', 'Test message');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Test message');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible();
 
@@ -119,7 +131,8 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     // Send initial message
-    await page.fill('[data-testid="chat-input"]', 'Give me a random number');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Give me a random number');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible();
 
@@ -146,12 +159,14 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     // First turn
-    await page.fill('[data-testid="chat-input"]', 'My name is Alice');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'My name is Alice');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]').first()).toBeVisible();
 
     // Second turn - context should be maintained
-    await page.fill('[data-testid="chat-input"]', 'What is my name?');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'What is my name?');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]').nth(1)).toBeVisible();
 
@@ -164,7 +179,8 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     const longMessage = 'A'.repeat(1000);
-    await page.fill('[data-testid="chat-input"]', longMessage);
+    await fillReactInput(page, '[data-testid="chat-input"]', longMessage);
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Should handle long message without error
@@ -177,7 +193,8 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     const specialMessage = 'Hello! @#$%^&*()_+{}|:<>?~`-=[]\\;\'",./';
-    await page.fill('[data-testid="chat-input"]', specialMessage);
+    await fillReactInput(page, '[data-testid="chat-input"]', specialMessage);
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible({
@@ -189,7 +206,8 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     const unicodeMessage = 'Hello 世界! 🌍🎉👋';
-    await page.fill('[data-testid="chat-input"]', unicodeMessage);
+    await fillReactInput(page, '[data-testid="chat-input"]', unicodeMessage);
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible({
@@ -200,7 +218,8 @@ test.describe('Chat Functionality', () => {
   test('should clear input after sending', async ({ page }) => {
     await page.goto('/chat');
 
-    await page.fill('[data-testid="chat-input"]', 'This should be cleared');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'This should be cleared');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Verify input is cleared
@@ -223,7 +242,8 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     const userMessage = 'Test user message';
-    await page.fill('[data-testid="chat-input"]', userMessage);
+    await fillReactInput(page, '[data-testid="chat-input"]', userMessage);
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Verify user message appears immediately
@@ -235,7 +255,8 @@ test.describe('Chat Functionality', () => {
 
     // Send multiple messages rapidly
     for (let i = 0; i < 3; i++) {
-      await page.fill('[data-testid="chat-input"]', `Message ${i + 1}`);
+      await fillReactInput(page, '[data-testid="chat-input"]', `Message ${i + 1}`);
+      await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
       await page.click('[data-testid="send-button"]');
       await page.waitForTimeout(500);
     }
@@ -249,7 +270,8 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     // Send a message
-    await page.fill('[data-testid="chat-input"]', 'Remember this: 12345');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Remember this: 12345');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]')).toBeVisible();
 
@@ -263,7 +285,8 @@ test.describe('Chat Functionality', () => {
   test('should handle code block formatting', async ({ page }) => {
     await page.goto('/chat');
 
-    await page.fill('[data-testid="chat-input"]', 'Write a Python function to calculate factorial');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Write a Python function to calculate factorial');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Wait for response with Python code block
@@ -279,7 +302,8 @@ test.describe('Chat Functionality', () => {
   test('should show loading state while waiting for response', async ({ page }) => {
     await page.goto('/chat');
 
-    await page.fill('[data-testid="chat-input"]', 'Explain quantum computing in detail');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Explain quantum computing in detail');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
 
     // Should show streaming indicator or loading state
@@ -290,12 +314,14 @@ test.describe('Chat Functionality', () => {
     await page.goto('/chat');
 
     // Start conversation
-    await page.fill('[data-testid="chat-input"]', 'Tell me about dogs');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'Tell me about dogs');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]').first()).toBeVisible();
 
     // Continue on same topic
-    await page.fill('[data-testid="chat-input"]', 'What about cats?');
+    await fillReactInput(page, '[data-testid="chat-input"]', 'What about cats?');
+    await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
     await page.click('[data-testid="send-button"]');
     await expect(page.locator('[data-testid="assistant-message"]').nth(1)).toBeVisible();
 

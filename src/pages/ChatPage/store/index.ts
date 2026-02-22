@@ -208,13 +208,17 @@ const initializeStore = async (force: boolean = false) => {
     useAppStore.getState().startAgentHealthCheck();
   }
 
+  // Load chats as early as possible so the UI always has an active chat.
+  // This prevents the controlled message input from appearing "read-only"
+  // in fresh sessions (e.g., Playwright E2E with empty localStorage).
+  await useAppStore.getState().loadChats();
+
   const shouldSkipModelBootstrap = await bootstrapProxyAuthGate();
 
   if (!shouldSkipModelBootstrap) {
     await useAppStore.getState().fetchModels();
   }
 
-  await useAppStore.getState().loadChats();
   await useAppStore.getState().loadSystemPrompts();
   await useAppStore.getState().loadFavorites();
 };
