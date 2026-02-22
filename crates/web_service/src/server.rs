@@ -187,12 +187,17 @@ pub fn app_config_with_rate_limiting(cfg: &mut web::ServiceConfig) {
         .expect("Failed to build rate limiter");
 
     // OpenAI and other endpoints under /v1 with rate limiting
+    // Note: Rate limiting is applied per-service to allow CORS to handle OPTIONS requests first
     cfg.service(
         web::scope("/v1")
-            .wrap(Governor::new(&rate_limiter))
             .configure(agent_controller::config)
             .configure(command_controller::config)
-            .configure(openai_controller::config)
+            // Apply rate limiting only to openai_controller (chat completions)
+            .service(
+                web::scope("")
+                    .wrap(Governor::new(&rate_limiter))
+                    .configure(openai_controller::config)
+            )
             .configure(settings_controller::config)
             .configure(skill_controller::config)
             .configure(tools_controller::config)
@@ -371,7 +376,7 @@ pub async fn run(app_data_dir: PathBuf, port: u16) -> Result<(), String> {
             .app_data(app_state.clone())
             .app_data(agent_state.clone())
             .wrap(build_cors("127.0.0.1", port))
-            .configure(app_config_with_rate_limiting)  // Enable rate limiting
+            .configure(app_config)  // No rate limiting for desktop mode (localhost only)
             .configure(agent_api_config)
     })
     .workers(DEFAULT_WORKER_COUNT)
