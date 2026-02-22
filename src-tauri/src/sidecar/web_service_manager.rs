@@ -27,7 +27,14 @@ impl WebServiceSidecar {
 
         // Check if already running using health check
         if self.is_running().await {
-            return Err("Web service sidecar is already running".to_string());
+            info!("Detected existing sidecar process, attempting to stop it first...");
+            // Try to stop any existing process by killing the port
+            if let Err(e) = self.force_kill_port().await {
+                warn!("Failed to kill existing process on port {}: {}", self.port, e);
+            } else {
+                // Wait a bit for the port to be released
+                sleep(Duration::from_millis(500)).await;
+            }
         }
 
         // Create sidecar command using Tauri v2 plugin API.
@@ -170,6 +177,93 @@ impl WebServiceSidecar {
         {
             Ok(response) => response.status().is_success(),
             Err(_) => false,
+        }
+    }
+
+    /// Force kill any process listening on the configured port (macOS/Linux only)
+    async fn force_kill_port(&self) -> Result<(), String> {
+        #[cfg(target_os = "macos")]
+        {
+            use std::process::Command;
+
+            info!("Attempting to kill process on port {}", self.port);
+
+            // Find process listening on the port
+            let output = Command::new("lsof")
+                .args(["-ti", &format!(":{}", self.port)])
+                .output()
+                .map_err(|e| format!("Failed to run lsof: {}", e))?;
+
+            if output.status.success() && !output.stdout.is_empty() {
+                let pids: Vec<String> = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+
+                for pid in pids {
+                    info!("Killing process {} on port {}", pid, self.port);
+                    let _ = Command::new("kill")
+                        .args(["-9", &pid])
+                        .output();
+                }
+
+                info!("Successfully killed processes on port {}", self.port);
+            } else {
+                info!("No process found on port {}", self.port);
+            }
+
+            Ok(())
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            use std::process::Command;
+
+            info!("Attempting to kill process on port {}", self.port);
+
+            // Find process listening on the port
+            let output = Command::new("fuser")
+                .args(["-k", &format!("{}/tcp", self.port)])
+                .output()
+                .map_err(|e| format!("Failed to run fuser: {}", e))?;
+
+            if output.status.success() {
+                info!("Successfully killed processes on port {}", self.port);
+            } else {
+                info!("No process found on port {}", self.port);
+            }
+
+            Ok(())
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            use std::process::Command;
+
+            info!("Attempting to kill process on port {}", self.port);
+
+            // Find and kill process using netstat and taskkill
+            let output = Command::new("cmd")
+                .args([
+                    "/C",
+                    &format!("for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :{} ^| findstr LISTENING') do taskkill /F /PID %a", self.port)
+                ])
+                .output()
+                .map_err(|e| format!("Failed to kill process on Windows: {}", e))?;
+
+            if output.status.success() {
+                info!("Successfully killed processes on port {}", self.port);
+            } else {
+                info!("No process found on port {}", self.port);
+            }
+
+            Ok(())
+        }
+
+        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+        {
+            Err("Force kill port not supported on this platform".to_string())
         }
     }
 }
