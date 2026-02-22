@@ -363,6 +363,10 @@ test.describe('Chat Functionality', () => {
   test('should manually generate chat title', async ({ page }) => {
     await page.goto('/chat');
 
+    // Wait for chat input to be ready
+    const input = page.locator('[data-testid="chat-input"]');
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+
     // Send a message
     await fillReactInput(page, '[data-testid="chat-input"]', 'What is quantum computing?');
     await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
@@ -401,6 +405,10 @@ test.describe('Chat Functionality', () => {
   test('should preserve generated title after page reload', async ({ page }) => {
     await page.goto('/chat');
 
+    // Wait for chat input to be ready
+    const input = page.locator('[data-testid="chat-input"]');
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+
     // Send a message
     await fillReactInput(page, '[data-testid="chat-input"]', 'Explain the solar system');
     await waitForButtonEnabled(page, '[data-testid="send-button"]', 5000);
@@ -429,6 +437,10 @@ test.describe('Chat Functionality', () => {
 
   test('should show loading state during title generation', async ({ page }) => {
     await page.goto('/chat');
+
+    // Wait for chat input to be ready
+    const input = page.locator('[data-testid="chat-input"]');
+    await input.waitFor({ state: 'visible', timeout: 10000 });
 
     // Send a message
     await fillReactInput(page, '[data-testid="chat-input"]', 'Tell me about blockchain technology');
@@ -478,6 +490,10 @@ test.describe('Chat Functionality', () => {
     });
 
     await page.goto('/chat');
+
+    // Wait for chat input to be ready
+    const input = page.locator('[data-testid="chat-input"]');
+    await input.waitFor({ state: 'visible', timeout: 10000 });
 
     // Send a message
     await fillReactInput(page, '[data-testid="chat-input"]', 'Test title generation error handling');
