@@ -39,10 +39,13 @@ impl WebServiceSidecar {
 
         // Spawn process with logging
         let (mut rx, child) = sidecar_command
-            .arg("--port")
-            .arg(self.port.to_string())
-            .arg("--data-dir")
-            .arg(&self.data_dir)
+            .args([
+                "serve",
+                "--port",
+                &self.port.to_string(),
+                "--data-dir",
+                &self.data_dir.to_string_lossy(),
+            ])
             .spawn()
             .map_err(|e| {
                 if e.to_string().contains("Address already in use") {
