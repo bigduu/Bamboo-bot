@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Map Rust target triples to sidecar binary names
 const TARGET_MAP = {
@@ -35,17 +39,20 @@ function copyBinary() {
     throw new Error(`Unknown target: ${target}`);
   }
 
-  const sourcePath = path.join(__dirname, '..', 'target', 'release', getBinaryName());
+  // Use debug for development, release for production
+  const profile = process.env.NODE_ENV === 'production' ? 'release' : 'debug';
+  const sourcePath = path.join(__dirname, '..', 'target', profile, getBinaryName());
   const destPath = path.join(__dirname, '..', 'src-tauri', 'binaries', binaryName);
 
   console.log(`Copying sidecar binary:`);
   console.log(`  From: ${sourcePath}`);
   console.log(`  To: ${destPath}`);
+  console.log(`  Profile: ${profile}`);
 
   if (!fs.existsSync(sourcePath)) {
     console.error(`Error: Binary not found at ${sourcePath}`);
     console.error(`Make sure to build the web_service_standalone crate first:`);
-    console.error(`  cargo build --release -p web_service_standalone`);
+    console.error(`  cargo build -p web_service_standalone`);
     process.exit(1);
   }
 
