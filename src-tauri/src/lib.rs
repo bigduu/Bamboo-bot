@@ -613,6 +613,7 @@ pub fn run() {
         .plugin(log_plugin)
         .plugin(dialog_plugin)
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             // Register global shortcut: Cmd+Shift+Space (or Ctrl+Shift+Space on Windows/Linux)
             #[cfg(target_os = "macos")]

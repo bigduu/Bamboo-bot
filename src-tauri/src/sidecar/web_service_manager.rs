@@ -1,12 +1,15 @@
 use std::path::PathBuf;
-use tauri::api::process::{Command, CommandEvent};
-use tauri::{AppHandle, Manager};
-use tokio::time::{sleep, Duration};
 use log::{error, info, warn};
+use std::sync::Mutex;
+use tauri::{AppHandle, Runtime};
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
+use tauri_plugin_shell::ShellExt;
+use tokio::time::{sleep, Duration};
 
 pub struct WebServiceSidecar {
     port: u16,
     data_dir: PathBuf,
+    child: Mutex<Option<CommandChild>>,
 }
 
 impl WebServiceSidecar {
@@ -14,11 +17,12 @@ impl WebServiceSidecar {
         Self {
             port,
             data_dir,
+            child: Mutex::new(None),
         }
     }
 
     /// Start the web service sidecar
-    pub async fn start(&self, app_handle: &AppHandle) -> Result<u32, String> {
+    pub async fn start<R: Runtime>(&self, app_handle: &AppHandle<R>) -> Result<u32, String> {
         info!("Starting web service sidecar on port {}", self.port);
 
         // Check if already running using health check
@@ -26,16 +30,19 @@ impl WebServiceSidecar {
             return Err("Web service sidecar is already running".to_string());
         }
 
-        // Create sidecar command using Tauri v2 API
-        let sidecar_command = Command::new_sidecar("web_service_standalone")
-            .map_err(|e| format!("Failed to create sidecar command: {}", e))?;
+        // Create sidecar command using Tauri v2 plugin API.
+        // Note: this requires `.plugin(tauri_plugin_shell::init())` in the Tauri builder.
+        let sidecar_command = app_handle
+            .shell()
+            .sidecar("web_service_standalone")
+            .map_err(|e| format!("Failed to create sidecar command: {e}"))?;
 
         // Spawn process with logging
-        let (mut rx, _child) = sidecar_command
-            .args([
-                "--port", &self.port.to_string(),
-                "--data-dir", &self.data_dir.to_string_lossy(),
-            ])
+        let (mut rx, child) = sidecar_command
+            .arg("--port")
+            .arg(self.port.to_string())
+            .arg("--data-dir")
+            .arg(&self.data_dir)
             .spawn()
             .map_err(|e| {
                 if e.to_string().contains("Address already in use") {
@@ -45,17 +52,31 @@ impl WebServiceSidecar {
                 }
             })?;
 
-        info!("Web service sidecar process spawned");
+        let pid = child.pid();
+        info!("Web service sidecar process spawned (pid={})", pid);
+
+        // Best-effort: keep the child handle so we can stop it (and clean up on drop).
+        {
+            let mut guard = self
+                .child
+                .lock()
+                .map_err(|_| "Sidecar process lock poisoned".to_string())?;
+            // If we had a stale handle, try to kill it before replacing.
+            if let Some(old) = guard.take() {
+                let _ = old.kill();
+            }
+            *guard = Some(child);
+        }
 
         // Capture stdout/stderr in background
         tauri::async_runtime::spawn(async move {
             while let Some(event) = rx.recv().await {
                 match event {
                     CommandEvent::Stdout(line) => {
-                        info!("[sidecar stdout] {}", line);
+                        info!("[sidecar stdout] {}", String::from_utf8_lossy(&line));
                     }
                     CommandEvent::Stderr(line) => {
-                        warn!("[sidecar stderr] {}", line);
+                        warn!("[sidecar stderr] {}", String::from_utf8_lossy(&line));
                     }
                     CommandEvent::Error(error) => {
                         error!("[sidecar error] {}", error);
@@ -79,10 +100,21 @@ impl WebServiceSidecar {
     }
 
     /// Stop the web service sidecar
-    /// Note: Tauri will handle killing the process when the app exits
     pub async fn stop(&self) -> Result<(), String> {
-        if self.is_running().await {
-            info!("Web service sidecar stop requested (Tauri will handle process cleanup)");
+        let child = self
+            .child
+            .lock()
+            .map_err(|_| "Sidecar process lock poisoned".to_string())?
+            .take();
+
+        if let Some(child) = child {
+            info!("Stopping web service sidecar (pid={})", child.pid());
+            child
+                .kill()
+                .map_err(|e| format!("Failed to kill web service sidecar: {e}"))?;
+        } else if self.is_running().await {
+            // We don't have a handle (e.g., started by another instance), so we can only log.
+            info!("Web service sidecar stop requested, but no process handle is available");
         }
 
         Ok(())
@@ -135,6 +167,22 @@ impl WebServiceSidecar {
         {
             Ok(response) => response.status().is_success(),
             Err(_) => false,
+        }
+    }
+}
+
+impl Drop for WebServiceSidecar {
+    fn drop(&mut self) {
+        let Ok(child) = self.child.get_mut() else {
+            // Poisoned mutex; nothing safe we can do here.
+            return;
+        };
+
+        if let Some(child) = child.take() {
+            if let Err(e) = child.kill() {
+                // Logger might already be shut down during app exit; ignore if logging fails.
+                log::warn!("Failed to kill web service sidecar on drop: {e}");
+            }
         }
     }
 }
