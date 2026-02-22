@@ -1,5 +1,5 @@
 # 构建阶段
-FROM rust:latest AS builder
+FROM rust:1.82-slim-bookworm AS builder
 
 WORKDIR /app
 
