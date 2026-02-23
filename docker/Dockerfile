@@ -1,5 +1,5 @@
 # 构建阶段 - 使用 musl 进行静态链接，避免 GLIBC 依赖
-FROM rust:1.85 AS builder
+FROM rust:latest AS builder
 
 WORKDIR /app
 
@@ -76,4 +76,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # 运行服务
 ENTRYPOINT ["/app/web_service_standalone"]
-CMD ["serve", "--port", "8080", "--data-dir", "/data"]
+CMD ["serve", "--port", "8080", "--data-dir", "/data", "--bind", "0.0.0.0"]
