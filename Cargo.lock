@@ -1508,6 +1508,7 @@ name = "e2e-backend"
 version = "0.1.0"
 dependencies = [
  "bamboo-agent",
+ "clap",
  "tokio",
 ]
 
