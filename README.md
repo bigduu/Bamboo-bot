@@ -16,6 +16,7 @@ Bamboo is a native desktop application for GitHub Copilot Chat, built with **Tau
 - **Approval Gates** - Sensitive operations require explicit user approval
 - **Error Recovery** - Intelligent retry with LLM feedback
 - **Timeout Protection** - Safeguards against runaway loops
+- **Multi-LLM Support** - GitHub Copilot, OpenAI, Anthropic Claude, Google Gemini
 
 ### User Workflows
 - **Explicit Control** - User-initiated workflows for complex operations
@@ -34,23 +35,43 @@ Bamboo is a native desktop application for GitHub Copilot Chat, built with **Tau
 | Layer | Technology |
 |-------|------------|
 | Frontend | React 18, TypeScript, Ant Design 5, Vite |
-| Backend | Rust, Tauri, Actix-web |
+| Backend | Rust, Tauri, bamboo-agent crate |
 | State | Zustand (UI), custom hooks (chat) |
 | Testing | Vitest (frontend), cargo test (backend) |
+
+## Architecture
+
+Bamboo uses an **embedded architecture** where the bamboo-agent HTTP server runs directly within the Tauri application process:
+
+```
+┌──────────────────────────┐
+│  Tauri Desktop App       │
+│  ├── Frontend (React)    │
+│  ├── HTTP Server :8080   │  ← Embedded
+│  └── bamboo-agent        │
+└──────────────────────────┘
+```
+
+**Benefits**:
+- Single process (simpler than sidecar)
+- Faster startup
+- Lower resource usage
+- Easier debugging
+- Direct access to agent internals
 
 ## Quick Start
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (LTS recommended)
 - [Rust](https://rustup.rs/)
-- GitHub Copilot API token
+- GitHub Copilot API token (or other LLM provider token)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/bigduu/copilot_client_app.git
-cd copilot_client_app
+git clone https://github.com/bigduu/Bamboo-bot.git
+cd Bamboo-bot
 
 # Install dependencies
 npm install
@@ -87,14 +108,46 @@ bamboo/
 │   ├── pages/             # Page components (Chat, Settings, Spotlight)
 │   ├── app/               # Root app component
 │   └── services/          # Shared services
-├── src-tauri/             # Tauri application entry
-├── crates/                # Rust crates
-│   ├── chat_core/         # Shared types
-│   ├── copilot_client/    # Copilot API client
-│   ├── web_service/       # HTTP server
-│   └── copilot-agent/     # Agent system
+├── src-tauri/             # Tauri application
+│   ├── src/
+│   │   ├── embedded/      # Embedded web service manager
+│   │   ├── command/       # Tauri commands
+│   │   ├── process/       # Process registry
+│   │   └── ...
+│   └── Cargo.toml         # bamboo-agent dependency
+├── docker/                # Docker deployment
+├── e2e/                   # End-to-end tests
 └── docs/                  # Documentation
 ```
+
+## Dependencies
+
+### Key Dependencies
+- **[bamboo-agent](https://crates.io/crates/bamboo-agent)** - AI agent backend framework (v0.1.0)
+  - Multi-LLM provider support (Copilot, OpenAI, Claude, Gemini)
+  - 24 built-in tools for file operations
+  - Session management
+  - Workflow system
+
+## Deployment Modes
+
+Bamboo supports multiple deployment modes:
+
+### Desktop Mode (Tauri + Embedded)
+- Single process architecture
+- Embedded HTTP server on `127.0.0.1:8080`
+- Native desktop features
+- Use: `npm run tauri dev` or `npm run tauri build`
+
+### Browser Development Mode
+- Frontend served by Vite dev server (port 1420)
+- Backend runs as standalone process
+- Use: `cargo run -p bamboo-agent -- serve`
+
+### Docker Production Mode
+- Single container serving both frontend and backend
+- Backend serves static frontend files + API
+- Use: `cd docker && docker-compose up`
 
 ## Documentation
 
