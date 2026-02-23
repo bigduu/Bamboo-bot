@@ -1,5 +1,5 @@
 # 构建阶段 - 使用 musl 进行静态链接，避免 GLIBC 依赖
-FROM rust:1.82 AS builder
+FROM rust:1.85 AS builder
 
 WORKDIR /app
 
