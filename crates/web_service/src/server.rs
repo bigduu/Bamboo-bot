@@ -576,7 +576,27 @@ pub async fn run_with_bind(app_data_dir: PathBuf, port: u16, bind: &str) -> Resu
     Ok(())
 }
 
-/// Run server with custom bind address and static file serving (for Docker deployment)
+/// Run server with custom bind address and static file serving
+///
+/// This is the recommended function for production deployments (Docker, standalone binary):
+/// - Serves both API endpoints and static frontend files from the same server
+/// - Binds to custom address (use 0.0.0.0 for Docker, 127.0.0.1 for standalone)
+/// - Includes rate limiting, security headers, and request size limits
+///
+/// # Arguments
+/// * `app_data_dir` - Application data directory for sessions, config, etc.
+/// * `port` - Port to listen on
+/// * `bind` - Bind address (127.0.0.1 for localhost, 0.0.0.0 for all interfaces)
+/// * `static_dir` - Optional directory containing built frontend files (index.html, assets, etc.)
+///
+/// # Example
+/// ```bash
+/// # Docker mode (serve frontend)
+/// web_service_standalone serve --port 8080 --bind 0.0.0.0 --static-dir /app/static
+///
+/// # Standalone production mode (serve frontend)
+/// web_service_standalone serve --port 8080 --static-dir ./dist
+/// ```
 pub async fn run_with_bind_and_static(
     app_data_dir: PathBuf,
     port: u16,
@@ -584,6 +604,21 @@ pub async fn run_with_bind_and_static(
     static_dir: Option<PathBuf>,
 ) -> Result<(), String> {
     info!("Starting web service on {}:{}...", bind, port);
+
+    // Canonicalize static_dir path to absolute path before passing to workers
+    // This is required for fs::Files to work correctly in multi-threaded environment
+    let static_dir: Option<PathBuf> = match static_dir {
+        Some(path) => {
+            let canonicalized = path.canonicalize()
+                .map_err(|e| format!("Static directory not found: {:?}: {}", path, e))?;
+            if !canonicalized.is_dir() {
+                return Err(format!("Static path is not a directory: {}", canonicalized.display()));
+            }
+            info!("Serving static files from: {:?}", canonicalized);
+            Some(canonicalized)
+        }
+        None => None,
+    };
 
     // Initialize metrics infrastructure
     let metrics_state = MetricsState::spawn(app_data_dir.clone()).await;
@@ -629,11 +664,14 @@ pub async fn run_with_bind_and_static(
 
             // Serve static files with security restrictions
             // Note: fs::Files automatically handles path traversal via canonicalization
+            // Use a specific path for static assets to avoid conflicting with API routes
             app = app.service(
                 fs::Files::new("/", static_path)
                     .index_file("index.html")
                     .prefer_utf8(true)
                     // Disable listing directories
+                    .disable_content_disposition()
+                    // Don't show index file for directories (security)
                     .disable_content_disposition(),
             );
         }

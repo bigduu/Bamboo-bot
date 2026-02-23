@@ -31,6 +31,19 @@ enum Commands {
         /// Bind address (default: 127.0.0.1, use 0.0.0.0 for Docker)
         #[arg(short, long, default_value = "127.0.0.1")]
         bind: String,
+
+        /// Static files directory for frontend (for production/Docker)
+        ///
+        /// When provided, the server will serve both API endpoints and static frontend files.
+        /// This is required for:
+        /// - Docker deployment (frontend must be built and served)
+        /// - Standalone production mode (no Vite dev server)
+        ///
+        /// Not needed for:
+        /// - Tauri desktop mode (Tauri webview serves frontend)
+        /// - Development mode (Vite dev server on port 1420)
+        #[arg(short, long)]
+        static_dir: Option<PathBuf>,
     },
 }
 
@@ -58,6 +71,7 @@ async fn main() {
             port,
             data_dir,
             bind,
+            static_dir,
         }) => {
             // Initialize tracing subscriber with DEBUG level by default for standalone mode
             tracing_subscriber::registry()
@@ -75,7 +89,17 @@ async fn main() {
 
             // Start the server
             let app_data_dir = data_dir.unwrap_or_else(bamboo_dir);
-            let result = if bind == "127.0.0.1" {
+
+            // Priority: run_with_bind_and_static > run_with_bind > run
+            let result = if let Some(dir) = static_dir {
+                tracing::info!("Serving static files from: {:?}", dir);
+                web_service::server::run_with_bind_and_static(
+                    app_data_dir,
+                    port,
+                    &bind,
+                    Some(dir),
+                ).await
+            } else if bind == "127.0.0.1" {
                 web_service::server::run(app_data_dir, port).await
             } else {
                 web_service::server::run_with_bind(app_data_dir, port, &bind).await

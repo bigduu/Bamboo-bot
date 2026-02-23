@@ -43,6 +43,7 @@ export default defineConfig({
   ...(process.env.E2E_START_SERVER ? {
     webServer: {
       command: process.env.E2E_START_SERVER,
+      cwd: '..', // Run from project root so ./dist resolves correctly
       url: 'http://localhost:8080/api/v1/health',
       reuseExistingServer: false,
       timeout: 120000,
