@@ -8,5 +8,5 @@ name = "web_service_standalone"
 path = "src/main.rs"
 
 [dependencies]
-bamboo-agent = "~0.1.0"
+bamboo-agent = { version = "~0.1.0", default-features = false }
 tokio = { version = "1", features = ["full"] }

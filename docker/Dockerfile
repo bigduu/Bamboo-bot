@@ -25,9 +25,9 @@ FROM rust:latest AS builder
 WORKDIR /app
 
 # Install musl target
-RUN rustup target add aarch64-unknown-linux-musl
+RUN rustup target add x86_64-unknown-linux-musl
 
-# Install dependencies
+# Install dependencies including musl-compiled OpenSSL
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
@@ -44,13 +44,13 @@ RUN mkdir -p src && \
     echo "fn main() {}" > src/main.rs
 
 # Build dependencies (cache layer) - using musl target
-RUN cargo build --release --target aarch64-unknown-linux-musl 2>/dev/null || true
+RUN cargo build --release --target x86_64-unknown-linux-musl 2>/dev/null || true
 
 # Copy actual source code
 COPY e2e-backend/src ./src
 
 # Build release version - using musl static linking
-RUN cargo build --release --target aarch64-unknown-linux-musl
+RUN cargo build --release --target x86_64-unknown-linux-musl
 
 # ========== Runtime Stage ==========
 FROM alpine:latest
@@ -64,7 +64,7 @@ RUN apk add --no-cache ca-certificates curl
 RUN mkdir -p /data/sessions
 
 # Copy backend binary - using musl statically linked binary
-COPY --from=builder /app/e2e-backend/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
+COPY --from=builder /app/e2e-backend/target/x86_64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
 
 # Copy frontend build artifacts
 COPY --from=frontend-builder /app/dist /app/static
