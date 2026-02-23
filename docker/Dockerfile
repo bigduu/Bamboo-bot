@@ -19,37 +19,9 @@ RUN yarn build
 # ================================================
 
 # ========== Backend Build Stage ==========
-# Build stage using musl for static linking to avoid GLIBC dependency
 FROM rust:latest AS builder
 
 WORKDIR /app
-
-# Install musl target
-RUN rustup target add x86_64-unknown-linux-musl
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    pkg-config \
-    libssl-dev \
-    musl-tools \
-    linux-libc-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Build OpenSSL for musl
-RUN export CC=musl-gcc && \
-    curl -LO https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz && \
-    tar xzf openssl-1.1.1w.tar.gz && \
-    cd openssl-1.1.1w && \
-    ./Configure --prefix=/usr/local/musl --openssldir=/usr/local/musl/ssl linux-x86_64 no-shared && \
-    make -j$(nproc) && \
-    make install && \
-    cd .. && \
-    rm -rf openssl-1.1.1w openssl-1.1.1w.tar.gz
-
-ENV OPENSSL_DIR=/usr/local/musl
-ENV OPENSSL_STATIC=1
 
 # Copy only e2e-backend crate (not the full workspace)
 COPY e2e-backend/Cargo.toml e2e-backend/Cargo.lock* ./e2e-backend/
@@ -60,28 +32,32 @@ WORKDIR /app/e2e-backend
 RUN mkdir -p src && \
     echo "fn main() {}" > src/main.rs
 
-# Build dependencies (cache layer) - using musl target
-RUN cargo build --release --target x86_64-unknown-linux-musl 2>/dev/null || true
+# Build dependencies (cache layer)
+RUN cargo build --release 2>/dev/null || true
 
 # Copy actual source code
 COPY e2e-backend/src ./src
 
-# Build release version - using musl static linking
-RUN cargo build --release --target x86_64-unknown-linux-musl
+# Build release version
+RUN cargo build --release
 
 # ========== Runtime Stage ==========
-FROM alpine:latest
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
 # Install runtime dependencies (minimal)
-RUN apk add --no-cache ca-certificates curl
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create data directory
 RUN mkdir -p /data/sessions
 
-# Copy backend binary - using musl statically linked binary
-COPY --from=builder /app/e2e-backend/target/x86_64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
+# Copy backend binary
+COPY --from=builder /app/e2e-backend/target/release/web_service_standalone /app/web_service_standalone
 
 # Copy frontend build artifacts
 COPY --from=frontend-builder /app/dist /app/static
