@@ -34,24 +34,23 @@ RUN apt-get update && apt-get install -y \
     musl-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace configuration
-COPY Cargo.toml Cargo.lock ./
+# Copy only e2e-backend crate (not the full workspace)
+COPY e2e-backend/Cargo.toml e2e-backend/Cargo.lock* ./e2e-backend/
 
-# Copy e2e-backend Cargo files
-COPY e2e-backend/Cargo.toml e2e-backend/
+WORKDIR /app/e2e-backend
 
-# Create dummy source files to cache dependencies
-RUN mkdir -p e2e-backend/src && \
-    echo "fn main() {}" > e2e-backend/src/main.rs
+# Create dummy source file to cache dependencies
+RUN mkdir -p src && \
+    echo "fn main() {}" > src/main.rs
 
 # Build dependencies (cache layer) - using musl target
-RUN cargo build --release -p e2e-backend --target aarch64-unknown-linux-musl 2>/dev/null || true
+RUN cargo build --release --target aarch64-unknown-linux-musl 2>/dev/null || true
 
 # Copy actual source code
-COPY e2e-backend/ ./e2e-backend/
+COPY e2e-backend/src ./src
 
 # Build release version - using musl static linking
-RUN cargo build --release -p e2e-backend --target aarch64-unknown-linux-musl
+RUN cargo build --release --target aarch64-unknown-linux-musl
 
 # ========== Runtime Stage ==========
 FROM alpine:latest
@@ -65,7 +64,7 @@ RUN apk add --no-cache ca-certificates curl
 RUN mkdir -p /data/sessions
 
 # Copy backend binary - using musl statically linked binary
-COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
+COPY --from=builder /app/e2e-backend/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
 
 # Copy frontend build artifacts
 COPY --from=frontend-builder /app/dist /app/static
