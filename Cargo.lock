@@ -322,7 +322,6 @@ dependencies = [
  "agent-core",
  "agent-metrics",
  "anyhow",
- "arboard",
  "async-trait",
  "bytes",
  "chat_core",

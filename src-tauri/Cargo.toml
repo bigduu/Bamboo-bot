@@ -35,7 +35,6 @@ async-stream = { workspace = true }
 
 # Error Handling & Utilities
 thiserror = { workspace = true }
-arboard = { workspace = true }
 anyhow = { workspace = true }
 
 # Logging and Debug
@@ -61,6 +60,9 @@ uuid = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 portable-pty = { workspace = true }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+arboard = "3"
 
 once_cell = { workspace = true }
 
