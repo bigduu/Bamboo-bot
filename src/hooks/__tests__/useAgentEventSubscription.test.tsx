@@ -8,11 +8,12 @@ type MockSelector = (state: any) => any;
 
 // Mock dependencies - all variables must be inside the factory function
 vi.mock("../../pages/ChatPage/store", () => {
-  const mockStore = vi.fn();
-  mockStore.getState = vi.fn();
-  mockStore.subscribe = vi.fn(() => vi.fn());
-  mockStore.setState = vi.fn();
-  mockStore.destroy = vi.fn();
+  const mockStore = Object.assign(vi.fn(), {
+    getState: vi.fn(),
+    subscribe: vi.fn(() => vi.fn()),
+    setState: vi.fn(),
+    destroy: vi.fn(),
+  });
   return { useAppStore: mockStore };
 });
 

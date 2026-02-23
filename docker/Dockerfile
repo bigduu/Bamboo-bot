@@ -1,4 +1,25 @@
-# 构建阶段 - 使用 musl 进行静态链接，避免 GLIBC 依赖
+# ========== Frontend Build Stage ==========
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --legacy-peer-deps
+
+# Copy source code
+COPY . .
+
+# Build frontend
+RUN npm run build
+
+# Output: /app/dist directory contains built frontend
+# ================================================
+
+# ========== Backend Build Stage ==========
+# Build stage using musl for static linking to avoid GLIBC dependency
 FROM rust:latest AS builder
 
 WORKDIR /app
@@ -45,35 +66,38 @@ RUN cargo build --release -p web_service_standalone --target aarch64-unknown-lin
 # 复制实际源代码
 COPY crates/ ./crates/
 
-# 构建 release 版本 - 使用 musl 静态链接
+# Build release version - using musl static linking
 RUN cargo build --release -p web_service_standalone --target aarch64-unknown-linux-musl
 
-# 运行阶段 - 使用更小的基础镜像
+# ========== Runtime Stage ==========
 FROM alpine:latest
 
 WORKDIR /app
 
-# 安装运行时依赖（最小化）
+# Install runtime dependencies (minimal)
 RUN apk add --no-cache ca-certificates curl
 
-# 创建数据目录
+# Create data directory
 RUN mkdir -p /data/sessions
 
-# 复制构建产物 - 使用 musl 静态链接的二进制
+# Copy backend binary - using musl statically linked binary
 COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
 
-# 设置环境变量
+# Copy frontend build artifacts
+COPY --from=frontend-builder /app/dist /app/static
+
+# Environment variables
 ENV RUST_LOG=info
 ENV BAMBOO_DATA_DIR=/data
 ENV BAMBOO_PORT=8080
 
-# 暴露端口
+# Expose port
 EXPOSE 8080
 
-# 健康检查
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/api/v1/health || exit 1
 
-# 运行服务
+# Run service - serve both API and static frontend files
 ENTRYPOINT ["/app/web_service_standalone"]
-CMD ["serve", "--port", "8080", "--data-dir", "/data", "--bind", "0.0.0.0"]
+CMD ["serve", "--port", "8080", "--data-dir", "/data", "--bind", "0.0.0.0", "--static-dir", "/app/static"]
