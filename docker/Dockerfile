@@ -4,16 +4,16 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package*.json yarn.lock ./
 
 # Install dependencies
-RUN npm ci --legacy-peer-deps
+RUN yarn install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build frontend
-RUN npm run build
+RUN yarn build
 
 # Output: /app/dist directory contains built frontend
 # ================================================
@@ -24,50 +24,36 @@ FROM rust:latest AS builder
 
 WORKDIR /app
 
-# 安装 musl 目标
+# Install musl target
 RUN rustup target add aarch64-unknown-linux-musl
 
-# 安装依赖
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     musl-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制 workspace 配置
+# Copy workspace configuration
 COPY Cargo.toml Cargo.lock ./
 
-# 创建修改后的 Cargo.toml，排除 src-tauri
-RUN sed -i '/src-tauri/d' Cargo.toml && \
-    sed -i 's/default-members = \["src-tauri"\]/default-members = []/' Cargo.toml
+# Copy src-tauri Cargo files
+COPY src-tauri/Cargo.toml src-tauri/
+COPY src-tauri/build.rs src-tauri/
 
-# 复制所有需要的 crates 的 Cargo.toml
-COPY crates/chat_core/Cargo.toml crates/chat_core/
-COPY crates/agent-core/Cargo.toml crates/agent-core/
-COPY crates/agent-loop/Cargo.toml crates/agent-loop/
-COPY crates/agent-server/Cargo.toml crates/agent-server/
-COPY crates/agent-tools/Cargo.toml crates/agent-tools/
-COPY crates/agent-skill/Cargo.toml crates/agent-skill/
-COPY crates/agent-llm/Cargo.toml crates/agent-llm/
-COPY crates/agent-metrics/Cargo.toml crates/agent-metrics/
-COPY crates/agent-cli/Cargo.toml crates/agent-cli/
-COPY crates/agent-mcp/Cargo.toml crates/agent-mcp/
-COPY crates/web_service/Cargo.toml crates/web_service/
-COPY crates/web_service_standalone/Cargo.toml crates/web_service_standalone/
-COPY crates/workflow_system/Cargo.toml crates/workflow_system/
+# Create dummy source files to cache dependencies
+RUN mkdir -p src-tauri/src src-tauri/bin && \
+    echo "fn main() {}" > src-tauri/src/lib.rs && \
+    echo "fn main() {}" > src-tauri/bin/web_service_standalone.rs
 
-# 创建虚拟 main.rs 以缓存依赖
-RUN mkdir -p crates/web_service_standalone/src && \
-    echo "fn main() {}" > crates/web_service_standalone/src/main.rs
+# Build dependencies (cache layer) - using musl target
+RUN cargo build --release --manifest-path src-tauri/Cargo.toml --bin web_service_standalone --target aarch64-unknown-linux-musl 2>/dev/null || true
 
-# 构建依赖（缓存层）- 使用 musl 目标
-RUN cargo build --release -p web_service_standalone --target aarch64-unknown-linux-musl 2>/dev/null || true
-
-# 复制实际源代码
-COPY crates/ ./crates/
+# Copy actual source code
+COPY src-tauri/ ./src-tauri/
 
 # Build release version - using musl static linking
-RUN cargo build --release -p web_service_standalone --target aarch64-unknown-linux-musl
+RUN cargo build --release --manifest-path src-tauri/Cargo.toml --bin web_service_standalone --target aarch64-unknown-linux-musl
 
 # ========== Runtime Stage ==========
 FROM alpine:latest
@@ -81,7 +67,7 @@ RUN apk add --no-cache ca-certificates curl
 RUN mkdir -p /data/sessions
 
 # Copy backend binary - using musl statically linked binary
-COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
+COPY --from=builder /app/src-tauri/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
 
 # Copy frontend build artifacts
 COPY --from=frontend-builder /app/dist /app/static
@@ -100,4 +86,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run service - serve both API and static frontend files
 ENTRYPOINT ["/app/web_service_standalone"]
-CMD ["serve", "--port", "8080", "--data-dir", "/data", "--bind", "0.0.0.0", "--static-dir", "/app/static"]
+CMD ["--port", "8080", "--data-dir", "/data"]

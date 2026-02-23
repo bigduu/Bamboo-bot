@@ -24,7 +24,7 @@ jobs:
         run: yarn build
 
       - name: Build backend
-        run: cargo build --release -p web_service_standalone
+        run: cargo build --release --bin web_service_standalone
 
       - name: Start backend
         run: |
