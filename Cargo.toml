@@ -90,15 +90,3 @@ webbrowser = "1"
 portable-pty = "0.8"
 toml = "0.8"
 
-# Internal crates (for workspace dependency reference)
-agent-core = { path = "crates/agent-core" }
-chat_core = { path = "crates/chat_core" }
-agent-llm = { path = "crates/agent-llm" }
-agent-tools = { path = "crates/agent-tools" }
-agent-loop = { path = "crates/agent-loop" }
-agent-server = { path = "crates/agent-server" }
-agent-skill = { path = "crates/agent-skill" }
-agent-mcp = { path = "crates/agent-mcp" }
-agent-metrics = { path = "crates/agent-metrics" }
-agent-cli = { path = "crates/agent-cli" }
-web_service = { path = "crates/web_service" }
