@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Alert, Button, Card, Checkbox, Input, Spin, Steps } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
+import { ServiceFactory } from "../../services/common/ServiceFactory";
 
 import "./SetupPage.css";
 
@@ -11,13 +12,6 @@ interface SetupConfig {
   proxyUsername: string;
   proxyPassword: string;
   rememberProxyAuth: boolean;
-}
-
-interface SetupStatus {
-  is_complete: boolean;
-  has_proxy_config: boolean;
-  has_proxy_env: boolean;
-  message: string;
 }
 
 interface ProxyDetectionState {
@@ -78,7 +72,8 @@ export const SetupPage = () => {
 
       setIsDetecting(true);
       try {
-        const status = await invoke<SetupStatus>("get_setup_status");
+        const serviceFactory = ServiceFactory.getInstance();
+        const status = await serviceFactory.getSetupStatus();
         setDetectionResult({
           needsProxy: status.has_proxy_env,
           message: status.message,
@@ -126,7 +121,8 @@ export const SetupPage = () => {
         });
       }
 
-      await invoke("mark_setup_complete");
+      const serviceFactory = ServiceFactory.getInstance();
+      await serviceFactory.markSetupComplete();
       setIsComplete(true);
     } catch (error) {
       console.error("Failed to complete setup:", error);
@@ -144,7 +140,8 @@ export const SetupPage = () => {
     try {
       setErrorMessage(null);
       setIsSaving(true);
-      await invoke("mark_setup_complete");
+      const serviceFactory = ServiceFactory.getInstance();
+      await serviceFactory.markSetupComplete();
       setIsComplete(true);
     } catch (error) {
       console.error("Failed to mark setup complete:", error);
@@ -171,10 +168,10 @@ export const SetupPage = () => {
               style={{ marginBottom: 16 }}
             />
             <div className="setup-page__actions">
-              <Button type="primary" onClick={() => setCurrentStep(1)}>
+              <Button data-testid="setup-next" type="primary" onClick={() => setCurrentStep(1)}>
                 Next
               </Button>
-              <Button onClick={() => void handleSkipSetup()} loading={isSaving}>
+              <Button data-testid="setup-skip" onClick={() => void handleSkipSetup()} loading={isSaving}>
                 Skip for now
               </Button>
             </div>
@@ -287,11 +284,12 @@ export const SetupPage = () => {
             ) : null}
 
             <div className="setup-page__actions" style={{ marginTop: 24 }}>
-              <Button onClick={() => setCurrentStep(0)}>Back</Button>
-              <Button onClick={() => void handleSkipSetup()} loading={isSaving}>
+              <Button data-testid="setup-back" onClick={() => setCurrentStep(0)}>Back</Button>
+              <Button data-testid="setup-skip" onClick={() => void handleSkipSetup()} loading={isSaving}>
                 Skip for now
               </Button>
               <Button
+                data-testid="setup-complete"
                 onClick={() => void handleSaveProxyConfig()}
                 type="primary"
                 loading={isSaving}
@@ -316,10 +314,10 @@ export const SetupPage = () => {
 
   if (isComplete) {
     return (
-      <div className="setup-complete">
+      <div data-testid="setup-complete" className="setup-complete">
         <h1>Setup Complete!</h1>
         <p>Please restart the application to apply all settings.</p>
-        <Button onClick={() => window.location.reload()}>Restart</Button>
+        <Button data-testid="setup-restart" onClick={() => window.location.reload()}>Restart</Button>
       </div>
     );
   }

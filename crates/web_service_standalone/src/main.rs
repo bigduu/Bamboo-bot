@@ -27,6 +27,10 @@ enum Commands {
         /// Application data directory
         #[arg(short, long)]
         data_dir: Option<PathBuf>,
+
+        /// Bind address (default: 127.0.0.1, use 0.0.0.0 for Docker)
+        #[arg(short, long, default_value = "127.0.0.1")]
+        bind: String,
     },
 }
 
@@ -50,7 +54,11 @@ async fn main() {
     }
 
     match cli.command {
-        Some(Commands::Serve { port, data_dir }) => {
+        Some(Commands::Serve {
+            port,
+            data_dir,
+            bind,
+        }) => {
             // Initialize tracing subscriber with DEBUG level by default for standalone mode
             tracing_subscriber::registry()
                 .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")))
@@ -67,7 +75,13 @@ async fn main() {
 
             // Start the server
             let app_data_dir = data_dir.unwrap_or_else(bamboo_dir);
-            if let Err(e) = web_service::server::run(app_data_dir, port).await {
+            let result = if bind == "127.0.0.1" {
+                web_service::server::run(app_data_dir, port).await
+            } else {
+                web_service::server::run_with_bind(app_data_dir, port, &bind).await
+            };
+
+            if let Err(e) = result {
                 tracing::error!("Failed to run web service: {}", e);
                 std::process::exit(1);
             }

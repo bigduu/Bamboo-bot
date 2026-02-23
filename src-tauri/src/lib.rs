@@ -1,5 +1,4 @@
 use crate::command::copy::copy_to_clipboard;
-use crate::command::file_picker::pick_folder;
 use crate::command::keyword_masking::{
     get_keyword_masking_config, update_keyword_masking_config, validate_keyword_entries,
 };
@@ -8,19 +7,21 @@ use crate::command::slash_commands::{
 };
 use crate::command::workflows::{delete_workflow, save_workflow};
 use crate::process::ProcessRegistryState;
+use crate::sidecar::web_service_manager::WebServiceSidecar;
 use chrono::{SecondsFormat, Utc};
 use log::{info, LevelFilter};
 use reqwest::StatusCode;
 use serde_json::Value;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::Manager;
 use tauri::{App, Runtime};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 use tauri_plugin_log::{Target, TargetKind};
-use web_service::server::run as start_server;
 
 pub mod app_settings;
 pub mod claude;
+pub mod sidecar;
 
 pub mod claude_binary {
     pub use crate::claude::*;
@@ -33,6 +34,9 @@ pub mod proxy_auth_dialog;
 const WEB_SERVICE_PROXY_AUTH_URL: &str = "http://127.0.0.1:8080/v1/bamboo/proxy-auth";
 const WEB_SERVICE_PROXY_AUTH_RETRIES: u8 = 8;
 const SETUP_VERSION: &str = "1.0";
+
+// Sidecar state wrapper for Tauri state management
+pub struct SidecarState(pub Arc<WebServiceSidecar>);
 
 // Note: Active network detection has been removed to avoid security/firewall concerns.
 // Proxy detection now only checks environment variables (passive detection).
@@ -284,10 +288,22 @@ fn setup<R: Runtime>(app: &mut App<R>) -> std::result::Result<(), Box<dyn std::e
 
     app.manage(ProcessRegistryState::default());
 
-    let server_data_dir = app_data_dir.clone();
-    tauri::async_runtime::spawn(async {
-        let _ = start_server(server_data_dir, 8080).await;
+    // Start web service as sidecar
+    let sidecar = Arc::new(sidecar::web_service_manager::WebServiceSidecar::new(
+        8080,
+        app_data_dir.clone(),
+    ));
+
+    let app_handle = app.handle().clone();
+    let sidecar_clone = Arc::clone(&sidecar);
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = sidecar_clone.start(&app_handle).await {
+            log::error!("Failed to start web service sidecar: {}", e);
+        }
     });
+
+    // Manage sidecar state for later access
+    app.manage(SidecarState(sidecar));
 
     // Keep startup detection/logging, but do not show interactive dialogs.
     let app_handle = app.handle().clone();
@@ -596,6 +612,7 @@ pub fn run() {
         .plugin(log_plugin)
         .plugin(dialog_plugin)
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             // Register global shortcut: Cmd+Shift+Space (or Ctrl+Shift+Space on Windows/Linux)
             #[cfg(target_os = "macos")]
@@ -615,7 +632,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             copy_to_clipboard,
-            pick_folder,
             slash_commands_list,
             slash_command_get,
             slash_command_save,

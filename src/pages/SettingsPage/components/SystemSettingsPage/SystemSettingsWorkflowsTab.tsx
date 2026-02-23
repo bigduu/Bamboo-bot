@@ -17,11 +17,11 @@ import {
   ReloadOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
-import { invoke } from "@tauri-apps/api/core";
 import {
   WorkflowManagerService,
   type WorkflowMetadata,
 } from "../../../ChatPage/services/WorkflowManagerService";
+import { ServiceFactory } from "../../../../services/common/ServiceFactory";
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -34,9 +34,6 @@ const isSafeWorkflowName = (name: string) => {
   }
   return true;
 };
-
-const isTauri =
-  typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__);
 
 const SystemSettingsWorkflowsTab: React.FC = () => {
   const { token } = useToken();
@@ -101,10 +98,6 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
   };
 
   const handleSave = useCallback(async () => {
-    if (!isTauri) {
-      msgApi.error("Workflow editing is only available in the desktop app");
-      return;
-    }
     if (!isSafeWorkflowName(editorName)) {
       msgApi.error("Invalid workflow name");
       return;
@@ -117,10 +110,8 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
 
     setIsSaving(true);
     try {
-      await invoke("save_workflow", {
-        name: editorName,
-        content: editorContent,
-      });
+      const serviceFactory = ServiceFactory.getInstance();
+      await serviceFactory.saveWorkflow(editorName, editorContent);
       msgApi.success("Workflow saved");
       setIsDirty(false);
       const updatedList = await loadWorkflows();
@@ -146,13 +137,9 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
 
   const handleDelete = useCallback(
     async (workflow: WorkflowMetadata) => {
-      if (!isTauri) {
-        msgApi.error("Workflow deletion is only available in the desktop app");
-        return;
-      }
-
       try {
-        await invoke("delete_workflow", { name: workflow.name });
+        const serviceFactory = ServiceFactory.getInstance();
+        await serviceFactory.deleteWorkflow(workflow.name);
         msgApi.success("Workflow deleted");
         if (selectedWorkflow?.name === workflow.name) {
           handleCreateNew();
@@ -164,7 +151,7 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
         );
       }
     },
-    [isTauri, msgApi, selectedWorkflow, loadWorkflows],
+    [msgApi, selectedWorkflow, loadWorkflows],
   );
 
   return (
@@ -181,10 +168,15 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
             >
               Refresh
             </Button>
-            <Button icon={<PlusOutlined />} onClick={handleCreateNew}>
+            <Button
+              data-testid="create-workflow"
+              icon={<PlusOutlined />}
+              onClick={handleCreateNew}
+            >
               New Workflow
             </Button>
             <Button
+              data-testid="save-workflow"
               type="primary"
               icon={<SaveOutlined />}
               onClick={handleSave}
@@ -220,6 +212,7 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
                   onClick={() => handleSelectWorkflow(workflow)}
                   actions={[
                     <Button
+                      data-testid={`delete-workflow-${workflow.name}`}
                       key="delete"
                       type="text"
                       danger
@@ -249,6 +242,7 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
               style={{ width: "100%" }}
             >
               <Input
+                data-testid="workflow-name"
                 placeholder="Workflow name"
                 value={editorName}
                 onChange={(e) => {
@@ -259,6 +253,7 @@ const SystemSettingsWorkflowsTab: React.FC = () => {
                 prefix={<EditOutlined />}
               />
               <TextArea
+                data-testid="workflow-content"
                 placeholder="# Workflow Title\n\nDescribe the workflow steps here."
                 value={editorContent}
                 onChange={(e) => {

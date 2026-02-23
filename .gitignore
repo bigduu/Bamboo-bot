@@ -36,3 +36,6 @@ data
 data/*
 tmp/
 .worktrees/
+
+# Sidecar binaries (built during build process)
+src-tauri/binaries/

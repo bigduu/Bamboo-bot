@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   clearBackendBaseUrlOverride,
-  getBackendBaseUrl,
+  getBackendBaseUrlSync,
   getDefaultBackendBaseUrl,
   hasBackendBaseUrlOverride,
   normalizeBackendBaseUrl,
@@ -21,13 +21,13 @@ export const useSystemSettingsBackend = ({
   refreshModels,
 }: UseSystemSettingsBackendProps) => {
   const [backendBaseUrl, setBackendBaseUrlState] =
-    useState(getBackendBaseUrl());
+    useState(getBackendBaseUrlSync());
   const [hasBackendOverride, setHasBackendOverride] = useState(
     hasBackendBaseUrlOverride(),
   );
 
   useEffect(() => {
-    setBackendBaseUrlState(getBackendBaseUrl());
+    setBackendBaseUrlState(getBackendBaseUrlSync());
     setHasBackendOverride(hasBackendBaseUrlOverride());
   }, []);
 

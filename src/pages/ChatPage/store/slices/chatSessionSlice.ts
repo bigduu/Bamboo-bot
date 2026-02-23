@@ -236,15 +236,50 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
         ? get().autoGenerateTitles
         : storedAutoTitles === "true";
 
-    let currentChatId = activeChatId;
-    let latestActiveChatId = activeChatId;
+    const hasValidActiveChatId =
+      Boolean(activeChatId) &&
+      storedChats.some((chat) => chat.id === activeChatId);
+
+    let currentChatId = hasValidActiveChatId ? activeChatId : null;
+    let latestActiveChatId = hasValidActiveChatId ? activeChatId : null;
     if (!currentChatId && storedChats.length > 0) {
       currentChatId = storedChats[0].id;
       latestActiveChatId = storedChats[0].id;
     }
 
+    // Ensure there's always at least one chat available so the message input
+    // can be used immediately (important for fresh sessions and E2E).
+    let chats = storedChats;
+    if (chats.length === 0) {
+      const newChat: ChatItem = {
+        id: crypto.randomUUID(),
+        title: "New Chat",
+        createdAt: Date.now(),
+        messages: [],
+        config: {
+          systemPromptId: "general_assistant",
+          baseSystemPrompt: "",
+          lastUsedEnhancedPrompt: null,
+        },
+        currentInteraction: null,
+      };
+
+      chats = [newChat];
+      currentChatId = newChat.id;
+      latestActiveChatId = newChat.id;
+      persistChats(chats);
+      localStorage.setItem(ACTIVE_CHAT_ID_KEY, newChat.id);
+    } else if (activeChatId && !hasValidActiveChatId) {
+      // Clear stale active chat id to avoid pointing to a non-existent chat.
+      if (currentChatId) {
+        localStorage.setItem(ACTIVE_CHAT_ID_KEY, currentChatId);
+      } else {
+        localStorage.removeItem(ACTIVE_CHAT_ID_KEY);
+      }
+    }
+
     set({
-      chats: storedChats,
+      chats,
       latestActiveChatId,
       currentChatId,
       processingChats: new Set<string>(),

@@ -1,20 +1,13 @@
 import { Profiler, useCallback, useEffect, useState } from "react";
 import type { ProfilerOnRenderCallback } from "react";
 import { App as AntApp, ConfigProvider, theme } from "antd";
-import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 import { MainLayout } from "./MainLayout";
 import { SetupPage } from "../pages/SetupPage";
 import { useAppStore, initializeStore } from "../pages/ChatPage/store";
+import { ServiceFactory } from "../services/common/ServiceFactory";
 
 const THEME_STORAGE_KEY = "copilot_ui_theme_v1";
-
-interface SetupStatus {
-  is_complete: boolean;
-  has_proxy_config: boolean;
-  has_proxy_env: boolean;
-  message: string;
-}
 
 function App() {
   const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
@@ -32,7 +25,8 @@ function App() {
   useEffect(() => {
     const checkSetupStatus = async () => {
       try {
-        const status = await invoke<SetupStatus>("get_setup_status");
+        const serviceFactory = ServiceFactory.getInstance();
+        const status = await serviceFactory.getSetupStatus();
         setIsSetupComplete(status.is_complete);
       } catch (error) {
         console.error("Failed to check setup status:", error);

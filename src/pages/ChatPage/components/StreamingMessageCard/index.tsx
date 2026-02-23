@@ -242,6 +242,7 @@ const StreamingMessageCard: React.FC<StreamingMessageCardProps> = memo(
 
     return (
       <Card
+        data-testid="streaming-indicator"
         style={{
           width: "100%",
           minWidth: "100%",

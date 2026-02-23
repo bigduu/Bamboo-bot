@@ -1,12 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockInvoke = vi.fn();
 const mockLoadSystemPrompts = vi.fn();
 
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
-}));
+// Mock fetch globally
+global.fetch = vi.fn();
 
 vi.mock("../MainLayout", () => ({
   MainLayout: () => <div>MainLayout</div>,
@@ -27,33 +25,32 @@ vi.mock("../../pages/ChatPage/store", () => ({
 
 import App from "../App";
 
-const mockProxyConfig = (config: {
-  http_proxy: string;
-  https_proxy: string;
+const mockSetupStatus = (status: {
+  is_complete: boolean;
+  has_proxy_config: boolean;
+  has_proxy_env: boolean;
+  message: string;
 }) => {
-  mockInvoke.mockImplementation((command: string) => {
-    if (command === "get_setup_status") {
-      return Promise.resolve({
-        is_complete: Boolean(config.http_proxy || config.https_proxy),
-        has_proxy_config: Boolean(config.http_proxy || config.https_proxy),
-        has_proxy_env: true,
-        message:
-          "Detected proxy environment variables: HTTP_PROXY. You may need to configure proxy settings.",
-      });
-    }
-
-    return Promise.resolve(undefined);
-  });
+  (fetch as any).mockImplementation(async () => ({
+    ok: true,
+    json: async () => status,
+  }));
 };
 
 describe("App setup flow", () => {
   beforeEach(() => {
-    mockInvoke.mockReset();
+    vi.clearAllMocks();
     mockLoadSystemPrompts.mockReset();
   });
 
   it("renders SetupPage when setup has not been completed", async () => {
-    mockProxyConfig({ http_proxy: "", https_proxy: "" });
+    mockSetupStatus({
+      is_complete: false,
+      has_proxy_config: false,
+      has_proxy_env: true,
+      message:
+        "Detected proxy environment variables: HTTP_PROXY. You may need to configure proxy settings.",
+    });
 
     render(<App />);
 
@@ -63,9 +60,11 @@ describe("App setup flow", () => {
   });
 
   it("renders MainLayout and loads prompts when proxy config exists", async () => {
-    mockProxyConfig({
-      http_proxy: "http://proxy.example.com:8080",
-      https_proxy: "",
+    mockSetupStatus({
+      is_complete: true,
+      has_proxy_config: true,
+      has_proxy_env: true,
+      message: "Setup already completed.",
     });
 
     render(<App />);
@@ -77,17 +76,11 @@ describe("App setup flow", () => {
   });
 
   it("renders MainLayout when backend marks setup complete", async () => {
-    mockInvoke.mockImplementation((command: string) => {
-      if (command === "get_setup_status") {
-        return Promise.resolve({
-          is_complete: true,
-          has_proxy_config: false,
-          has_proxy_env: true,
-          message: "Setup already completed.",
-        });
-      }
-
-      return Promise.resolve(undefined);
+    mockSetupStatus({
+      is_complete: true,
+      has_proxy_config: false,
+      has_proxy_env: true,
+      message: "Setup already completed.",
     });
 
     render(<App />);
@@ -99,18 +92,12 @@ describe("App setup flow", () => {
   });
 
   it("skips setup when backend reports no setup needed", async () => {
-    mockInvoke.mockImplementation((command: string) => {
-      if (command === "get_setup_status") {
-        return Promise.resolve({
-          is_complete: true,
-          has_proxy_config: false,
-          has_proxy_env: false,
-          message:
-            "No proxy environment variables detected. You can proceed without proxy.",
-        });
-      }
-
-      return Promise.resolve(undefined);
+    mockSetupStatus({
+      is_complete: true,
+      has_proxy_config: false,
+      has_proxy_env: false,
+      message:
+        "No proxy environment variables detected. You can proceed without proxy.",
     });
 
     render(<App />);
@@ -122,11 +109,15 @@ describe("App setup flow", () => {
   });
 
   it("renders SetupPage when setup status check fails", async () => {
-    mockInvoke.mockRejectedValueOnce(new Error("invoke failed"));
+    // Mock all retry attempts to fail
+    (fetch as any).mockRejectedValue(new Error("fetch failed"));
 
     render(<App />);
 
-    expect(await screen.findByText("SetupPage")).toBeTruthy();
+    // Wait longer because of retry logic (3 attempts with backoff)
+    expect(
+      await screen.findByText("SetupPage", {}, { timeout: 10000 }),
+    ).toBeTruthy();
     expect(screen.queryByText("MainLayout")).toBeNull();
   });
 });

@@ -8,7 +8,7 @@
  * - /v1/*       - Standard web_service routes (models, bamboo/*, workspace/*, mcp/*, claude/*)
  * - /api/v1/*   - Agent server routes (chat, stream, todo, respond, sessions, metrics)
  */
-import { getBackendBaseUrl } from "../../shared/utils/backendBaseUrl";
+import { getBackendBaseUrlSync } from "../../shared/utils/backendBaseUrl";
 
 export interface ApiClientConfig {
   baseUrl?: string;
@@ -43,7 +43,7 @@ export class ApiClient {
   }
 
   private resolveBaseUrl(): string {
-    let normalized = getBackendBaseUrl().trim().replace(/\/+$/, "");
+    let normalized = getBackendBaseUrlSync().trim().replace(/\/+$/, "");
 
     // Default to /v1 (standard web_service routes)
     if (normalized.endsWith("/v1")) {
@@ -108,23 +108,85 @@ export class ApiClient {
   }
 
   /**
-   * Make a GET request
+   * Delay helper for retries
    */
-  async get<T>(path: string, options?: RequestInit): Promise<T> {
-    const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method: "GET",
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-    });
-    return this.handleResponse<T>(response);
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
-   * Make a POST request
+   * Fetch with retry logic for transient failures
+   */
+  private async fetchWithRetry(
+    url: string,
+    options: RequestInit,
+    maxRetries: number = 3,
+  ): Promise<Response> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+
+        // Retry on 5xx errors
+        if (response.status >= 500 && attempt < maxRetries - 1) {
+          const delayMs = 1000 * Math.pow(2, attempt); // Exponential backoff: 1s, 2s, 4s
+          console.warn(
+            `Request failed with ${response.status}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
+          );
+          await this.delay(delayMs);
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error as Error;
+
+        // Only retry on network errors, not on client errors
+        if (attempt < maxRetries - 1) {
+          const delayMs = 1000 * Math.pow(2, attempt);
+          console.warn(
+            `Network error: ${lastError.message}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
+          );
+          await this.delay(delayMs);
+        }
+      }
+    }
+
+    throw lastError || new Error("Max retries exceeded");
+  }
+
+  /**
+   * Make a GET request with timeout and retry
+   */
+  async get<T>(path: string, options?: RequestInit): Promise<T> {
+    const url = this.buildUrl(path);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method: "GET",
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          signal: controller.signal,
+        },
+        3, // 3 retries
+      );
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /**
+   * Make a POST request with timeout and retry
    */
   async post<T>(
     path: string,
@@ -132,20 +194,33 @@ export class ApiClient {
     options?: RequestInit,
   ): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method: "POST",
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method: "POST",
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          body: data ? JSON.stringify(data) : undefined,
+          signal: controller.signal,
+        },
+        3, // 3 retries
+      );
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
-   * Make a PUT request
+   * Make a PUT request with timeout and retry
    */
   async put<T>(
     path: string,
@@ -153,36 +228,62 @@ export class ApiClient {
     options?: RequestInit,
   ): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method: "PUT",
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method: "PUT",
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          body: data ? JSON.stringify(data) : undefined,
+          signal: controller.signal,
+        },
+        3, // 3 retries
+      );
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
-   * Make a DELETE request
+   * Make a DELETE request with timeout and retry
    */
   async delete<T>(path: string, options?: RequestInit): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method: "DELETE",
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-    });
-    return this.handleResponse<T>(response);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method: "DELETE",
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          signal: controller.signal,
+        },
+        3, // 3 retries
+      );
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
-   * Make a request with custom method
+   * Make a request with custom method and timeout
    */
   async request<T>(
     method: string,
@@ -190,19 +291,33 @@ export class ApiClient {
     options?: RequestInit,
   ): Promise<T> {
     const url = this.buildUrl(path);
-    const response = await fetch(url, {
-      ...options,
-      method,
-      headers: {
-        ...this.defaultHeaders,
-        ...options?.headers,
-      },
-    });
-    return this.handleResponse<T>(response);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    try {
+      const response = await this.fetchWithRetry(
+        url,
+        {
+          ...options,
+          method,
+          headers: {
+            ...this.defaultHeaders,
+            ...options?.headers,
+          },
+          signal: controller.signal,
+        },
+        3, // 3 retries
+      );
+      return this.handleResponse<T>(response);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
    * Make a request and return raw Response for streaming
+   * Note: No retry logic for streaming endpoints
    */
   async fetchRaw(path: string, options?: RequestInit): Promise<Response> {
     const url = this.buildUrl(path);
@@ -239,7 +354,7 @@ export const apiClient = new ApiClient();
  */
 export const agentApiClient = new ApiClient({
   baseUrl: (() => {
-    let normalized = getBackendBaseUrl().trim().replace(/\/+$/, "");
+    let normalized = getBackendBaseUrlSync().trim().replace(/\/+$/, "");
     // Remove /v1 suffix if present, then add /api/v1
     if (normalized.endsWith("/v1")) {
       normalized = normalized.slice(0, -3);

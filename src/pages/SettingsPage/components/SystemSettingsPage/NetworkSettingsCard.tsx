@@ -101,6 +101,7 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
         >
           <Text type="secondary">HTTP Proxy</Text>
           <Input
+            data-testid="proxy-url"
             style={{ width: "100%" }}
             value={httpProxy}
             onChange={(e) => onHttpProxyChange(e.target.value)}
@@ -200,7 +201,12 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
           <Button onClick={onReload} disabled={isLoading}>
             Reload
           </Button>
-          <Button type="primary" onClick={onSave} disabled={isLoading}>
+          <Button
+            data-testid="save-proxy-settings"
+            type="primary"
+            onClick={onSave}
+            disabled={isLoading}
+          >
             Save
           </Button>
         </div>

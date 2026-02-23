@@ -236,6 +236,7 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
     >
       <Dropdown menu={{ items: contextMenuItems }} trigger={["contextMenu"]}>
         <Card
+          data-testid={role === "assistant" ? "assistant-message" : "user-message"}
           id={messageId ? `message-${messageId}` : undefined}
           ref={cardRef}
           style={{

@@ -1,7 +1,7 @@
 use crate::error::AppError;
-use chat_core::paths::gemini_model_mapping_path;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use tokio::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -10,8 +10,8 @@ pub struct GeminiModelMapping {
     pub mappings: HashMap<String, String>,
 }
 
-pub async fn load_gemini_model_mapping() -> Result<GeminiModelMapping, AppError> {
-    let path = gemini_model_mapping_path();
+pub async fn load_gemini_model_mapping(data_dir: &PathBuf) -> Result<GeminiModelMapping, AppError> {
+    let path = data_dir.join("gemini-model-mapping.json");
     match fs::read(&path).await {
         Ok(content) => {
             let mapping = serde_json::from_slice::<GeminiModelMapping>(&content)?;
@@ -26,9 +26,10 @@ pub async fn load_gemini_model_mapping() -> Result<GeminiModelMapping, AppError>
 }
 
 pub async fn save_gemini_model_mapping(
+    data_dir: &PathBuf,
     mapping: GeminiModelMapping,
 ) -> Result<GeminiModelMapping, AppError> {
-    let path = gemini_model_mapping_path();
+    let path = data_dir.join("gemini-model-mapping.json");
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).await?;
     }
@@ -38,8 +39,8 @@ pub async fn save_gemini_model_mapping(
 }
 
 /// Resolve a Gemini model name to the actual backend model
-pub async fn resolve_model(gemini_model: &str) -> anyhow::Result<ModelResolution> {
-    let mapping = load_gemini_model_mapping().await?;
+pub async fn resolve_model(data_dir: &PathBuf, gemini_model: &str) -> anyhow::Result<ModelResolution> {
+    let mapping = load_gemini_model_mapping(data_dir).await?;
 
     log::info!(
         "Resolving Gemini model '{}', available mappings: {:?}",

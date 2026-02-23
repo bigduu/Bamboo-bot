@@ -83,6 +83,7 @@ tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-shell = "2"
 
 # Development
 tempfile = "3"
@@ -99,8 +100,6 @@ once_cell = "1"
 crossbeam = "0.8"
 zstd = "0.13"
 webbrowser = "1"
-arboard = "3"
-rfd = "0.15"
 portable-pty = "0.8"
 toml = "0.8"
 

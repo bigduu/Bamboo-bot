@@ -93,7 +93,7 @@ async fn test_bamboo_config_strips_proxy_auth() {
     let temp_home = tempfile::TempDir::new().expect("tempdir");
     let _guard = HomeGuard::new(temp_home.path());
 
-    let (app, _app_data_dir) = setup_test_environment().await;
+    let (app, app_data_dir) = setup_test_environment().await;
 
     let payload = json!({
         "http_proxy": "http://proxy.example.com:8080",
@@ -120,7 +120,8 @@ async fn test_bamboo_config_strips_proxy_auth() {
     );
 
     // Verify stored config exists and doesn't have plain proxy_auth
-    let config_path = temp_home.path().join(".bamboo").join("config.json");
+    // With data directory contract, config is stored in app_data_dir
+    let config_path = app_data_dir.path().join("config.json");
     assert!(
         config_path.exists(),
         "config.json should be created at {:?}",
@@ -153,7 +154,7 @@ async fn test_proxy_auth_endpoint_updates_config() {
     let temp_home = tempfile::TempDir::new().expect("tempdir");
     let _guard = HomeGuard::new(temp_home.path());
 
-    let (app, _app_data_dir) = setup_test_environment().await;
+    let (app, app_data_dir) = setup_test_environment().await;
 
     let payload = json!({
         "username": "user",
@@ -166,7 +167,8 @@ async fn test_proxy_auth_endpoint_updates_config() {
     let resp: Value = test::call_and_read_body_json(&app, req).await;
     assert_eq!(resp, json!({ "success": true }));
 
-    let config_path = temp_home.path().join(".bamboo").join("config.json");
+    // With data directory contract, config is stored in app_data_dir
+    let config_path = app_data_dir.path().join("config.json");
     let content = std::fs::read_to_string(&config_path).expect("config.json");
     let stored: Value = serde_json::from_str(&content).expect("stored json");
     assert!(

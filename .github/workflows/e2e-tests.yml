@@ -1,0 +1,99 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-browser-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build frontend
+        run: yarn build
+
+      - name: Build backend
+        run: cargo build --release -p web_service_standalone
+
+      - name: Start backend
+        run: |
+          ./target/release/web_service_standalone --port 8080 --data-dir /tmp/test-data &
+          sleep 5
+
+      - name: Start frontend
+        run: |
+          yarn preview --port 1420 &
+          sleep 5
+
+      - name: Install E2E dependencies
+        run: cd e2e && yarn install
+
+      - name: Install Playwright browsers
+        run: cd e2e && npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: yarn test:e2e:browser
+        env:
+          E2E_BASE_URL: http://localhost:1420
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report-Browser
+          path: e2e/playwright-report/
+
+  test-docker-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: |
+          cd docker
+          docker build -t bamboo-test:latest .
+
+      - name: Run Docker container
+        run: |
+          docker run -d -p 8080:8080 --name bamboo-test bamboo-test:latest
+          sleep 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install E2E dependencies
+        run: cd e2e && yarn install
+
+      - name: Install Playwright browsers
+        run: cd e2e && npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: yarn test:e2e:docker
+        env:
+          E2E_BASE_URL: http://localhost:8080
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report-Docker
+          path: e2e/playwright-report/
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop bamboo-test || true
+          docker rm bamboo-test || true

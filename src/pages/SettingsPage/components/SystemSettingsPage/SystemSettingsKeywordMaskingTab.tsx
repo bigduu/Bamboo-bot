@@ -18,7 +18,7 @@ import {
   PlusOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
-import { invoke } from "@tauri-apps/api/core";
+import { ServiceFactory } from "../../../../services/common/ServiceFactory";
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -27,11 +27,6 @@ interface KeywordEntry {
   pattern: string;
   match_type: "exact" | "regex";
   enabled: boolean;
-}
-
-interface ValidationError {
-  index: number;
-  message: string;
 }
 
 const keywordExamples = [
@@ -104,10 +99,10 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
   const loadConfig = async () => {
     try {
       setLoading(true);
-      const response = await invoke<{ entries: KeywordEntry[] }>(
-        "get_keyword_masking_config",
-      );
-      setEntries(response.entries);
+      const serviceFactory = ServiceFactory.getInstance();
+      const response = await serviceFactory.getKeywordMaskingConfig();
+      // Type assertion to match the frontend enum type
+      setEntries(response.entries as KeywordEntry[]);
     } catch (error) {
       message.error("Failed to load keyword masking configuration");
       console.error(error);
@@ -119,13 +114,11 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
   const saveConfig = async (newEntries: KeywordEntry[]) => {
     try {
       // Validate first
-      const validationResult = await invoke<void | ValidationError[]>(
-        "validate_keyword_entries",
-        { entries: newEntries },
-      );
+      const serviceFactory = ServiceFactory.getInstance();
+      const validationResult = await serviceFactory.validateKeywordEntries(newEntries);
 
-      if (Array.isArray(validationResult)) {
-        const errorMessages = validationResult
+      if (!validationResult.valid && validationResult.errors) {
+        const errorMessages = validationResult.errors
           .map((e) => `Entry ${e.index + 1}: ${e.message}`)
           .join("; ");
         message.error(`Validation failed: ${errorMessages}`);
@@ -133,11 +126,9 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
       }
 
       // Save if validation passes
-      await invoke<{ entries: KeywordEntry[] }>(
-        "update_keyword_masking_config",
-        { entries: newEntries },
-      );
-      setEntries(newEntries);
+      const response = await serviceFactory.updateKeywordMaskingConfig(newEntries);
+      // Type assertion to match the frontend enum type
+      setEntries(response.entries as KeywordEntry[]);
       message.success("Keyword masking configuration saved");
       return true;
     } catch (error) {
@@ -221,6 +212,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
       title="Keyword Masking"
       extra={
         <Button
+          data-testid="add-keyword"
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAddEntry}
@@ -253,6 +245,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
                 editingIndex === index
                   ? [
                       <Button
+                        data-testid="save-keyword"
                         key="save"
                         type="primary"
                         icon={<SaveOutlined />}
@@ -269,6 +262,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
                         onClick={() => handleEditEntry(index)}
                       />,
                       <Button
+                        data-testid={`delete-keyword-${index}`}
                         key="delete"
                         danger
                         icon={<DeleteOutlined />}
@@ -282,6 +276,7 @@ const SystemSettingsKeywordMaskingTab: React.FC = () => {
                   // Edit mode
                   <>
                     <Input
+                      data-testid="keyword-pattern-input"
                       placeholder="Enter pattern to match"
                       value={editPattern}
                       onChange={(e) => setEditPattern(e.target.value)}

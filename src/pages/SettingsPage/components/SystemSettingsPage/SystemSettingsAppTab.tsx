@@ -72,6 +72,7 @@ const SystemSettingsAppTab: React.FC<SystemSettingsAppTabProps> = ({
         <Flex align="center" gap={token.marginSM}>
           <Text strong>Dark Mode</Text>
           <Switch
+            data-testid="dark-mode-toggle"
             checked={themeMode === "dark"}
             onChange={(checked) => {
               const mode = checked ? "dark" : "light";
@@ -152,6 +153,7 @@ const SystemSettingsAppTab: React.FC<SystemSettingsAppTabProps> = ({
           okButtonProps={{ danger: true }}
         >
           <Button
+            data-testid="reset-to-defaults"
             danger
             block
             type="primary"

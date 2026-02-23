@@ -1,7 +1,7 @@
 use actix_web::{get, web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use crate::error::AppError;
-use chat_core::paths::workflows_dir;
+use crate::server::AppState;
 use agent_server::state::AppState as AgentAppState;
 use agent_skill::SkillDefinition;
 
@@ -36,12 +36,13 @@ pub struct CommandListResponse {
 
 #[get("/commands")]
 pub async fn list_commands(
+    app_state: web::Data<AppState>,
     agent_state: web::Data<AgentAppState>,
 ) -> Result<HttpResponse, AppError> {
     let mut commands = Vec::new();
 
     // 1. Load Workflows
-    match list_workflows_as_commands().await {
+    match list_workflows_as_commands(&app_state.app_data_dir).await {
         Ok(workflows) => commands.extend(workflows),
         Err(e) => {
             log::warn!("Failed to load workflows: {}", e);
@@ -80,6 +81,7 @@ pub async fn list_commands(
 
 #[get("/commands/{command_type}/{id}")]
 pub async fn get_command(
+    app_state: web::Data<AppState>,
     agent_state: web::Data<AgentAppState>,
     path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, AppError> {
@@ -88,7 +90,7 @@ pub async fn get_command(
     match command_type.as_str() {
         "workflow" => {
             // Call existing workflow retrieval logic
-            let workflows_dir = workflows_dir();
+            let workflows_dir = app_state.app_data_dir.join("workflows");
             let filename = format!("{}.md", id);
             let filepath = workflows_dir.join(&filename);
 
@@ -120,8 +122,8 @@ pub async fn get_command(
     }
 }
 
-async fn list_workflows_as_commands() -> Result<Vec<CommandItem>, AppError> {
-    let dir = workflows_dir();
+async fn list_workflows_as_commands(data_dir: &std::path::PathBuf) -> Result<Vec<CommandItem>, AppError> {
+    let dir = data_dir.join("workflows");
     tokio::fs::create_dir_all(&dir).await
         .map_err(|e| AppError::InternalError(anyhow::anyhow!("Failed to create workflows dir: {}", e)))?;
 

@@ -1,10 +1,10 @@
 use crate::error::AppError;
-use chat_core::paths::workflows_dir;
+use std::path::PathBuf;
 use tokio::fs;
 
 /// List available workflows from the workflows directory
-pub async fn list_workflows() -> Result<Vec<String>, AppError> {
-    let workflows_dir = workflows_dir();
+pub async fn list_workflows(data_dir: &PathBuf) -> Result<Vec<String>, AppError> {
+    let workflows_dir = data_dir.join("workflows");
 
     if !workflows_dir.exists() {
         return Ok(Vec::new());

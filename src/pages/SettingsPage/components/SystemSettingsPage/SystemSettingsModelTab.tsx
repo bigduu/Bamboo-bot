@@ -61,6 +61,7 @@ const SystemSettingsModelTab: React.FC<SystemSettingsModelTabProps> = ({
             <Text type="danger">{modelsError}</Text>
           ) : (
             <Select
+              data-testid="model-select"
               style={{ width: "100%" }}
               value={selectedModel}
               onChange={onModelChange}
@@ -97,7 +98,11 @@ const SystemSettingsModelTab: React.FC<SystemSettingsModelTabProps> = ({
             >
               Reset to Default
             </Button>
-            <Button type="primary" onClick={onSaveBackendBaseUrl}>
+            <Button
+              data-testid="save-general-settings"
+              type="primary"
+              onClick={onSaveBackendBaseUrl}
+            >
               Save
             </Button>
           </Flex>

@@ -164,6 +164,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({
                         <Button
                           type="text"
                           size="small"
+                          data-testid="generate-title-button"
                           icon={
                             isGeneratingTitle ? (
                               <LoadingOutlined />
@@ -208,6 +209,7 @@ const ChatItemComponent: React.FC<ChatItemProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       actions={actions}
+      data-testid="chat-item"
     >
       <List.Item.Meta
         title={
