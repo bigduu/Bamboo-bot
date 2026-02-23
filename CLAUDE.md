@@ -10,37 +10,66 @@ This is **Bamboo**, a GitHub Copilot Chat Desktop application built with Tauri (
 
 ### High-Level Structure
 - **Frontend**: React 18 + TypeScript + Ant Design 5, built with Vite
-- **Backend**: Rust with Tauri framework, organized into modular crates
+- **Backend**: Rust with Tauri framework + bamboo-agent crate (embedded)
 - **State Management**: Zustand for global UI state, custom hooks for chat state
 - **Build System**: Vite (frontend), Cargo (Rust backend)
 - **Testing**: Vitest for frontend, `cargo test` for backend
 
-### Rust Crates Architecture
+### Embedded Architecture
 
-**Core Infrastructure:**
-- `chat_core` - Foundational types shared across crates (messages, config, encryption)
-- `copilot_client` - GitHub Copilot API client with authentication, streaming, retry logic
+Bamboo uses an **embedded architecture** where the bamboo-agent HTTP server runs directly within the Tauri application process, rather than as a separate sidecar process:
 
-**Server Layer:**
-- `web_service` - Actix-web HTTP server library for integration
-- `web_service_standalone` - Standalone HTTP server (runs as sidecar or independent process)
-  - Binds to configurable port (default 8080)
-  - Provides health check endpoint at `/api/v1/health`
-  - Can serve static frontend files in Docker mode
+```
+┌─────────────────────────────────────────┐
+│  Tauri Desktop App (Bodhi)              │
+│  ├── Frontend (React/TypeScript)        │
+│  │   └── HTTP API → localhost:8080      │
+│  ├── Embedded Web Service Manager       │
+│  │   └── tokio::spawn(HTTP server)      │
+│  └── bamboo-agent (v0.1.0)              │
+│      └── HTTP Server (port 8080)        │
+└─────────────────────────────────────────┘
+```
 
-**Agent System:**
-- `copilot-agent/` - Workspace containing agent loop and tool execution
-  - `copilot-agent-core` - Agent loop orchestration
-  - `copilot-agent-server` - Server-side agent handling
-  - `builtin_tools` - Built-in tool implementations
+**Key Components**:
+- **bamboo-agent crate** (v0.1.0 from crates.io) - Provides all agent functionality
+- **EmbeddedWebService** - Manages HTTP server lifecycle within the app process
+- **Health check monitoring** - Ensures server is ready before accepting requests
 
-**Application Entry:**
-- `src-tauri/` - Main Tauri application integrating all crates, with:
-  - Sidecar management for `web_service_standalone` process
-  - Desktop-only commands: file picker, system proxy configuration, native clipboard
-  - Claude Code integration (checkpoints, sessions, projects)
-  - Proxy authentication dialog
-  - Process lifecycle management via ProcessRegistry
+**Benefits over Sidecar**:
+- ✅ Single process (simpler architecture)
+- ✅ Faster startup (no process spawning)
+- ✅ Lower memory usage (shared resources)
+- ✅ Easier debugging (one process to trace)
+- ✅ No binary bundling (smaller app size)
+
+### bamboo-agent Crate
+
+The backend functionality is provided by the [bamboo-agent](https://crates.io/crates/bamboo-agent) crate:
+
+**Features**:
+- Multi-LLM provider support (GitHub Copilot, OpenAI, Anthropic Claude, Google Gemini)
+- 24 built-in tools (file operations, command execution, etc.)
+- Agent loop orchestration with budget management
+- Session persistence and management
+- Workflow system with YAML support
+- MCP (Model Context Protocol) support
+- Metrics collection and storage
+
+**Integration**:
+```rust
+// src-tauri/src/embedded/mod.rs
+pub struct EmbeddedWebService {
+    port: u16,
+    data_dir: PathBuf,
+    server_handle: Arc<tokio::sync::Mutex<Option<JoinHandle<...>>>>,
+}
+
+// Server runs in background tokio task
+let handle = tokio::spawn(async move {
+    bamboo_agent::web_service::server::run(data_dir, port).await
+});
+```
 
 ### Frontend Architecture
 
@@ -86,19 +115,11 @@ npm run tauri build      # Build desktop application
 ### Rust Backend
 ```bash
 # From project root
-cargo build              # Build all crates
+cargo build              # Build Tauri application
 cargo test               # Run all Rust tests
 cargo check              # Quick type check
 cargo fmt                # Format Rust code
 cargo clippy             # Lint Rust code
-
-# Single crate
-cargo test -p copilot_client
-cargo test -p web_service
-
-# Run standalone backend (for browser development)
-cargo run -p web_service_standalone
-cargo run -p web_service_standalone -- --port 8080 --data-dir /custom/path
 ```
 
 ### Docker
@@ -110,27 +131,43 @@ docker build -t bamboo . # Build image manually
 
 ## Key Technical Details
 
-### Sidecar Architecture
+### Embedded HTTP Server
 
-The desktop application uses a sidecar architecture where the backend runs as a separate process:
+The bamboo-agent HTTP server runs embedded within the Tauri application process:
 
-**Process Lifecycle**:
-1. Tauri app starts and spawns `web_service_standalone` as sidecar process
-2. Sidecar binds to `127.0.0.1:8080` (or next available port)
-3. Health check ensures backend is ready before frontend loads
-4. Process managed via ProcessRegistry for graceful shutdown
-5. Stdout/stderr captured for observability
+**Server Lifecycle**:
+1. Tauri app starts and creates `EmbeddedWebService` instance
+2. Server spawned in background tokio task using `tokio::spawn`
+3. Binds to `127.0.0.1:8080` by default
+4. Health check ensures server is ready before app fully loads
+5. Server stops automatically when app shuts down
 
-**Port Discovery**:
-- Frontend uses health check mechanism to find backend
-- Default port 8080, with fallback to config injection
-- Window global `__BAMBOO_BACKEND_PORT__` can override
+**Implementation**:
+```rust
+// src-tauri/src/embedded/mod.rs
+pub struct EmbeddedWebService {
+    port: u16,
+    data_dir: PathBuf,
+    server_handle: Arc<tokio::sync::Mutex<Option<JoinHandle<...>>>>,
+}
 
-**Benefits**:
-- Clean separation between frontend and backend
-- Backend can run independently for browser development
-- Same HTTP API works across all deployment modes
-- Easier debugging and testing
+impl EmbeddedWebService {
+    pub async fn start(&self) -> Result<(), String> {
+        let handle = tokio::spawn(async move {
+            bamboo_agent::web_service::server::run(data_dir, port).await
+        });
+        // Store handle for lifecycle management
+        self.wait_for_health().await?;
+    }
+}
+```
+
+**Benefits over Sidecar**:
+- No separate process to manage
+- No binary to bundle
+- Faster startup
+- Shared process memory
+- Simpler deployment
 
 ### HTTP API First Approach
 
