@@ -7,7 +7,7 @@ use crate::command::slash_commands::{
 };
 use crate::command::workflows::{delete_workflow, save_workflow};
 use crate::process::ProcessRegistryState;
-use crate::sidecar::web_service_manager::WebServiceSidecar;
+use crate::embedded::EmbeddedWebService;
 use chrono::{SecondsFormat, Utc};
 use log::{info, LevelFilter};
 use reqwest::StatusCode;
@@ -21,7 +21,7 @@ use tauri_plugin_log::{Target, TargetKind};
 
 pub mod app_settings;
 pub mod claude;
-pub mod sidecar;
+pub mod embedded;
 
 pub mod claude_binary {
     pub use crate::claude::*;
@@ -35,8 +35,8 @@ const WEB_SERVICE_PROXY_AUTH_URL: &str = "http://127.0.0.1:8080/v1/bamboo/proxy-
 const WEB_SERVICE_PROXY_AUTH_RETRIES: u8 = 8;
 const SETUP_VERSION: &str = "1.0";
 
-// Sidecar state wrapper for Tauri state management
-pub struct SidecarState(pub Arc<WebServiceSidecar>);
+// Embedded web service state wrapper for Tauri state management
+pub struct WebServiceState(pub Arc<EmbeddedWebService>);
 
 // Note: Active network detection has been removed to avoid security/firewall concerns.
 // Proxy detection now only checks environment variables (passive detection).
@@ -288,22 +288,21 @@ fn setup<R: Runtime>(app: &mut App<R>) -> std::result::Result<(), Box<dyn std::e
 
     app.manage(ProcessRegistryState::default());
 
-    // Start web service as sidecar
-    let sidecar = Arc::new(sidecar::web_service_manager::WebServiceSidecar::new(
+    // Start embedded web service
+    let web_service = Arc::new(EmbeddedWebService::new(
         8080,
         app_data_dir.clone(),
     ));
 
-    let app_handle = app.handle().clone();
-    let sidecar_clone = Arc::clone(&sidecar);
+    let web_service_clone = Arc::clone(&web_service);
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = sidecar_clone.start(&app_handle).await {
-            log::error!("Failed to start web service sidecar: {}", e);
+        if let Err(e) = web_service_clone.start().await {
+            log::error!("Failed to start embedded web service: {}", e);
         }
     });
 
-    // Manage sidecar state for later access
-    app.manage(SidecarState(sidecar));
+    // Manage web service state for later access
+    app.manage(WebServiceState(web_service));
 
     // Keep startup detection/logging, but do not show interactive dialogs.
     let app_handle = app.handle().clone();
