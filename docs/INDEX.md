@@ -2,6 +2,13 @@
 
 This document provides a quick index to all project documentation.
 
+## 📢 Latest Updates
+
+**v0.3.0 Migration (2026-02-23)**:
+- Migrated from sidecar to embedded architecture
+- Unified all agent-* crates into bamboo-agent
+- See [Migration Guide](./release/MIGRATION_v0.3.0.md) for details
+
 ## 📚 By Topic
 
 ### 🏗️ Architecture & Design
@@ -13,6 +20,12 @@ This document provides a quick index to all project documentation.
 | Workflow System | User-invoked workflow design | [`architecture/WORKFLOW_SYSTEM_ARCHITECTURE.md`](./architecture/WORKFLOW_SYSTEM_ARCHITECTURE.md) |
 | Context Session | Backend context management | [`architecture/CONTEXT_SESSION_ARCHITECTURE.md`](./architecture/CONTEXT_SESSION_ARCHITECTURE.md) |
 | Tool System | Tool architecture and development | [`architecture/tools-system.md`](./architecture/tools-system.md) |
+
+### 🚀 Release & Migration
+| Document | Description | Path |
+|----------|-------------|------|
+| **v0.3.0 Migration** | Embedded architecture migration | [`release/MIGRATION_v0.3.0.md`](./release/MIGRATION_v0.3.0.md) |
+| Migration Guide | General migration documentation | [`MIGRATION.md`](./MIGRATION.md) |
 
 ### ⚡ Features
 | Document | Description | Path |
