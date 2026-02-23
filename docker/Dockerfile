@@ -1,12 +1,16 @@
-# 构建阶段
-FROM rust:1.82-slim-bookworm AS builder
+# 构建阶段 - 使用 musl 进行静态链接，避免 GLIBC 依赖
+FROM rust:1.82 AS builder
 
 WORKDIR /app
+
+# 安装 musl 目标
+RUN rustup target add aarch64-unknown-linux-musl
 
 # 安装依赖
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    musl-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制 workspace 配置
@@ -35,31 +39,28 @@ COPY crates/workflow_system/Cargo.toml crates/workflow_system/
 RUN mkdir -p crates/web_service_standalone/src && \
     echo "fn main() {}" > crates/web_service_standalone/src/main.rs
 
-# 构建依赖（缓存层）
-RUN cargo build --release -p web_service_standalone 2>/dev/null || true
+# 构建依赖（缓存层）- 使用 musl 目标
+RUN cargo build --release -p web_service_standalone --target aarch64-unknown-linux-musl 2>/dev/null || true
 
 # 复制实际源代码
 COPY crates/ ./crates/
 
-# 构建 release 版本
-RUN cargo build --release -p web_service_standalone
+# 构建 release 版本 - 使用 musl 静态链接
+RUN cargo build --release -p web_service_standalone --target aarch64-unknown-linux-musl
 
-# 运行阶段
-FROM debian:bookworm-slim
+# 运行阶段 - 使用更小的基础镜像
+FROM alpine:latest
 
 WORKDIR /app
 
-# 安装运行时依赖
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# 安装运行时依赖（最小化）
+RUN apk add --no-cache ca-certificates curl
 
 # 创建数据目录
 RUN mkdir -p /data/sessions
 
-# 复制构建产物
-COPY --from=builder /app/target/release/web_service_standalone /app/web_service_standalone
+# 复制构建产物 - 使用 musl 静态链接的二进制
+COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
 
 # 设置环境变量
 ENV RUST_LOG=info
