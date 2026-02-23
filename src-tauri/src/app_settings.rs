@@ -1,7 +1,7 @@
 use std::path::Path;
 
-// Re-export path functions from chat_core for consistency
-pub use chat_core::paths::{bamboo_dir, config_json_path, keyword_masking_json_path};
+// Re-export path functions from bamboo_agent for consistency
+pub use bamboo_agent::core::paths::{bamboo_dir, config_json_path, keyword_masking_json_path};
 
 pub fn load_config_json(path: &Path) -> Result<serde_json::Value, String> {
     if !path.exists() {

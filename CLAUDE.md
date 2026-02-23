@@ -331,6 +331,135 @@ class TauriUtilityService implements UtilityService {
 
 ## AI-Assisted Development Guidelines
 
+### Context Preservation Strategy with Sub-Agents
+
+**CRITICAL**: Maximize the use of team agents (Task tool with subagent_type) to preserve main session context.
+
+#### Core Principle
+
+The main session should act as an **orchestrator** that delegates work to specialized sub-agents. Sub-agents have:
+- ✅ Unlimited token budget
+- ✅ Full tool access for their specialty
+- ✅ Clean, isolated context
+
+The main session has:
+- ⚠️ Limited context window
+- 🎯 Focus on coordination and decision-making
+- 📋 Receives only conclusions/results from sub-agents
+
+#### When to Use Sub-Agents
+
+**ALWAYS use sub-agents for:**
+
+1. **Code Exploration & Research** 🔍
+   - Understanding complex codebases
+   - Finding relevant files and patterns
+   - Tracing execution flows
+   - Example: "Find all files related to authentication"
+
+2. **Implementation Tasks** 💻
+   - Writing new features
+   - Refactoring code
+   - Bug fixes
+   - Example: "Implement user authentication"
+
+3. **Code Review & Analysis** 📊
+   - Security analysis
+   - Performance review
+   - Code quality assessment
+   - Example: "Review this component for best practices"
+
+4. **Testing & Validation** ✅
+   - Writing tests
+   - Running test suites
+   - Validation tasks
+   - Example: "Add unit tests for this module"
+
+5. **Documentation** 📚
+   - Writing documentation
+   - Generating code comments
+   - Creating API docs
+   - Example: "Document this API endpoint"
+
+#### Sub-Agent Types
+
+**Use the right sub-agent for the task:**
+
+- **`Explore`**: Fast exploration of codebase, finding files, understanding structure
+- **`general-purpose`**: Complex multi-step tasks, research, implementation
+- **`Bash`**: Command execution, git operations, npm/cargo commands
+- **`Plan`**: Architecture planning, implementation strategy design
+
+#### Best Practices
+
+**DO**:
+- ✅ **Always delegate to sub-agents** - even for "simple" tasks
+- ✅ **Ask sub-agents for conclusions only** - not full reasoning
+- ✅ **Run multiple sub-agents in parallel** - maximize efficiency
+- ✅ **Specify clear objectives** - help sub-agents succeed
+- ✅ **Use sub-agents early and often** - preserve main context
+
+**DON'T**:
+- ❌ Do exploration yourself in the main session
+- ❌ Ask sub-agents to explain their reasoning process
+- ❌ Waste main session context on implementation details
+- ❌ Skip using sub-agents for "quick" tasks
+
+#### Example Workflow
+
+**Bad Approach** (wastes main context):
+```
+Main Session:
+1. Read 10 files to understand authentication
+2. Search codebase for patterns
+3. Implement authentication feature
+4. Write tests
+→ Main context is now full of implementation details
+```
+
+**Good Approach** (preserves main context):
+```
+Main Session:
+1. Spawn Explore agent: "Understand authentication flow, give me summary"
+2. Spawn general-purpose agent: "Implement OAuth2 authentication"
+3. Spawn general-purpose agent: "Add tests for auth module"
+4. Review sub-agent reports and make decisions
+→ Main context contains only conclusions and decisions
+```
+
+#### Parallel Sub-Agent Execution
+
+Run independent tasks in parallel to maximize efficiency:
+
+```typescript
+// ✅ Good: Parallel execution
+const [authAnalysis, testResults, docDraft] = await Promise.all([
+  Task({ subagent_type: "Explore", prompt: "Analyze auth system" }),
+  Task({ subagent_type: "general-purpose", prompt: "Run auth tests" }),
+  Task({ subagent_type: "general-purpose", prompt: "Draft auth docs" })
+]);
+
+// ❌ Bad: Sequential execution wastes time
+const authAnalysis = await Task({ subagent_type: "Explore", prompt: "..." });
+const testResults = await Task({ subagent_type: "general-purpose", prompt: "..." });
+const docDraft = await Task({ subagent_type: "general-purpose", prompt: "..." });
+```
+
+#### Integration with Codex MCP
+
+Both strategies can work together:
+1. Use **sub-agents** for most tasks (unlimited token budget)
+2. Use **Codex MCP** for specialized complex analysis (has daily quota)
+3. Main session orchestrates both and receives only conclusions
+
+#### Summary
+
+**Remember**: The goal is to **preserve main session context**, not to save tokens. Sub-agents have unlimited token budgets, so use them liberally. The main session should only contain:
+- User requests and requirements
+- High-level decisions and conclusions
+- Final results and summaries
+- **NOT**: Implementation details, code exploration, intermediate reasoning
+
 ### Using Codex MCP for Complex Tasks
 
 **IMPORTANT**: This project has access to Codex MCP (via `mcp__codex__codex` tool), which provides specialized AI assistance for complex development tasks.

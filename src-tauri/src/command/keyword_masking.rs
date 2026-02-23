@@ -1,4 +1,4 @@
-use chat_core::keyword_masking::{KeywordEntry, KeywordMaskingConfig};
+use bamboo_agent::core::keyword_masking::{KeywordEntry, KeywordMaskingConfig};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tauri::AppHandle;

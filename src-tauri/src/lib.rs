@@ -7,7 +7,7 @@ use crate::command::slash_commands::{
 };
 use crate::command::workflows::{delete_workflow, save_workflow};
 use crate::process::ProcessRegistryState;
-use crate::sidecar::web_service_manager::WebServiceSidecar;
+use crate::embedded::EmbeddedWebService;
 use chrono::{SecondsFormat, Utc};
 use log::{info, LevelFilter};
 use reqwest::StatusCode;
@@ -21,7 +21,7 @@ use tauri_plugin_log::{Target, TargetKind};
 
 pub mod app_settings;
 pub mod claude;
-pub mod sidecar;
+pub mod embedded;
 
 pub mod claude_binary {
     pub use crate::claude::*;
@@ -35,8 +35,8 @@ const WEB_SERVICE_PROXY_AUTH_URL: &str = "http://127.0.0.1:8080/v1/bamboo/proxy-
 const WEB_SERVICE_PROXY_AUTH_RETRIES: u8 = 8;
 const SETUP_VERSION: &str = "1.0";
 
-// Sidecar state wrapper for Tauri state management
-pub struct SidecarState(pub Arc<WebServiceSidecar>);
+// Embedded web service state wrapper for Tauri state management
+pub struct WebServiceState(pub Arc<EmbeddedWebService>);
 
 // Note: Active network detection has been removed to avoid security/firewall concerns.
 // Proxy detection now only checks environment variables (passive detection).
@@ -230,18 +230,18 @@ fn write_config_json(config: &Value) -> Result<(), String> {
     app_settings::write_config_json(&config_path, config)
 }
 
-fn read_proxy_auth_from_plain(config: &Value, key: &str) -> Option<chat_core::ProxyAuth> {
+fn read_proxy_auth_from_plain(config: &Value, key: &str) -> Option<bamboo_agent::core::ProxyAuth> {
     config
         .get(key)
         .cloned()
-        .and_then(|value| serde_json::from_value::<chat_core::ProxyAuth>(value).ok())
+        .and_then(|value| serde_json::from_value::<bamboo_agent::core::ProxyAuth>(value).ok())
 }
 
-fn read_proxy_auth_from_encrypted(config: &Value, key: &str) -> Option<chat_core::ProxyAuth> {
+fn read_proxy_auth_from_encrypted(config: &Value, key: &str) -> Option<bamboo_agent::core::ProxyAuth> {
     let encrypted = config.get(key).and_then(|value| value.as_str())?;
 
-    match chat_core::encryption::decrypt(encrypted) {
-        Ok(decrypted) => match serde_json::from_str::<chat_core::ProxyAuth>(&decrypted) {
+    match bamboo_agent::core::encryption::decrypt(encrypted) {
+        Ok(decrypted) => match serde_json::from_str::<bamboo_agent::core::ProxyAuth>(&decrypted) {
             Ok(auth) => Some(auth),
             Err(error) => {
                 log::warn!(
@@ -259,7 +259,7 @@ fn read_proxy_auth_from_encrypted(config: &Value, key: &str) -> Option<chat_core
     }
 }
 
-fn read_proxy_auth_from_config(config: &Value, proxy_type: &str) -> Option<chat_core::ProxyAuth> {
+fn read_proxy_auth_from_config(config: &Value, proxy_type: &str) -> Option<bamboo_agent::core::ProxyAuth> {
     let encrypted_key = format!("{}_proxy_auth_encrypted", proxy_type);
     if let Some(auth) = read_proxy_auth_from_encrypted(config, &encrypted_key) {
         return Some(auth);
@@ -288,29 +288,28 @@ fn setup<R: Runtime>(app: &mut App<R>) -> std::result::Result<(), Box<dyn std::e
 
     app.manage(ProcessRegistryState::default());
 
-    // Start web service as sidecar
-    let sidecar = Arc::new(sidecar::web_service_manager::WebServiceSidecar::new(
+    // Start embedded web service
+    let web_service = Arc::new(EmbeddedWebService::new(
         8080,
         app_data_dir.clone(),
     ));
 
-    let app_handle = app.handle().clone();
-    let sidecar_clone = Arc::clone(&sidecar);
+    let web_service_clone = Arc::clone(&web_service);
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = sidecar_clone.start(&app_handle).await {
-            log::error!("Failed to start web service sidecar: {}", e);
+        if let Err(e) = web_service_clone.start().await {
+            log::error!("Failed to start embedded web service: {}", e);
         }
     });
 
-    // Manage sidecar state for later access
-    app.manage(SidecarState(sidecar));
+    // Manage web service state for later access
+    app.manage(WebServiceState(web_service));
 
     // Keep startup detection/logging, but do not show interactive dialogs.
     let app_handle = app.handle().clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
-        let config = chat_core::Config::new();
+        let config = bamboo_agent::core::Config::new();
         let has_http_proxy = !config.http_proxy.trim().is_empty();
         let has_https_proxy = !config.https_proxy.trim().is_empty();
 
@@ -529,14 +528,14 @@ async fn set_proxy_config(
     config_obj.remove("https_proxy_auth");
 
     if remember && has_auth {
-        let auth = chat_core::ProxyAuth {
+        let auth = bamboo_agent::core::ProxyAuth {
             username: username.clone(),
             password: password.clone(),
         };
 
         let auth_json =
             serde_json::to_string(&auth).map_err(|e| format!("Failed to serialize auth: {}", e))?;
-        let encrypted = chat_core::encryption::encrypt(&auth_json)
+        let encrypted = bamboo_agent::core::encryption::encrypt(&auth_json)
             .map_err(|e| format!("Failed to encrypt auth: {}", e))?;
 
         if !http_proxy.is_empty() {
