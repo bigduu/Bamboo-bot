@@ -61,8 +61,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          cd docker
-          docker build -t bamboo-test:latest .
+          docker build -f docker/Dockerfile -t bamboo-test:latest .
 
       - name: Run Docker container
         run: |
