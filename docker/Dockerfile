@@ -37,23 +37,21 @@ RUN apt-get update && apt-get install -y \
 # Copy workspace configuration
 COPY Cargo.toml Cargo.lock ./
 
-# Copy src-tauri Cargo files
-COPY src-tauri/Cargo.toml src-tauri/
-COPY src-tauri/build.rs src-tauri/
+# Copy e2e-backend Cargo files
+COPY e2e-backend/Cargo.toml e2e-backend/
 
 # Create dummy source files to cache dependencies
-RUN mkdir -p src-tauri/src src-tauri/bin && \
-    echo "fn main() {}" > src-tauri/src/lib.rs && \
-    echo "fn main() {}" > src-tauri/bin/web_service_standalone.rs
+RUN mkdir -p e2e-backend/src && \
+    echo "fn main() {}" > e2e-backend/src/main.rs
 
 # Build dependencies (cache layer) - using musl target
-RUN cargo build --release --manifest-path src-tauri/Cargo.toml --bin web_service_standalone --target aarch64-unknown-linux-musl 2>/dev/null || true
+RUN cargo build --release -p e2e-backend --target aarch64-unknown-linux-musl 2>/dev/null || true
 
 # Copy actual source code
-COPY src-tauri/ ./src-tauri/
+COPY e2e-backend/ ./e2e-backend/
 
 # Build release version - using musl static linking
-RUN cargo build --release --manifest-path src-tauri/Cargo.toml --bin web_service_standalone --target aarch64-unknown-linux-musl
+RUN cargo build --release -p e2e-backend --target aarch64-unknown-linux-musl
 
 # ========== Runtime Stage ==========
 FROM alpine:latest
@@ -67,7 +65,7 @@ RUN apk add --no-cache ca-certificates curl
 RUN mkdir -p /data/sessions
 
 # Copy backend binary - using musl statically linked binary
-COPY --from=builder /app/src-tauri/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
+COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
 
 # Copy frontend build artifacts
 COPY --from=frontend-builder /app/dist /app/static

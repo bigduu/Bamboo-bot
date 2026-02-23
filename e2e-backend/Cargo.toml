@@ -1,0 +1,12 @@
+[package]
+name = "e2e-backend"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "web_service_standalone"
+path = "src/main.rs"
+
+[dependencies]
+bamboo-agent = "~0.1.0"
+tokio = { version = "1", features = ["full"] }
