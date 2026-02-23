@@ -87,7 +87,7 @@ pub fn save_proxy_auth_to_config(proxy_type: &str, auth: &ProxyAuthInput) -> Res
 
     if let Some(obj) = config.as_object_mut() {
         let key = format!("{}_proxy_auth_encrypted", proxy_type);
-        obj.insert(key, serde_json::Value::String(encrypted.clone()));
+        obj.insert(key, serde_json::Value::String(encrypted));
         log::info!("Saved encrypted proxy auth for {} proxy", proxy_type);
     }
 
