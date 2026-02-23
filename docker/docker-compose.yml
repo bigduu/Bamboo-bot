@@ -10,8 +10,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - bamboo-data:/data
-      - ./config.json:/data/config.json:ro
+      - ~/.bamboo:/data
     environment:
       - RUST_LOG=info
       - BAMBOO_DATA_DIR=/data
