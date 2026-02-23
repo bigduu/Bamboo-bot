@@ -1,19 +1,6 @@
 [workspace]
 members = [
-    "crates/chat_core",
-    "crates/workflow_system",
-    "crates/agent-core",
-    "crates/agent-loop",
-    "crates/agent-server",
-    "crates/agent-tools",
-    "crates/agent-skill",
-    "crates/agent-llm",
-    "crates/agent-cli",
-    "crates/agent-mcp",
-    "crates/agent-metrics",
-    "crates/web_service",
     "src-tauri",
-    "crates/web_service_standalone",
 ]
 resolver = "2"
 default-members = ["src-tauri"]

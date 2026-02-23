@@ -61,7 +61,7 @@ pub fn save_proxy_auth_to_config(proxy_type: &str, auth: &ProxyAuthInput) -> Res
     }
 
     use crate::app_settings::config_json_path;
-    use chat_core::ProxyAuth;
+    use bamboo_agent::core::ProxyAuth;
 
     let config_path = config_json_path();
 
@@ -82,12 +82,12 @@ pub fn save_proxy_auth_to_config(proxy_type: &str, auth: &ProxyAuthInput) -> Res
     let auth_json = serde_json::to_string(&proxy_auth)
         .map_err(|e| format!("Failed to serialize auth: {}", e))?;
 
-    let encrypted = chat_core::encryption::encrypt(&auth_json)
+    let encrypted = bamboo_agent::core::encryption::encrypt(&auth_json)
         .map_err(|e| format!("Failed to encrypt auth: {}", e))?;
 
     if let Some(obj) = config.as_object_mut() {
         let key = format!("{}_proxy_auth_encrypted", proxy_type);
-        obj.insert(key, serde_json::Value::String(encrypted));
+        obj.insert(key, serde_json::Value::String(encrypted.clone()));
         log::info!("Saved encrypted proxy auth for {} proxy", proxy_type);
     }
 
@@ -105,8 +105,8 @@ pub fn save_proxy_auth_to_config(proxy_type: &str, auth: &ProxyAuthInput) -> Res
 pub async fn ensure_proxy_auth<R: Runtime>(
     app: &AppHandle<R>,
     proxy_url: &str,
-    existing_auth: Option<&chat_core::ProxyAuth>,
-) -> Option<chat_core::ProxyAuth> {
+    existing_auth: Option<&bamboo_agent::core::ProxyAuth>,
+) -> Option<bamboo_agent::core::ProxyAuth> {
     if proxy_url.is_empty() {
         return None;
     }
@@ -116,7 +116,7 @@ pub async fn ensure_proxy_auth<R: Runtime>(
     }
 
     match show_proxy_auth_dialog(app, proxy_url).await {
-        DialogResult::Auth(input) => Some(chat_core::ProxyAuth {
+        DialogResult::Auth(input) => Some(bamboo_agent::core::ProxyAuth {
             username: input.username,
             password: input.password,
         }),

@@ -1,4 +1,4 @@
-use chat_core::paths::workflows_dir;
+use bamboo_agent::core::paths::workflows_dir;
 use std::fs;
 
 fn is_safe_workflow_name(name: &str) -> bool {

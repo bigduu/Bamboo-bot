@@ -230,18 +230,18 @@ fn write_config_json(config: &Value) -> Result<(), String> {
     app_settings::write_config_json(&config_path, config)
 }
 
-fn read_proxy_auth_from_plain(config: &Value, key: &str) -> Option<chat_core::ProxyAuth> {
+fn read_proxy_auth_from_plain(config: &Value, key: &str) -> Option<bamboo_agent::core::ProxyAuth> {
     config
         .get(key)
         .cloned()
-        .and_then(|value| serde_json::from_value::<chat_core::ProxyAuth>(value).ok())
+        .and_then(|value| serde_json::from_value::<bamboo_agent::core::ProxyAuth>(value).ok())
 }
 
-fn read_proxy_auth_from_encrypted(config: &Value, key: &str) -> Option<chat_core::ProxyAuth> {
+fn read_proxy_auth_from_encrypted(config: &Value, key: &str) -> Option<bamboo_agent::core::ProxyAuth> {
     let encrypted = config.get(key).and_then(|value| value.as_str())?;
 
-    match chat_core::encryption::decrypt(encrypted) {
-        Ok(decrypted) => match serde_json::from_str::<chat_core::ProxyAuth>(&decrypted) {
+    match bamboo_agent::core::encryption::decrypt(encrypted) {
+        Ok(decrypted) => match serde_json::from_str::<bamboo_agent::core::ProxyAuth>(&decrypted) {
             Ok(auth) => Some(auth),
             Err(error) => {
                 log::warn!(
@@ -259,7 +259,7 @@ fn read_proxy_auth_from_encrypted(config: &Value, key: &str) -> Option<chat_core
     }
 }
 
-fn read_proxy_auth_from_config(config: &Value, proxy_type: &str) -> Option<chat_core::ProxyAuth> {
+fn read_proxy_auth_from_config(config: &Value, proxy_type: &str) -> Option<bamboo_agent::core::ProxyAuth> {
     let encrypted_key = format!("{}_proxy_auth_encrypted", proxy_type);
     if let Some(auth) = read_proxy_auth_from_encrypted(config, &encrypted_key) {
         return Some(auth);
@@ -310,7 +310,7 @@ fn setup<R: Runtime>(app: &mut App<R>) -> std::result::Result<(), Box<dyn std::e
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
-        let config = chat_core::Config::new();
+        let config = bamboo_agent::core::Config::new();
         let has_http_proxy = !config.http_proxy.trim().is_empty();
         let has_https_proxy = !config.https_proxy.trim().is_empty();
 
@@ -529,14 +529,14 @@ async fn set_proxy_config(
     config_obj.remove("https_proxy_auth");
 
     if remember && has_auth {
-        let auth = chat_core::ProxyAuth {
+        let auth = bamboo_agent::core::ProxyAuth {
             username: username.clone(),
             password: password.clone(),
         };
 
         let auth_json =
             serde_json::to_string(&auth).map_err(|e| format!("Failed to serialize auth: {}", e))?;
-        let encrypted = chat_core::encryption::encrypt(&auth_json)
+        let encrypted = bamboo_agent::core::encryption::encrypt(&auth_json)
             .map_err(|e| format!("Failed to encrypt auth: {}", e))?;
 
         if !http_proxy.is_empty() {
