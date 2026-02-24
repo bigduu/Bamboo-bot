@@ -90,29 +90,40 @@ export interface UtilityService {
   /**
    * Workflow management
    */
-  saveWorkflow(name: string, content: string): Promise<{ success: boolean; path: string }>;
+  saveWorkflow(
+    name: string,
+    content: string,
+  ): Promise<{ success: boolean; path: string }>;
   deleteWorkflow(name: string): Promise<ApiSuccessResponse>;
 
   /**
    * Keyword masking
    */
-  getKeywordMaskingConfig(): Promise<{ entries: Array<{ pattern: string; match_type: string; enabled: boolean }> }>;
-  updateKeywordMaskingConfig(entries: Array<{ pattern: string; match_type: string; enabled: boolean }>): Promise<{ entries: Array<{ pattern: string; match_type: string; enabled: boolean }> }>;
-  validateKeywordEntries(entries: Array<{ pattern: string; match_type: string; enabled: boolean }>): Promise<{ valid: boolean; errors?: Array<{ index: number; message: string }> }>;
+  getKeywordMaskingConfig(): Promise<{
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>;
+  }>;
+  updateKeywordMaskingConfig(
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>,
+  ): Promise<{
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>;
+  }>;
+  validateKeywordEntries(
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>,
+  ): Promise<{
+    valid: boolean;
+    errors?: Array<{ index: number; message: string }>;
+  }>;
 
   /**
    * Setup status
    */
-  getSetupStatus(): Promise<{ is_complete: boolean; has_proxy_config: boolean; has_proxy_env: boolean; message: string }>;
+  getSetupStatus(): Promise<{
+    is_complete: boolean;
+    has_proxy_config: boolean;
+    has_proxy_env: boolean;
+    message: string;
+  }>;
   markSetupComplete(): Promise<ApiSuccessResponse>;
-
-  /**
-   * Generic invoke method for custom commands
-   */
-  invoke<T = unknown>(
-    command: string,
-    args?: Record<string, unknown>,
-  ): Promise<T>;
 }
 
 class HttpUtilityService implements Partial<UtilityService> {
@@ -182,37 +193,82 @@ class HttpUtilityService implements Partial<UtilityService> {
     return apiClient.post<ApiSuccessResponse>("bamboo/config/reset", {});
   }
 
-  async saveWorkflow(name: string, content: string): Promise<{ success: boolean; path: string }> {
-    return apiClient.post<{ success: boolean; path: string }>("bamboo/workflows", { name, content });
+  async saveWorkflow(
+    name: string,
+    content: string,
+  ): Promise<{ success: boolean; path: string }> {
+    return apiClient.post<{ success: boolean; path: string }>(
+      "bamboo/workflows",
+      { name, content },
+    );
   }
 
   async deleteWorkflow(name: string): Promise<ApiSuccessResponse> {
-    return apiClient.delete<ApiSuccessResponse>(`bamboo/workflows/${encodeURIComponent(name)}`);
+    return apiClient.delete<ApiSuccessResponse>(
+      `bamboo/workflows/${encodeURIComponent(name)}`,
+    );
   }
 
-  async getKeywordMaskingConfig(): Promise<{ entries: Array<{ pattern: string; match_type: string; enabled: boolean }> }> {
+  async getKeywordMaskingConfig(): Promise<{
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>;
+  }> {
     try {
-      return await apiClient.get<{ entries: Array<{ pattern: string; match_type: string; enabled: boolean }> }>("bamboo/keyword-masking");
+      return await apiClient.get<{
+        entries: Array<{
+          pattern: string;
+          match_type: string;
+          enabled: boolean;
+        }>;
+      }>("bamboo/keyword-masking");
     } catch (error) {
       console.error("Failed to fetch keyword masking config:", error);
       return { entries: [] };
     }
   }
 
-  async updateKeywordMaskingConfig(entries: Array<{ pattern: string; match_type: string; enabled: boolean }>): Promise<{ entries: Array<{ pattern: string; match_type: string; enabled: boolean }> }> {
-    return apiClient.post<{ entries: Array<{ pattern: string; match_type: string; enabled: boolean }> }>("bamboo/keyword-masking", entries);
+  async updateKeywordMaskingConfig(
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>,
+  ): Promise<{
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>;
+  }> {
+    return apiClient.post<{
+      entries: Array<{ pattern: string; match_type: string; enabled: boolean }>;
+    }>("bamboo/keyword-masking", entries);
   }
 
-  async validateKeywordEntries(entries: Array<{ pattern: string; match_type: string; enabled: boolean }>): Promise<{ valid: boolean; errors?: Array<{ index: number; message: string }> }> {
-    return apiClient.post<{ valid: boolean; errors?: Array<{ index: number; message: string }> }>("bamboo/keyword-masking/validate", entries);
+  async validateKeywordEntries(
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>,
+  ): Promise<{
+    valid: boolean;
+    errors?: Array<{ index: number; message: string }>;
+  }> {
+    return apiClient.post<{
+      valid: boolean;
+      errors?: Array<{ index: number; message: string }>;
+    }>("bamboo/keyword-masking/validate", entries);
   }
 
-  async getSetupStatus(): Promise<{ is_complete: boolean; has_proxy_config: boolean; has_proxy_env: boolean; message: string }> {
+  async getSetupStatus(): Promise<{
+    is_complete: boolean;
+    has_proxy_config: boolean;
+    has_proxy_env: boolean;
+    message: string;
+  }> {
     try {
-      return await apiClient.get<{ is_complete: boolean; has_proxy_config: boolean; has_proxy_env: boolean; message: string }>("bamboo/setup/status");
+      return await apiClient.get<{
+        is_complete: boolean;
+        has_proxy_config: boolean;
+        has_proxy_env: boolean;
+        message: string;
+      }>("bamboo/setup/status");
     } catch (error) {
       console.error("Failed to fetch setup status:", error);
-      return { is_complete: false, has_proxy_config: false, has_proxy_env: false, message: "Failed to fetch setup status" };
+      return {
+        is_complete: false,
+        has_proxy_config: false,
+        has_proxy_env: false,
+        message: "Failed to fetch setup status",
+      };
     }
   }
 
@@ -238,16 +294,6 @@ class TauriUtilityService {
    */
   async resetSetupStatus(): Promise<void> {
     await invoke("mark_setup_incomplete");
-  }
-
-  /**
-   * Generic invoke method for custom commands
-   */
-  async invoke<T = unknown>(
-    command: string,
-    args?: Record<string, unknown>,
-  ): Promise<T> {
-    return await invoke(command, args);
   }
 }
 
@@ -279,10 +325,6 @@ export class ServiceFactory {
     return {
       copyToClipboard: (text: string) =>
         this.tauriUtilityService.copyToClipboard(text),
-      invoke: <T = unknown>(
-        command: string,
-        args?: Record<string, unknown>,
-      ): Promise<T> => this.tauriUtilityService.invoke(command, args),
       getBambooConfig: () => this.httpUtilityService.getBambooConfig(),
       setBambooConfig: (config: BambooConfig) =>
         this.httpUtilityService.setBambooConfig(config),
@@ -309,10 +351,8 @@ export class ServiceFactory {
       validateKeywordEntries: (entries) =>
         this.httpUtilityService.validateKeywordEntries(entries),
       // Setup status
-      getSetupStatus: () =>
-        this.httpUtilityService.getSetupStatus(),
-      markSetupComplete: () =>
-        this.httpUtilityService.markSetupComplete(),
+      getSetupStatus: () => this.httpUtilityService.getSetupStatus(),
+      markSetupComplete: () => this.httpUtilityService.markSetupComplete(),
     };
   }
 
@@ -365,7 +405,10 @@ export class ServiceFactory {
     return this.getUtilityService().resetSetupStatus();
   }
 
-  async saveWorkflow(name: string, content: string): Promise<{ success: boolean; path: string }> {
+  async saveWorkflow(
+    name: string,
+    content: string,
+  ): Promise<{ success: boolean; path: string }> {
     return this.getUtilityService().saveWorkflow(name, content);
   }
 
@@ -373,19 +416,35 @@ export class ServiceFactory {
     return this.getUtilityService().deleteWorkflow(name);
   }
 
-  async getKeywordMaskingConfig(): Promise<{ entries: Array<{ pattern: string; match_type: string; enabled: boolean }> }> {
+  async getKeywordMaskingConfig(): Promise<{
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>;
+  }> {
     return this.getUtilityService().getKeywordMaskingConfig();
   }
 
-  async updateKeywordMaskingConfig(entries: Array<{ pattern: string; match_type: string; enabled: boolean }>): Promise<{ entries: Array<{ pattern: string; match_type: string; enabled: boolean }> }> {
+  async updateKeywordMaskingConfig(
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>,
+  ): Promise<{
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>;
+  }> {
     return this.getUtilityService().updateKeywordMaskingConfig(entries);
   }
 
-  async validateKeywordEntries(entries: Array<{ pattern: string; match_type: string; enabled: boolean }>): Promise<{ valid: boolean; errors?: Array<{ index: number; message: string }> }> {
+  async validateKeywordEntries(
+    entries: Array<{ pattern: string; match_type: string; enabled: boolean }>,
+  ): Promise<{
+    valid: boolean;
+    errors?: Array<{ index: number; message: string }>;
+  }> {
     return this.getUtilityService().validateKeywordEntries(entries);
   }
 
-  async getSetupStatus(): Promise<{ is_complete: boolean; has_proxy_config: boolean; has_proxy_env: boolean; message: string }> {
+  async getSetupStatus(): Promise<{
+    is_complete: boolean;
+    has_proxy_config: boolean;
+    has_proxy_env: boolean;
+    message: string;
+  }> {
     return this.getUtilityService().getSetupStatus();
   }
 
