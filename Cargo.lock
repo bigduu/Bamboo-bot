@@ -513,9 +513,9 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "bamboo-agent"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b198d9c0d07a61345d396a42fc9b5f6a2e16e2a429257c656d45224918d5b0f7"
+checksum = "08f0bee256822ad16aa8293c0c3a69fc3613cdf62d90bc5eaceebdf8b92a2a87"
 dependencies = [
  "actix-cors",
  "actix-files",
