@@ -11,3 +11,4 @@ path = "src/main.rs"
 bamboo-agent = { version = "^0.1.1", default-features = false }
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4", features = ["derive"] }
+env_logger = "0.11"

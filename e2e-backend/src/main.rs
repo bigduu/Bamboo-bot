@@ -29,6 +29,9 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize logging
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     // Parse command line arguments using clap
     let args = Args::parse();
 
@@ -38,22 +41,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| std::env::temp_dir().join("bamboo-test-data"));
 
     // Ensure data directory exists
-    std::fs::create_dir_all(&data_dir)?;
+    if let Err(e) = std::fs::create_dir_all(&data_dir) {
+        eprintln!("ERROR: Failed to create data directory {:?}: {}", data_dir, e);
+        return Err(e.into());
+    }
 
-    println!("Starting web service on port {}", port);
-    println!("Data directory: {:?}", data_dir);
-    println!("Bind: {}", args.bind);
-    println!("Static dir: {:?}", args.static_dir);
+    log::info!("Starting web service on port {}", port);
+    log::info!("Data directory: {:?}", data_dir);
+    log::info!("Bind address: {}", args.bind);
+    log::info!("Static directory: {:?}", args.static_dir);
+
+    // Validate static directory if provided
+    if let Some(ref static_path) = args.static_dir {
+        if !static_path.exists() {
+            eprintln!("ERROR: Static directory does not exist: {:?}", static_path);
+            return Err(format!("Static directory not found: {:?}", static_path).into());
+        }
+        if !static_path.is_dir() {
+            eprintln!("ERROR: Static path is not a directory: {:?}", static_path);
+            return Err(format!("Static path is not a directory: {:?}", static_path).into());
+        }
+        log::info!("Static directory validated: {:?}", static_path);
+    }
 
     // Run the web service with bind and static file support
-    bamboo_agent::web_service::server::run_with_bind_and_static(
+    log::info!("Calling bamboo_agent::web_service::server::run_with_bind_and_static...");
+    match bamboo_agent::web_service::server::run_with_bind_and_static(
         data_dir,
         port,
         &args.bind,
         args.static_dir,
     )
     .await
-    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-    Ok(())
+    {
+        Ok(_) => {
+            log::info!("Web service exited successfully");
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("ERROR: Web service failed: {}", e);
+            Err(e.into())
+        }
+    }
 }

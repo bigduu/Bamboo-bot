@@ -1509,6 +1509,7 @@ version = "0.1.0"
 dependencies = [
  "bamboo-agent",
  "clap",
+ "env_logger",
  "tokio",
 ]
 
