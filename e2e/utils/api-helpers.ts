@@ -39,11 +39,18 @@ export async function cleanupTestData(request: APIRequestContext) {
  * Wait for backend health check
  */
 export async function waitForBackendHealth(request: APIRequestContext, maxRetries = 10) {
+  let lastStatus: number | undefined;
+  let lastBody: string | undefined;
+  let lastError: unknown;
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       const response = await request.get('/api/v1/health');
+      lastStatus = response.status();
+      const text = await response.text();
+      lastBody = text;
+
       if (response.ok()) {
-        const text = await response.text();
         // Backend returns "OK" as plain text
         if (text === 'OK' || text === 'ok' || text === 'healthy') {
           return true;
@@ -66,7 +73,15 @@ export async function waitForBackendHealth(request: APIRequestContext, maxRetrie
     }
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  throw new Error('Backend health check failed');
+
+  const errMsg = [
+    `Backend health check failed after ${maxRetries} retries.`,
+    lastStatus !== undefined ? `last_status=${lastStatus}` : null,
+    lastBody !== undefined ? `last_body=${JSON.stringify(lastBody.slice(0, 200))}` : null,
+    lastError ? `last_error=${(lastError as any)?.message ?? String(lastError)}` : null,
+  ].filter(Boolean).join(' ');
+
+  throw new Error(errMsg);
 }
 
 /**

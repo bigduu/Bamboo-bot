@@ -64,24 +64,24 @@ fn extract_command_info(file_path: &Path, base_path: &Path) -> Result<(String, O
         .strip_prefix(base_path)
         .context("Failed to get relative path")?;
 
-    let path_without_ext = relative_path
-        .with_extension("")
-        .to_string_lossy()
-        .to_string();
+    // Use Path parsing instead of string-splitting so both '/' and '\' work on Windows.
+    let path_without_ext = relative_path.with_extension("");
+    let components: Vec<String> = path_without_ext
+        .iter()
+        .map(|c| c.to_string_lossy().to_string())
+        .collect();
 
-    let components: Vec<&str> = path_without_ext.split(std::path::MAIN_SEPARATOR).collect();
-
-    if components.is_empty() {
+    let Some((name, namespace_parts)) = components.split_last() else {
         return Err(anyhow::anyhow!("Invalid command path"));
-    }
+    };
 
-    if components.len() == 1 {
-        Ok((components[0].to_string(), None))
+    let namespace = if namespace_parts.is_empty() {
+        None
     } else {
-        let command_name = components.last().unwrap().to_string();
-        let namespace = components[..components.len() - 1].join(":");
-        Ok((command_name, Some(namespace)))
-    }
+        Some(namespace_parts.join(":"))
+    };
+
+    Ok((name.clone(), namespace))
 }
 
 fn load_command_from_file(file_path: &Path, base_path: &Path, scope: &str) -> Result<SlashCommand> {

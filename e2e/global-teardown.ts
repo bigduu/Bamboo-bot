@@ -7,7 +7,8 @@ import { cleanupTestData } from './utils/api-helpers';
  */
 async function globalTeardown(config: FullConfig) {
   const { baseURL } = config.projects[0].use;
-  const apiBaseURL = process.env.E2E_API_URL || 'http://localhost:8080';
+  // Prefer 127.0.0.1 to avoid IPv6 localhost (::1) issues with Docker port publishing in CI.
+  const apiBaseURL = process.env.E2E_API_URL || 'http://127.0.0.1:8080';
 
   console.log('');
   console.log('🧹 Starting E2E teardown...');

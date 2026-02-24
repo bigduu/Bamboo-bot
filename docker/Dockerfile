@@ -23,8 +23,9 @@ FROM rust:latest AS builder
 
 WORKDIR /app
 
-# Copy only e2e-backend crate (not the full workspace)
-COPY e2e-backend/Cargo.toml e2e-backend/Cargo.lock* ./e2e-backend/
+# Copy only what's needed to build e2e-backend, plus workspace lockfile for deterministic deps.
+COPY e2e-backend/Cargo.toml ./e2e-backend/Cargo.toml
+COPY Cargo.lock ./e2e-backend/Cargo.lock
 
 WORKDIR /app/e2e-backend
 
@@ -72,7 +73,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/v1/health || exit 1
+    CMD curl -f http://127.0.0.1:8080/api/v1/health || exit 1
 
 # Run service - serve both API and static frontend files
 ENTRYPOINT ["/app/web_service_standalone"]

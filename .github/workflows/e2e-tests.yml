@@ -29,7 +29,17 @@ jobs:
       - name: Start backend
         run: |
           ./target/release/web_service_standalone --port 8080 --data-dir /tmp/test-data &
-          sleep 5
+          echo "Waiting for backend to be healthy..."
+          for i in {1..30}; do
+            if curl -f http://127.0.0.1:8080/api/v1/health 2>/dev/null; then
+              echo "Backend is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i/30: Backend not ready yet..."
+            sleep 1
+          done
+          echo "Backend health check failed"
+          exit 1
 
       - name: Start frontend
         run: |
@@ -67,7 +77,21 @@ jobs:
       - name: Run Docker container
         run: |
           docker run -d -p 8080:8080 --name bamboo-test bamboo-test:latest
-          sleep 10
+          echo "Waiting for Docker container to be healthy..."
+          for i in {1..30}; do
+            if curl -f http://127.0.0.1:8080/api/v1/health 2>/dev/null; then
+              echo "Container is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i/30: Container not ready yet..."
+            if docker logs bamboo-test 2>&1 | tail -n 5; then
+              echo "---"
+            fi
+            sleep 1
+          done
+          echo "Container health check failed. Full logs:"
+          docker logs bamboo-test
+          exit 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
