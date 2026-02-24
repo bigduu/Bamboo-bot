@@ -513,9 +513,9 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "bamboo-agent"
-version = "0.1.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "003960dd83f8a6d91a04a2b3fa3dc5ef009e7bf01b7a119db6cfb3d9fb815a87"
+checksum = "b198d9c0d07a61345d396a42fc9b5f6a2e16e2a429257c656d45224918d5b0f7"
 dependencies = [
  "actix-cors",
  "actix-files",
@@ -1029,7 +1029,7 @@ dependencies = [
 
 [[package]]
 name = "copilot_chat"
-version = "0.1.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "arboard",
