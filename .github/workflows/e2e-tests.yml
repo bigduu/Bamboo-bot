@@ -55,8 +55,9 @@ jobs:
       - name: Run E2E tests
         run: yarn test:e2e:browser
         env:
-          E2E_BASE_URL: http://localhost:1420
-          E2E_API_URL: http://localhost:8080
+          E2E_BASE_URL: http://127.0.0.1:1420
+          E2E_API_URL: http://127.0.0.1:8080
+          E2E_SUITE: browser
 
       - name: Upload test results
         if: always()
@@ -91,6 +92,11 @@ jobs:
           done
           echo "Container health check failed. Full logs:"
           docker logs bamboo-test
+          echo "---"
+          echo "Container state:"
+          docker ps -a
+          echo "---"
+          docker inspect bamboo-test --format '{{json .State}}'
           exit 1
 
       - name: Setup Node.js
@@ -107,8 +113,9 @@ jobs:
       - name: Run E2E tests
         run: yarn test:e2e:docker
         env:
-          E2E_BASE_URL: http://localhost:8080
-          E2E_API_URL: http://localhost:8080
+          E2E_BASE_URL: http://127.0.0.1:8080
+          E2E_API_URL: http://127.0.0.1:8080
+          E2E_SUITE: docker
 
       - name: Upload test results
         if: always()

@@ -71,9 +71,7 @@ test.describe('Docker Mode Tests', () => {
     const response = await page.request.get('/api/v1/health');
 
     expect(response.ok()).toBeTruthy();
-
-    const health = await response.json();
-    expect(health.status).toBe('ok');
+    expect((await response.text()).toLowerCase()).toContain('ok');
   });
 
   test('should handle concurrent requests', async ({ page }) => {

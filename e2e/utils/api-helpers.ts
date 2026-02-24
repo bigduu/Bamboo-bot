@@ -5,13 +5,14 @@ import { APIRequestContext } from '@playwright/test';
  * This marks setup as complete so tests can access /chat and other routes
  */
 export async function setupTestConfig(request: APIRequestContext) {
-  try {
-    // Mark setup as complete
-    await markSetupComplete(request);
-    console.log('✅ Test setup marked as complete');
-  } catch (error) {
-    console.log('⚠️  Could not mark setup as complete:', error);
-    // This is OK - setup might already be complete
+  const before = await getSetupStatus(request).catch(() => null);
+  if (before?.is_complete) return;
+
+  await markSetupComplete(request);
+
+  const after = await getSetupStatus(request);
+  if (!after.is_complete) {
+    throw new Error(`Setup still incomplete after markSetupComplete: ${JSON.stringify(after)}`);
   }
 }
 
@@ -128,9 +129,10 @@ export async function getSetupStatus(request: APIRequestContext) {
  * Mark setup as complete
  */
 export async function markSetupComplete(request: APIRequestContext) {
-  const response = await request.post('/v1/bamboo/setup/complete');
+  const response = await request.post('/v1/bamboo/setup/complete', { data: {} });
+  const body = await response.text();
   if (!response.ok()) {
-    throw new Error(`Failed to mark setup complete: ${await response.text()}`);
+    throw new Error(`Failed to mark setup complete: status=${response.status()} body=${body}`);
   }
-  return await response.json();
+  return body ? JSON.parse(body) : { success: true };
 }

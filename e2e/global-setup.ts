@@ -28,13 +28,8 @@ async function globalSetup(config: FullConfig) {
 
     // Mark setup as complete so tests can access /chat and other routes
     console.log('🔧 Marking setup as complete...');
-    try {
-      await setupTestConfig(apiContext);
-      console.log('✅ Setup marked as complete');
-    } catch (e) {
-      console.log('⚠️  Could not mark setup as complete (this is OK if already complete)');
-      console.log(`   Error: ${e instanceof Error ? e.message : e}`);
-    }
+    await setupTestConfig(apiContext);
+    console.log('✅ Setup marked as complete');
 
     // Clean up any existing test data
     console.log('🧹 Cleaning up test data...');
