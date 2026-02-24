@@ -23,24 +23,25 @@ FROM rust:latest AS builder
 
 WORKDIR /app
 
-# Copy only what's needed to build e2e-backend, plus workspace lockfile for deterministic deps.
-COPY e2e-backend/Cargo.toml ./e2e-backend/Cargo.toml
-COPY Cargo.lock ./e2e-backend/Cargo.lock
+# Copy workspace files for building
+COPY Cargo.toml ./
+COPY Cargo.lock ./
+COPY e2e-backend ./e2e-backend
 
-WORKDIR /app/e2e-backend
+WORKDIR /app
 
 # Create dummy source file to cache dependencies
-RUN mkdir -p src && \
-    echo "fn main() {}" > src/main.rs
+RUN mkdir -p e2e-backend/src && \
+    echo "fn main() {}" > e2e-backend/src/main.rs
 
 # Build dependencies (cache layer)
-RUN cargo build --release 2>/dev/null || true
+RUN cargo build --release -p e2e-backend 2>/dev/null || true
 
 # Copy actual source code
-COPY e2e-backend/src ./src
+COPY e2e-backend/src ./e2e-backend/src
 
 # Build release version
-RUN cargo build --release
+RUN cargo build --release -p e2e-backend
 
 # ========== Runtime Stage ==========
 FROM debian:bookworm-slim
@@ -59,7 +60,7 @@ RUN apt-get update && \
 RUN mkdir -p /data/sessions
 
 # Copy backend binary
-COPY --from=builder /app/e2e-backend/target/release/web_service_standalone /app/web_service_standalone
+COPY --from=builder /app/target/release/web_service_standalone /app/web_service_standalone
 
 # Copy frontend build artifacts
 COPY --from=frontend-builder /app/dist /app/static
