@@ -1510,6 +1510,7 @@ dependencies = [
  "bamboo-agent",
  "clap",
  "env_logger",
+ "log",
  "tokio",
 ]
 
