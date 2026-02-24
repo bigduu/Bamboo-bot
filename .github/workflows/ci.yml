@@ -53,7 +53,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: ". -> target"
 
       - name: Build backend
         run: cargo build --manifest-path src-tauri/Cargo.toml --release
@@ -90,7 +90,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: ". -> target"
 
       - name: Install frontend dependencies
         run: yarn install
@@ -107,10 +107,10 @@ jobs:
         with:
           name: tauri-build-${{ matrix.platform }}
           path: |
-            src-tauri/target/release/bundle/dmg/*.dmg
-            src-tauri/target/release/bundle/macos/*.app.tar.gz
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/msi/*.msi.zip
+            target/release/bundle/dmg/*.dmg
+            target/release/bundle/macos/*.app.tar.gz
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/deb/*.deb
+            target/release/bundle/msi/*.msi
+            target/release/bundle/msi/*.msi.zip
           if-no-files-found: warn

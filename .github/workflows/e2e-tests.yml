@@ -46,6 +46,7 @@ jobs:
         run: yarn test:e2e:browser
         env:
           E2E_BASE_URL: http://localhost:1420
+          E2E_API_URL: http://localhost:8080
 
       - name: Upload test results
         if: always()
@@ -83,6 +84,7 @@ jobs:
         run: yarn test:e2e:docker
         env:
           E2E_BASE_URL: http://localhost:8080
+          E2E_API_URL: http://localhost:8080
 
       - name: Upload test results
         if: always()

@@ -76,4 +76,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run service - serve both API and static frontend files
 ENTRYPOINT ["/app/web_service_standalone"]
-CMD ["--port", "8080", "--data-dir", "/data"]
+CMD ["--port", "8080", "--bind", "0.0.0.0", "--data-dir", "/data", "--static-dir", "/app/static"]

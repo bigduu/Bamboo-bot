@@ -7,16 +7,18 @@ import { waitForBackendHealth, cleanupTestData, setupTestConfig } from './utils/
  */
 async function globalSetup(config: FullConfig) {
   const { baseURL } = config.projects[0].use;
+  const apiBaseURL = process.env.E2E_API_URL || 'http://localhost:8080';
 
   console.log('🚀 Starting E2E test setup...');
-  console.log(`   Base URL: ${baseURL}`);
+  console.log(`   UI Base URL: ${baseURL}`);
+  console.log(`   API Base URL: ${apiBaseURL}`);
 
   // Check if backend is running
   try {
     // Create a request context for setup
     const { request } = require('@playwright/test');
     const apiContext = await request.newContext({
-      baseURL,
+      baseURL: apiBaseURL,
     });
 
     console.log('⏳ Checking backend health...');

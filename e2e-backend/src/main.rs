@@ -2,6 +2,7 @@
 //!
 //! This binary runs the bamboo-agent web service without Tauri for testing purposes.
 
+use std::io;
 use std::path::PathBuf;
 use clap::Parser;
 
@@ -16,6 +17,14 @@ struct Args {
     /// Directory to store test data
     #[arg(long)]
     data_dir: Option<PathBuf>,
+
+    /// Bind address (127.0.0.1 for local, 0.0.0.0 for Docker)
+    #[arg(long, default_value = "127.0.0.1")]
+    bind: String,
+
+    /// Optional static dir to serve (dist/ or /app/static)
+    #[arg(long)]
+    static_dir: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -33,9 +42,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Starting web service on port {}", port);
     println!("Data directory: {:?}", data_dir);
+    println!("Bind: {}", args.bind);
+    println!("Static dir: {:?}", args.static_dir);
 
-    // Run the web service
-    bamboo_agent::web_service::server::run(data_dir, port).await?;
+    // Run the web service with bind and static file support
+    bamboo_agent::web_service::server::run_with_bind_and_static(
+        data_dir,
+        port,
+        &args.bind,
+        args.static_dir,
+    )
+    .await
+    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     Ok(())
 }
