@@ -48,6 +48,7 @@ export const ChatSidebarFooter: React.FC<ChatSidebarFooterProps> = ({
 
       <Tooltip placement={collapsed ? "right" : "top"} title="System Settings">
         <Button
+          data-testid="open-settings"
           icon={<SettingOutlined />}
           onClick={onOpenSettings}
           block={!collapsed}

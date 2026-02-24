@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "src-tauri",
+    "e2e-backend",
 ]
 resolver = "2"
 default-members = ["src-tauri"]

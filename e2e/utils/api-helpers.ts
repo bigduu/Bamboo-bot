@@ -6,12 +6,19 @@ import { APIRequestContext } from '@playwright/test';
  */
 export async function setupTestConfig(request: APIRequestContext) {
   try {
-    // Mark setup as complete
+    const before = await getSetupStatus(request).catch(() => null);
+    if (before?.is_complete) return;
+
     await markSetupComplete(request);
-    console.log('✅ Test setup marked as complete');
+
+    const after = await getSetupStatus(request);
+    if (!after.is_complete) {
+      throw new Error(`Setup still incomplete after markSetupComplete: ${JSON.stringify(after)}`);
+    }
   } catch (error) {
-    console.log('⚠️  Could not mark setup as complete:', error);
-    // This is OK - setup might already be complete
+    // Setup endpoints might not exist in all bamboo-agent versions
+    // Log warning but don't fail - tests can proceed without setup completion
+    console.log('⚠️  Setup completion skipped (endpoint not available):', error instanceof Error ? error.message : error);
   }
 }
 
@@ -39,11 +46,18 @@ export async function cleanupTestData(request: APIRequestContext) {
  * Wait for backend health check
  */
 export async function waitForBackendHealth(request: APIRequestContext, maxRetries = 10) {
+  let lastStatus: number | undefined;
+  let lastBody: string | undefined;
+  let lastError: unknown;
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       const response = await request.get('/api/v1/health');
+      lastStatus = response.status();
+      const text = await response.text();
+      lastBody = text;
+
       if (response.ok()) {
-        const text = await response.text();
         // Backend returns "OK" as plain text
         if (text === 'OK' || text === 'ok' || text === 'healthy') {
           return true;
@@ -66,7 +80,15 @@ export async function waitForBackendHealth(request: APIRequestContext, maxRetrie
     }
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  throw new Error('Backend health check failed');
+
+  const errMsg = [
+    `Backend health check failed after ${maxRetries} retries.`,
+    lastStatus !== undefined ? `last_status=${lastStatus}` : null,
+    lastBody !== undefined ? `last_body=${JSON.stringify(lastBody.slice(0, 200))}` : null,
+    lastError ? `last_error=${(lastError as any)?.message ?? String(lastError)}` : null,
+  ].filter(Boolean).join(' ');
+
+  throw new Error(errMsg);
 }
 
 /**
@@ -113,9 +135,10 @@ export async function getSetupStatus(request: APIRequestContext) {
  * Mark setup as complete
  */
 export async function markSetupComplete(request: APIRequestContext) {
-  const response = await request.post('/v1/bamboo/setup/complete');
+  const response = await request.post('/v1/bamboo/setup/complete', { data: {} });
+  const body = await response.text();
   if (!response.ok()) {
-    throw new Error(`Failed to mark setup complete: ${await response.text()}`);
+    throw new Error(`Failed to mark setup complete: status=${response.status()} body=${body}`);
   }
-  return await response.json();
+  return body ? JSON.parse(body) : { success: true };
 }

@@ -5,13 +5,13 @@ on:
     branches: [ main, develop ]
     paths:
       - 'docker/**'
-      - 'crates/web_service/**'
+      - 'src-tauri/**'
       - 'e2e/tests/docker/**'
   pull_request:
     branches: [ main ]
     paths:
       - 'docker/**'
-      - 'crates/web_service/**'
+      - 'src-tauri/**'
       - 'e2e/tests/docker/**'
 
 jobs:
@@ -27,12 +27,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: e2e/package-lock.json
+          cache: 'yarn'
+          cache-dependency-path: e2e/yarn.lock
 
       - name: Install E2E dependencies
         working-directory: e2e
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
       - name: Install Playwright browsers
         working-directory: e2e
@@ -44,11 +44,11 @@ jobs:
 
       - name: Build Docker image
         working-directory: docker
-        run: docker-compose build
+        run: docker compose build
 
       - name: Start Docker container
         working-directory: docker
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Wait for container to be healthy
         run: |
@@ -63,7 +63,7 @@ jobs:
         working-directory: e2e
         env:
           E2E_BASE_URL: http://localhost:8080
-        run: npm test -- tests/docker/docker-deployment.spec.ts
+        run: yarn test tests/docker/docker-deployment.spec.ts
 
       - name: Upload test results
         if: always()
@@ -84,7 +84,7 @@ jobs:
       - name: Cleanup Docker
         if: always()
         working-directory: docker
-        run: docker-compose down -v
+        run: docker compose down -v
 
   docker-integration-tests:
     runs-on: ubuntu-latest
@@ -102,7 +102,7 @@ jobs:
 
       - name: Install E2E dependencies
         working-directory: e2e
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
       - name: Setup Docker config
         working-directory: docker
@@ -110,7 +110,7 @@ jobs:
 
       - name: Build and start Docker
         working-directory: docker
-        run: docker-compose up -d --build
+        run: docker compose up -d --build
 
       - name: Wait for healthy container
         run: |
@@ -120,9 +120,9 @@ jobs:
         working-directory: e2e
         env:
           E2E_BASE_URL: http://localhost:8080
-        run: npm test -- tests/docker/
+        run: yarn test tests/docker/
 
       - name: Cleanup
         if: always()
         working-directory: docker
-        run: docker-compose down -v
+        run: docker compose down -v

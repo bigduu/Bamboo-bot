@@ -4,84 +4,67 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package*.json yarn.lock ./
 
 # Install dependencies
-RUN npm ci --legacy-peer-deps
+RUN yarn install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build frontend
-RUN npm run build
+RUN yarn build
 
 # Output: /app/dist directory contains built frontend
 # ================================================
 
 # ========== Backend Build Stage ==========
-# Build stage using musl for static linking to avoid GLIBC dependency
 FROM rust:latest AS builder
 
 WORKDIR /app
 
-# 安装 musl 目标
-RUN rustup target add aarch64-unknown-linux-musl
+# Copy workspace files for building
+# Create a minimal workspace Cargo.toml that only includes e2e-backend
+RUN mkdir -p /workspace
+WORKDIR /workspace
 
-# 安装依赖
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    musl-tools \
-    && rm -rf /var/lib/apt/lists/*
+# Create minimal workspace Cargo.toml
+RUN echo '[workspace]\nmembers = ["e2e-backend"]\nresolver = "2"' > Cargo.toml
 
-# 复制 workspace 配置
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.lock ./
+COPY e2e-backend ./e2e-backend
 
-# 创建修改后的 Cargo.toml，排除 src-tauri
-RUN sed -i '/src-tauri/d' Cargo.toml && \
-    sed -i 's/default-members = \["src-tauri"\]/default-members = []/' Cargo.toml
+# Create dummy source file to cache dependencies
+RUN mkdir -p e2e-backend/src && \
+    echo "fn main() {}" > e2e-backend/src/main.rs
 
-# 复制所有需要的 crates 的 Cargo.toml
-COPY crates/chat_core/Cargo.toml crates/chat_core/
-COPY crates/agent-core/Cargo.toml crates/agent-core/
-COPY crates/agent-loop/Cargo.toml crates/agent-loop/
-COPY crates/agent-server/Cargo.toml crates/agent-server/
-COPY crates/agent-tools/Cargo.toml crates/agent-tools/
-COPY crates/agent-skill/Cargo.toml crates/agent-skill/
-COPY crates/agent-llm/Cargo.toml crates/agent-llm/
-COPY crates/agent-metrics/Cargo.toml crates/agent-metrics/
-COPY crates/agent-cli/Cargo.toml crates/agent-cli/
-COPY crates/agent-mcp/Cargo.toml crates/agent-mcp/
-COPY crates/web_service/Cargo.toml crates/web_service/
-COPY crates/web_service_standalone/Cargo.toml crates/web_service_standalone/
-COPY crates/workflow_system/Cargo.toml crates/workflow_system/
+# Build dependencies (cache layer)
+RUN cargo build --release -p e2e-backend 2>/dev/null || true
 
-# 创建虚拟 main.rs 以缓存依赖
-RUN mkdir -p crates/web_service_standalone/src && \
-    echo "fn main() {}" > crates/web_service_standalone/src/main.rs
+# Copy actual source code
+COPY e2e-backend/src ./e2e-backend/src
 
-# 构建依赖（缓存层）- 使用 musl 目标
-RUN cargo build --release -p web_service_standalone --target aarch64-unknown-linux-musl 2>/dev/null || true
-
-# 复制实际源代码
-COPY crates/ ./crates/
-
-# Build release version - using musl static linking
-RUN cargo build --release -p web_service_standalone --target aarch64-unknown-linux-musl
+# Build release version
+RUN cargo build --release -p e2e-backend
 
 # ========== Runtime Stage ==========
-FROM alpine:latest
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
 # Install runtime dependencies (minimal)
-RUN apk add --no-cache ca-certificates curl
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create data directory
 RUN mkdir -p /data/sessions
 
-# Copy backend binary - using musl statically linked binary
-COPY --from=builder /app/target/aarch64-unknown-linux-musl/release/web_service_standalone /app/web_service_standalone
+# Copy backend binary
+COPY --from=builder /workspace/target/release/web_service_standalone /app/web_service_standalone
 
 # Copy frontend build artifacts
 COPY --from=frontend-builder /app/dist /app/static
@@ -96,8 +79,8 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/v1/health || exit 1
+    CMD curl -f http://127.0.0.1:8080/api/v1/health || exit 1
 
 # Run service - serve both API and static frontend files
 ENTRYPOINT ["/app/web_service_standalone"]
-CMD ["serve", "--port", "8080", "--data-dir", "/data", "--bind", "0.0.0.0", "--static-dir", "/app/static"]
+CMD ["--port", "8080", "--bind", "0.0.0.0", "--data-dir", "/data", "--static-dir", "/app/static"]

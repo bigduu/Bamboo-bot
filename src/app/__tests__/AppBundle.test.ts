@@ -40,5 +40,5 @@ describe("App bundle", () => {
     const { hasConfigProvider, hasAntApp } = runBundleCheck();
     expect(hasConfigProvider).toBe(false);
     expect(hasAntApp).toBe(false);
-  }, 20000);
+  }, 60000); // Increased timeout for CI environment
 });

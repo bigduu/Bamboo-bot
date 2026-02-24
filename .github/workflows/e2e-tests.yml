@@ -10,10 +10,10 @@ jobs:
   test-browser-mode:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -24,12 +24,22 @@ jobs:
         run: yarn build
 
       - name: Build backend
-        run: cargo build --release -p web_service_standalone
+        run: cargo build --release -p e2e-backend
 
       - name: Start backend
         run: |
           ./target/release/web_service_standalone --port 8080 --data-dir /tmp/test-data &
-          sleep 5
+          echo "Waiting for backend to be healthy..."
+          for i in {1..30}; do
+            if curl -f http://127.0.0.1:8080/api/v1/health 2>/dev/null; then
+              echo "Backend is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i/30: Backend not ready yet..."
+            sleep 1
+          done
+          echo "Backend health check failed"
+          exit 1
 
       - name: Start frontend
         run: |
@@ -45,11 +55,13 @@ jobs:
       - name: Run E2E tests
         run: yarn test:e2e:browser
         env:
-          E2E_BASE_URL: http://localhost:1420
+          E2E_BASE_URL: http://127.0.0.1:1420
+          E2E_API_URL: http://127.0.0.1:8080
+          E2E_SUITE: browser
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report-Browser
           path: e2e/playwright-report/
@@ -57,20 +69,38 @@ jobs:
   test-docker-mode:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build Docker image
         run: |
-          cd docker
-          docker build -t bamboo-test:latest .
+          docker build -f docker/Dockerfile -t bamboo-test:latest .
 
       - name: Run Docker container
         run: |
           docker run -d -p 8080:8080 --name bamboo-test bamboo-test:latest
-          sleep 10
+          echo "Waiting for Docker container to be healthy..."
+          for i in {1..30}; do
+            if curl -f http://127.0.0.1:8080/api/v1/health 2>/dev/null; then
+              echo "Container is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i/30: Container not ready yet..."
+            if docker logs bamboo-test 2>&1 | tail -n 5; then
+              echo "---"
+            fi
+            sleep 1
+          done
+          echo "Container health check failed. Full logs:"
+          docker logs bamboo-test
+          echo "---"
+          echo "Container state:"
+          docker ps -a
+          echo "---"
+          docker inspect bamboo-test --format '{{json .State}}'
+          exit 1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -83,11 +113,13 @@ jobs:
       - name: Run E2E tests
         run: yarn test:e2e:docker
         env:
-          E2E_BASE_URL: http://localhost:8080
+          E2E_BASE_URL: http://127.0.0.1:8080
+          E2E_API_URL: http://127.0.0.1:8080
+          E2E_SUITE: docker
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report-Docker
           path: e2e/playwright-report/

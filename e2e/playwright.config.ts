@@ -9,8 +9,19 @@ import { defineConfig, devices } from '@playwright/test';
  * - With server auto-start: E2E_START_SERVER="cargo run -p web_service_standalone -- --port 8080" yarn test:e2e
  */
 
+const suite = process.env.E2E_SUITE ?? 'all';
+const testIgnore: string[] = [];
+
+if (suite === 'browser') {
+  testIgnore.push('tests/docker/**', 'tests/modes/docker-mode.spec.ts', 'tests/modes/desktop-mode.spec.ts');
+}
+if (suite === 'docker') {
+  testIgnore.push('tests/modes/browser-mode.spec.ts', 'tests/modes/desktop-mode.spec.ts');
+}
+
 export default defineConfig({
   testDir: './tests',
+  testIgnore,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

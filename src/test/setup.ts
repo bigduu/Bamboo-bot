@@ -31,10 +31,8 @@ const createMemoryStorage = (): Storage => {
 globalThis.localStorage = createMemoryStorage();
 globalThis.sessionStorage = createMemoryStorage();
 
-// Mock fetch if not available
-if (!global.fetch) {
-  global.fetch = vi.fn();
-}
+// Always mock fetch to prevent network calls in tests
+global.fetch = vi.fn();
 
 // Mock Tauri API
 (globalThis as any).__TAURI__ = {

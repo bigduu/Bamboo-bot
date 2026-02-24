@@ -307,10 +307,11 @@ Emoji: 🚀 💡 🎉
 
   test('should handle empty workflow list', async ({ page, request }) => {
     // Clean up all workflows
-    const workflows = await request.get('/v1/v1/bamboo/workflows');
+    const api = process.env.E2E_API_URL ?? 'http://127.0.0.1:8080';
+    const workflows = await request.get(`${api}/v1/bamboo/workflows`);
     const data = await workflows.json();
     for (const workflow of data || []) {
-      await request.delete(`/v1/v1/bamboo/workflows/${workflow.name}`);
+      await request.delete(`${api}/v1/bamboo/workflows/${workflow.name}`);
     }
 
     await page.reload();
