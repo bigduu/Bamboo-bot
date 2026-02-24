@@ -24,11 +24,15 @@ FROM rust:latest AS builder
 WORKDIR /app
 
 # Copy workspace files for building
-COPY Cargo.toml ./
+# Create a minimal workspace Cargo.toml that only includes e2e-backend
+RUN mkdir -p /workspace
+WORKDIR /workspace
+
+# Create minimal workspace Cargo.toml
+RUN echo '[workspace]\nmembers = ["e2e-backend"]\nresolver = "2"' > Cargo.toml
+
 COPY Cargo.lock ./
 COPY e2e-backend ./e2e-backend
-
-WORKDIR /app
 
 # Create dummy source file to cache dependencies
 RUN mkdir -p e2e-backend/src && \
@@ -60,7 +64,7 @@ RUN apt-get update && \
 RUN mkdir -p /data/sessions
 
 # Copy backend binary
-COPY --from=builder /app/target/release/web_service_standalone /app/web_service_standalone
+COPY --from=builder /workspace/target/release/web_service_standalone /app/web_service_standalone
 
 # Copy frontend build artifacts
 COPY --from=frontend-builder /app/dist /app/static
