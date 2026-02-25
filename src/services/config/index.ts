@@ -1,2 +1,1 @@
-export * from "./ConfigService";
-export { configService, ConfigService } from "./ConfigService";
+export { SettingsService, settingsService } from "./SettingsService";

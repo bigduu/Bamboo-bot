@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { Space, theme, Tag, Alert, message as antdMessage, Spin } from "antd";
 import type { TextAreaRef } from "antd/es/input/TextArea";
-import { ToolOutlined, RobotOutlined } from "@ant-design/icons";
+import { ToolOutlined, RobotOutlined, SettingOutlined } from "@ant-design/icons";
 import { MessageInput } from "../MessageInput";
 import InputPreview from "./InputPreview";
 import { useMessageStreaming } from "../../hooks/useChatManager/useMessageStreaming";
@@ -22,6 +22,7 @@ import { useInputContainerSubmit } from "./useInputContainerSubmit";
 import { useInputContainerHistory } from "./useInputContainerHistory";
 import { getInputContainerPlaceholder } from "./inputContainerPlaceholder";
 import { useActiveModel } from "../../hooks/useActiveModel";
+import { useSettingsViewStore } from "@shared/store/settingsViewStore";
 
 const FilePreview = lazy(() => import("../FilePreview"));
 const CommandSelector = lazy(() => import("../CommandSelector"));
@@ -59,6 +60,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
 }) => {
   const textAreaRef = useRef<TextAreaRef>(null); // Add ref for cursor position
   const { token } = useToken();
+  const openSettings = useSettingsViewStore((state) => state.open);
   const currentChatId = useAppStore((state) => state.currentChatId);
   const currentChat = useAppStore(selectCurrentChat);
   const currentMessages = currentChat?.messages || [];
@@ -233,17 +235,25 @@ export const InputContainer: React.FC<InputContainerProps> = ({
       return {
         color: "warning",
         icon: <RobotOutlined />,
-        text: "Loading Model...",
+        text: "No Model Selected",
+        actionable: true,
       };
     }
     if (agentAvailable === null) {
-      return { color: "default", icon: <RobotOutlined />, text: "Checking..." };
+      return { color: "default", icon: <RobotOutlined />, text: "Checking...", actionable: false };
     }
     if (agentAvailable) {
-      return { color: "success", icon: <RobotOutlined />, text: "Agent Mode" };
+      return { color: "success", icon: <RobotOutlined />, text: "Agent Mode", actionable: false };
     }
-    return { color: "red", icon: <RobotOutlined />, text: "Agent Unavailable" };
+    return { color: "red", icon: <RobotOutlined />, text: "Agent Unavailable", actionable: false };
   }, [activeModel, agentAvailable]);
+
+  // Handle clicking on model status to open settings
+  const handleModelStatusClick = useCallback(() => {
+    if (!activeModel) {
+      openSettings("chat");
+    }
+  }, [activeModel, openSettings]);
 
   const handleCloseReferencePreview = () => setReferenceTextPersisted(null);
 
@@ -280,6 +290,23 @@ export const InputContainer: React.FC<InputContainerProps> = ({
     >
       {contextHolder}
 
+      {/* Model Configuration Alert */}
+      {!activeModel && (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<SettingOutlined />}
+          message="No model configured"
+          description="Please configure a model in Settings to start chatting."
+          action={
+            <Space>
+              <a onClick={() => openSettings("chat")}>Open Settings</a>
+            </Space>
+          }
+          style={{ marginBottom: token.marginSM }}
+        />
+      )}
+
       {/* Agent Status Indicator */}
       <div
         style={{
@@ -291,7 +318,11 @@ export const InputContainer: React.FC<InputContainerProps> = ({
         <Tag
           color={agentStatusConfig.color}
           icon={agentStatusConfig.icon}
-          style={{ fontSize: "11px" }}
+          style={{
+            fontSize: "11px",
+            cursor: agentStatusConfig.actionable ? "pointer" : "default",
+          }}
+          onClick={handleModelStatusClick}
         >
           {agentStatusConfig.text}
         </Tag>

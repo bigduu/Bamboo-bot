@@ -9,7 +9,8 @@ const mockMessageApi = {
 };
 
 const mockAgentSendMessage = vi.fn();
-const mockAgentStreamEvents = vi.fn();
+const mockAgentExecute = vi.fn();
+const mockAgentSubscribeToEvents = vi.fn();
 const mockAgentHealthCheck = vi.fn();
 
 const mockStoreState = {
@@ -38,7 +39,8 @@ vi.mock("antd", () => ({
 vi.mock("../../services/AgentService", () => ({
   AgentClient: class {
     sendMessage = mockAgentSendMessage;
-    streamEvents = mockAgentStreamEvents;
+    execute = mockAgentExecute;
+    subscribeToEvents = mockAgentSubscribeToEvents;
     healthCheck = mockAgentHealthCheck;
   },
 }));
@@ -65,7 +67,8 @@ describe("useMessageStreaming", () => {
     mockMessageApi.info.mockReset();
 
     mockAgentSendMessage.mockReset();
-    mockAgentStreamEvents.mockReset();
+    mockAgentExecute.mockReset();
+    mockAgentSubscribeToEvents.mockReset();
     mockAgentHealthCheck.mockReset();
 
     mockStoreState.agentAvailability = null;
@@ -177,10 +180,14 @@ describe("useMessageStreaming", () => {
     mockStoreState.agentAvailability = true;
     mockAgentSendMessage.mockResolvedValue({
       session_id: "session-1",
-      stream_url: "/api/v1/stream/session-1",
-      status: "streaming",
+      status: "started",
     });
-    mockAgentStreamEvents.mockResolvedValue(undefined);
+    mockAgentExecute.mockResolvedValue({
+      session_id: "session-1",
+      status: "started",
+      events_url: "/api/v1/events/session-1",
+    });
+    mockAgentSubscribeToEvents.mockResolvedValue(undefined);
 
     const mockChat = {
       id: "chat-1",

@@ -3,10 +3,13 @@
 //! This module manages the embedded bamboo-agent HTTP server running within the Tauri app.
 //! Instead of using a sidecar process, we run the HTTP server directly in the app process.
 
-use std::path::PathBuf;
-use std::sync::Arc;
 use log::{error, info};
+use std::sync::Arc;
+use std::{io::Error, path::PathBuf};
 use tokio::task::JoinHandle;
+
+// Import the server module from bamboo-agent
+use bamboo_agent::server;
 
 /// Embedded web service manager
 ///
@@ -14,7 +17,11 @@ use tokio::task::JoinHandle;
 pub struct EmbeddedWebService {
     port: u16,
     data_dir: PathBuf,
-    server_handle: Arc<tokio::sync::Mutex<Option<JoinHandle<Result<(), Box<dyn std::error::Error + Send + Sync>>>>>>,
+    server_handle: Arc<
+        tokio::sync::Mutex<
+            Option<JoinHandle<Result<(), Box<dyn std::error::Error + Send + Sync>>>>,
+        >,
+    >,
 }
 
 impl EmbeddedWebService {
@@ -52,10 +59,7 @@ impl EmbeddedWebService {
             info!("Embedded HTTP server task started");
 
             // Run the bamboo-agent HTTP server
-            let result = bamboo_agent::web_service::server::run(
-                data_dir,
-                port
-            ).await;
+            let result = server::run(data_dir, port).await;
 
             match result {
                 Ok(_) => {
@@ -64,10 +68,8 @@ impl EmbeddedWebService {
                 }
                 Err(e) => {
                     error!("Embedded HTTP server error: {}", e);
-                    Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Server error: {}", e)
-                    )) as Box<dyn std::error::Error + Send + Sync>)
+                    Err(Box::new(Error::other(format!("Server error: {}", e)))
+                        as Box<dyn std::error::Error + Send + Sync>)
                 }
             }
         });
@@ -113,7 +115,10 @@ impl EmbeddedWebService {
         let health_url = format!("http://127.0.0.1:{}/api/v1/health", self.port);
         let client = reqwest::Client::new();
 
-        info!("Waiting for embedded service health check at {}", health_url);
+        info!(
+            "Waiting for embedded service health check at {}",
+            health_url
+        );
 
         for attempt in 1..=10 {
             match client
@@ -123,7 +128,10 @@ impl EmbeddedWebService {
                 .await
             {
                 Ok(response) if response.status().is_success() => {
-                    info!("Embedded service health check passed on attempt {}", attempt);
+                    info!(
+                        "Embedded service health check passed on attempt {}",
+                        attempt
+                    );
                     return Ok(());
                 }
                 Ok(response) => {

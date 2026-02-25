@@ -55,6 +55,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
         isLoading: false,
       });
     } catch (error) {
+      console.error("Failed to load provider config:", error);
       set({
         error:
           error instanceof Error

@@ -63,7 +63,7 @@ describe("AgentClient", () => {
         mockFetchResponse({
           session_id: "session-1",
           status: "started",
-          events_url: "/stream/session-1",
+          events_url: "/events/session-1",
         }),
       );
 
@@ -89,7 +89,6 @@ describe("AgentClient", () => {
       fetchMock.mockResolvedValue(
         mockFetchResponse({
           session_id: "session-1",
-          stream_url: "/stream/session-1",
           status: "started",
         }),
       );

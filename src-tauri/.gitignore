@@ -7,3 +7,9 @@
 /gen/schemas
 
 .token
+
+# Runtime data directories
+~
+
+# Python virtual environments
+venv/
