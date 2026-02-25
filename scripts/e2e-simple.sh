@@ -86,24 +86,31 @@ echo "[6/6] Testing CLI..."
 "$PROJECT_ROOT/target/debug/copilot-agent-cli" --help > /dev/null 2>&1 && echo -e "${GREEN}✓ CLI working${NC}" || echo -e "${RED}✗ CLI failed${NC}"
 
 echo ""
-echo "[7/6] Testing SSE stream (5 seconds)..."
+echo "[7/6] Testing execute + events endpoints..."
 if [ -f "$SESSION_FILE" ]; then
     SESSION_ID=$(cat "$SESSION_FILE")
-    # Create new session for stream test
+    # Create new session for events test
     RESPONSE=$(curl -s -X POST "$SERVER_URL/api/v1/chat" \
         -H "Content-Type: application/json" \
         -d '{"message":"Hi"}')
-    STREAM_URL=$(echo "$RESPONSE" | grep -o '"stream_url":"[^"]*"' | cut -d'"' -f4)
-    
-    echo "Connecting to SSE stream..."
-    timeout 3 curl -s -N "$SERVER_URL$STREAM_URL" > /tmp/sse-output.txt 2>&1 || true
-    
+
+    # Execute the session
+    echo "Triggering execution..."
+    EXECUTE_RESPONSE=$(curl -s -X POST "$SERVER_URL/api/v1/execute/$SESSION_ID" \
+        -H "Content-Type: application/json" \
+        -d '{"model": "test-model"}')
+
+    EVENTS_URL=$(echo "$EXECUTE_RESPONSE" | grep -o '"events_url":"[^"]*"' | cut -d'"' -f4)
+
+    echo "Connecting to events stream..."
+    timeout 3 curl -s -N "$SERVER_URL$EVENTS_URL" > /tmp/sse-output.txt 2>&1 || true
+
     if [ -s /tmp/sse-output.txt ]; then
-        echo "SSE output received ($(wc -c < /tmp/sse-output.txt) bytes)"
+        echo "Events output received ($(wc -c < /tmp/sse-output.txt) bytes)"
         head -3 /tmp/sse-output.txt
-        echo -e "${GREEN}✓ SSE stream accessible${NC}"
+        echo -e "${GREEN}✓ Events stream accessible${NC}"
     else
-        echo -e "${YELLOW}⚠ No SSE output (may be normal with test key)${NC}"
+        echo -e "${YELLOW}⚠ No events output (may be normal with test key)${NC}"
     fi
 fi
 

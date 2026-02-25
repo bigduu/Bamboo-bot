@@ -110,20 +110,35 @@ else
     echo -e "${RED}❌ History endpoint failed${NC}"
 fi
 
-# Test 7: Stream endpoint (basic connectivity)
-echo -e "\n📡 Test 7: Testing stream endpoint..."
-echo "Testing SSE connection..."
-(curl -s -N "$SERVER_URL/api/v1/stream/$TEST_SESSION_ID" > /tmp/sse_test.log 2>&1 &)
+# Test 7: Execute + Events endpoints
+echo -e "\n📡 Test 7: Testing execute + events endpoints..."
+
+# Execute step
+echo "Triggering execution..."
+EXECUTE_RESPONSE=$(curl -s -X POST "$SERVER_URL/api/v1/execute/$TEST_SESSION_ID" \
+    -H "Content-Type: application/json" \
+    -d '{"model": "test-model"}')
+
+if echo "$EXECUTE_RESPONSE" | grep -q "events_url"; then
+    echo -e "${GREEN}✅ Execute endpoint working${NC}"
+    EVENTS_URL=$(echo "$EXECUTE_RESPONSE" | grep -o '"events_url":"[^"]*"' | cut -d'"' -f4)
+else
+    echo -e "${RED}❌ Execute endpoint failed${NC}"
+fi
+
+# Events subscription step
+echo "Testing events subscription..."
+(curl -s -N "$SERVER_URL$EVENTS_URL" > /tmp/events_test.log 2>&1 &)
 CURL_PID=$!
 sleep 2
 kill $CURL_PID 2>/dev/null || true
 wait $CURL_PID 2>/dev/null || true
 
-if [ -f /tmp/sse_test.log ]; then
-    echo "SSE response received"
-    echo -e "${GREEN}✅ Stream endpoint accessible${NC}"
+if [ -f /tmp/events_test.log ]; then
+    echo "Events response received"
+    echo -e "${GREEN}✅ Events endpoint accessible${NC}"
 else
-    echo -e "${YELLOW}⚠️  Stream test incomplete${NC}"
+    echo -e "${YELLOW}⚠️  Events test incomplete${NC}"
 fi
 
 # Test 8: CLI help
@@ -143,7 +158,8 @@ echo -e "${GREEN}✅ Server: Running${NC}"
 echo -e "${GREEN}✅ Health: OK${NC}"
 echo -e "${GREEN}✅ Chat API: Working${NC}"
 echo -e "${GREEN}✅ History API: Working${NC}"
-echo -e "${GREEN}✅ Stream API: Accessible${NC}"
+echo -e "${GREEN}✅ Execute API: Working${NC}"
+echo -e "${GREEN}✅ Events API: Accessible${NC}"
 echo -e "${GREEN}✅ CLI: Working${NC}"
 
 echo -e "\n${GREEN}🎉 All tests completed!${NC}"

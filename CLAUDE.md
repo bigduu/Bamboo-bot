@@ -26,13 +26,13 @@ Bamboo uses an **embedded architecture** where the bamboo-agent HTTP server runs
 │  │   └── HTTP API → localhost:8080      │
 │  ├── Embedded Web Service Manager       │
 │  │   └── tokio::spawn(HTTP server)      │
-│  └── bamboo-agent (v0.2.2)              │
+│  └── bamboo-agent (v0.2.8)              │
 │      └── HTTP Server (port 8080)        │
 └─────────────────────────────────────────┘
 ```
 
 **Key Components**:
-- **bamboo-agent crate** (v0.2.2 from crates.io) - Provides all agent functionality
+- **bamboo-agent crate** (v0.2.8 from crates.io) - Provides all agent functionality
 - **EmbeddedWebService** - Manages HTTP server lifecycle within the app process
 - **Health check monitoring** - Ensures server is ready before accepting requests
 

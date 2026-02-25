@@ -18,7 +18,6 @@ import {
 } from "antd";
 import {
   SaveOutlined,
-  ReloadOutlined,
   KeyOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -42,6 +41,7 @@ import {
   ANTHROPIC_MODELS,
   GEMINI_MODELS,
 } from "../../../ChatPage/types/providerConfig";
+import { modelService } from "@services/chat/ModelService";
 
 const { Option } = Select;
 const { Password } = Input;
@@ -182,6 +182,15 @@ export const ProviderSettings: React.FC = () => {
         provider: response.provider,
         providers: (response as any).providers || {},
       };
+
+      // Copilot needs a model selected for the UI to enable chat. If the backend
+      // config doesn't include one yet, default to a sensible option.
+      if (config.provider === "copilot") {
+        const copilot = (config.providers as any).copilot || {};
+        if (!copilot.model) {
+          (config.providers as any).copilot = { ...copilot, model: "gpt-4o" };
+        }
+      }
 
       console.log("Loaded provider config:", config);
       setCurrentProvider(config.provider as ProviderType);
@@ -420,6 +429,53 @@ export const ProviderSettings: React.FC = () => {
     }
   };
 
+  const handleFetchCopilotModels = async (options?: {
+    force?: boolean;
+    showMessage?: boolean;
+  }) => {
+    if (!options?.force && availableModels.length > 0) return;
+
+    try {
+      setFetchingModels(true);
+      setModelsFetchError(null);
+      setHasTriedFetchModels(true);
+
+      // Copilot models are exposed via the OpenAI-compatible /models endpoint.
+      const models = await modelService.getModels();
+      const formattedModels = models.map((model: string) => ({
+        value: model,
+        label: model,
+      }));
+
+      setAvailableModels(formattedModels);
+
+      if (formattedModels.length === 0) {
+        const msg =
+          "No models returned. Authenticate Copilot first, then fetch models.";
+        setModelsFetchError(msg);
+        if (options?.showMessage !== false) message.warning(msg);
+        return;
+      }
+
+      if (options?.showMessage !== false) {
+        message.success(`Found ${formattedModels.length} available models`);
+      }
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      setModelsFetchError(errorMessage);
+      if (options?.showMessage !== false) {
+        message.error(
+          errorMessage
+            ? `Failed to fetch models: ${errorMessage}`
+            : "Failed to fetch models. Please authenticate Copilot and try again.",
+        );
+      }
+      console.error("Failed to fetch Copilot models:", error);
+    } finally {
+      setFetchingModels(false);
+    }
+  };
+
   const handleSave = async (
     values: ProviderConfig,
     options?: { showMessage?: boolean; throwOnError?: boolean },
@@ -457,18 +513,15 @@ export const ProviderSettings: React.FC = () => {
   };
 
   const handleApply = async (options?: {
-    skipBackendReload?: boolean;
     showMessage?: boolean;
     throwOnError?: boolean;
   }) => {
     try {
       setApplyingConfig(true);
-      if (!options?.skipBackendReload) {
-        await settingsService.reloadConfig();
-      }
 
-      // Reload provider config in frontend
-      // This ensures useActiveModel() returns the updated model
+      // POST /bamboo/settings/provider already saves the config and reloads the provider
+      // on the backend. Here we just refresh the frontend store so useActiveModel()
+      // reflects the updated provider/model immediately.
       const { useProviderStore } = await import(
         "../../../ChatPage/store/slices/providerSlice"
       );
@@ -498,19 +551,14 @@ export const ProviderSettings: React.FC = () => {
   const handleSaveAndApply = async (values: ProviderConfig) => {
     try {
       await handleSave(values, { throwOnError: true });
-      // saveProviderConfig already reloads provider on the backend; just refresh
-      // frontend state so the UI (and useActiveModel) reflects it immediately.
-      await handleApply({
-        skipBackendReload: true,
-        throwOnError: true,
-      });
+      await handleApply({ throwOnError: true });
     } catch {
       // Errors already shown via handleSave/handleApply
     }
   };
 
   const handleFetchModelsWithSave = async (
-    provider: "openai" | "anthropic" | "gemini",
+    provider: "openai" | "anthropic" | "gemini" | "copilot",
     options?: { force?: boolean },
   ) => {
     // If we already have models and this isn't an explicit refresh, do nothing.
@@ -539,13 +587,15 @@ export const ProviderSettings: React.FC = () => {
       await handleFetchOpenAIModels({ force: options?.force });
     } else if (provider === "anthropic") {
       await handleFetchAnthropicModels({ force: options?.force });
-    } else {
+    } else if (provider === "gemini") {
       await handleFetchGeminiModels({ force: options?.force });
+    } else {
+      await handleFetchCopilotModels({ force: options?.force });
     }
   };
 
   const handleModelDropdownOpen = async (
-    provider: "openai" | "anthropic" | "gemini",
+    provider: "openai" | "anthropic" | "gemini" | "copilot",
     open: boolean,
   ) => {
     if (!open) return;
@@ -557,7 +607,7 @@ export const ProviderSettings: React.FC = () => {
   };
 
   const handleModelChange = async (
-    provider: "openai" | "anthropic" | "gemini",
+    provider: "openai" | "anthropic" | "gemini" | "copilot",
     value: string | undefined,
   ) => {
     if (!value) return; // Don't auto-save cleared values
@@ -581,11 +631,7 @@ export const ProviderSettings: React.FC = () => {
         showMessage: false,
         throwOnError: true,
       });
-      await handleApply({
-        skipBackendReload: true,
-        showMessage: false,
-        throwOnError: true,
-      });
+      await handleApply({ showMessage: false, throwOnError: true });
 
       setModelAutoSaveStatus("success");
       message.success("Model updated successfully");
@@ -929,7 +975,22 @@ export const ProviderSettings: React.FC = () => {
           </>
         );
 
-      case "copilot":
+      case "copilot": {
+        const configuredCopilotModel = form.getFieldValue([
+          "providers",
+          "copilot",
+          "model",
+        ]) as string | undefined;
+
+        // Prefer the real /v1/models list. If it's not loaded yet, keep showing the currently
+        // configured model so the Select doesn't appear blank.
+        const copilotModelOptions =
+          availableModels.length > 0
+            ? availableModels
+            : configuredCopilotModel
+              ? [{ value: configuredCopilotModel, label: configuredCopilotModel }]
+              : [];
+
         return (
           <>
             <Alert
@@ -1001,6 +1062,91 @@ export const ProviderSettings: React.FC = () => {
               <Switch />
             </Form.Item>
 
+            <Form.Item
+              name={["providers", "copilot", "model"]}
+              label="Default Model"
+              rules={[{ required: true, message: "Please select a model" }]}
+              extra={
+                <Space direction="vertical" size={4}>
+                  <Space size="small">
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() =>
+                        handleFetchModelsWithSave("copilot", { force: true })
+                      }
+                      loading={fetchingModels}
+                      style={{ padding: 0 }}
+                    >
+                      {fetchingModels
+                        ? "Fetching models..."
+                        : availableModels.length > 0
+                          ? "Refresh available models from backend"
+                          : "Fetch available models from backend"}
+                    </Button>
+                    {modelAutoSaveStatus === "saving" && <Spin size="small" />}
+                    {modelAutoSaveStatus === "success" && (
+                      <CheckCircleOutlined style={{ color: "#52c41a" }} />
+                    )}
+                    {modelAutoSaveStatus === "error" && (
+                      <Tooltip
+                        title={
+                          modelAutoSaveError || "Failed to save model change"
+                        }
+                      >
+                        <CloseCircleOutlined style={{ color: "#ff4d4f" }} />
+                      </Tooltip>
+                    )}
+                  </Space>
+                  {modelsFetchError && (
+                    <Space size="small">
+                      <Tooltip title={modelsFetchError}>
+                        <Text type="danger">Failed to fetch models</Text>
+                      </Tooltip>
+                      <Button
+                        size="small"
+                        onClick={() =>
+                          handleFetchModelsWithSave("copilot", { force: true })
+                        }
+                        loading={fetchingModels}
+                      >
+                        Retry
+                      </Button>
+                    </Space>
+                  )}
+                </Space>
+              }
+            >
+              <Select
+                placeholder="Select a model"
+                allowClear
+                showSearch
+                loading={fetchingModels}
+                disabled={modelAutoSaveStatus === "saving"}
+                notFoundContent={
+                  fetchingModels ? (
+                    <Spin size="small" />
+                  ) : (
+                    <Text type="secondary">
+                      {copilotAuthStatus?.authenticated
+                        ? 'No models loaded yet. Click "Fetch available models from backend".'
+                        : "Authenticate Copilot first, then fetch models."}
+                    </Text>
+                  )
+                }
+                onDropdownVisibleChange={(open) =>
+                  handleModelDropdownOpen("copilot", open)
+                }
+                onChange={(value) => handleModelChange("copilot", value)}
+              >
+                {copilotModelOptions.map((model) => (
+                  <Option key={model.value} value={model.value}>
+                    {model.label}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
             <Paragraph type="secondary">
               To use GitHub Copilot:
               <ul style={{ marginTop: 8, marginBottom: 0 }}>
@@ -1016,6 +1162,7 @@ export const ProviderSettings: React.FC = () => {
             </Paragraph>
           </>
         );
+      }
 
       default:
         return null;
@@ -1035,8 +1182,7 @@ export const ProviderSettings: React.FC = () => {
     >
       <Paragraph type="secondary">
         Configure your preferred LLM provider. Configuration will be saved and
-        applied automatically. Use "Reload Configuration" if you need to
-        manually reload the backend.
+        applied when you click "Save and Apply Configuration".
       </Paragraph>
 
       <Divider />
@@ -1077,15 +1223,6 @@ export const ProviderSettings: React.FC = () => {
             size="large"
           >
             Save and Apply Configuration
-          </Button>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => handleApply()}
-            loading={applyingConfig}
-            disabled={loading}
-            size="large"
-          >
-            Reload Configuration
           </Button>
         </Space>
       </Form>

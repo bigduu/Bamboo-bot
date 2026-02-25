@@ -36,6 +36,7 @@ export interface GeminiConfig {
 export interface CopilotConfig {
   // Copilot uses OAuth - no API key required
   headless_auth?: boolean; // Print login URL in console instead of opening browser
+  model?: string; // Selected model id (fetched from backend /models)
 }
 
 export type ProviderType = "copilot" | "openai" | "anthropic" | "gemini";
@@ -69,4 +70,10 @@ export const GEMINI_MODELS = [
   { value: "gemini-pro-vision", label: "Gemini Pro Vision" },
   { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
   { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+] as const;
+
+// Fallback list used when backend model discovery isn't available yet.
+export const COPILOT_MODELS = [
+  { value: "gpt-4o", label: "GPT-4o" },
+  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
 ] as const;

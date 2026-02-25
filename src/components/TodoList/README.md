@@ -56,13 +56,31 @@ Checks if a Todo List exists.
 
 ### SSE Events
 
-Connect to `/api/v1/stream/{session_id}` to receive real-time updates:
+First, execute the session:
+
+```http
+POST /api/v1/execute/{session_id}
+Content-Type: application/json
+
+{
+  "model": "your-model-name"
+}
+```
+
+Then connect to events:
+
+```http
+GET /api/v1/events/{session_id}
+```
+
+Example:
 
 ```javascript
+const eventSource = new EventSource('/api/v1/events/session-123');
 eventSource.onmessage = (event) => {
   const data = JSON.parse(event.data);
   if (data.type === "todo_list_updated") {
-    // Update UI
+    console.log('Todo list updated:', data.todo_list);
   }
 };
 ```

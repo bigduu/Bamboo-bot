@@ -513,66 +513,9 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "bamboo-agent"
-version = "0.2.4"
-dependencies = [
- "actix-cors",
- "actix-files",
- "actix-governor",
- "actix-web",
- "aes-gcm",
- "anyhow",
- "arboard",
- "async-stream",
- "async-trait",
- "base64 0.22.1",
- "bytes",
- "chrono",
- "clap",
- "colored",
- "dashmap 6.1.0",
- "dirs 5.0.1",
- "env_logger",
- "eventsource-client",
- "eventsource-stream",
- "futures",
- "glob",
- "globset",
- "hex",
- "lazy_static",
- "libc",
- "log",
- "parking_lot 0.12.5",
- "rand 0.8.5",
- "regex",
- "reqwest 0.12.28",
- "reqwest-eventsource",
- "reqwest-middleware",
- "reqwest-retry",
- "rusqlite",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha2",
- "sysinfo",
- "thiserror 1.0.69",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "toml 0.8.2",
- "tower",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid",
- "walkdir",
-]
-
-[[package]]
-name = "bamboo-agent"
-version = "0.2.4"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f33fbf5676203e5e8b599bda6647957d69d0c416c1c43b2d4adc8dbf98268054"
+checksum = "f54769b0ff0c2a611aafb9ab59d46860fe76e80fa1ce12d3e1dacbc46ec78f78"
 dependencies = [
  "actix-cors",
  "actix-files",
@@ -1091,7 +1034,7 @@ dependencies = [
  "anyhow",
  "arboard",
  "async-stream",
- "bamboo-agent 0.2.4",
+ "bamboo-agent",
  "chrono",
  "crossbeam",
  "dirs 5.0.1",
@@ -1564,7 +1507,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 name = "e2e-backend"
 version = "0.1.0"
 dependencies = [
- "bamboo-agent 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bamboo-agent",
  "clap",
  "env_logger",
  "log",

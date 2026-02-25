@@ -4,10 +4,12 @@
 //! Instead of using a sidecar process, we run the HTTP server directly in the app process.
 
 use log::{error, info};
-use std::io::ErrorKind;
 use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 use tokio::task::JoinHandle;
+
+// Import the server module from bamboo-agent
+use bamboo_agent::server;
 
 /// Embedded web service manager
 ///
@@ -57,7 +59,7 @@ impl EmbeddedWebService {
             info!("Embedded HTTP server task started");
 
             // Run the bamboo-agent HTTP server
-            let result = bamboo_agent::web_service::server::run(data_dir, port).await;
+            let result = server::run(data_dir, port).await;
 
             match result {
                 Ok(_) => {

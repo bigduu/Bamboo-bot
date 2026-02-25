@@ -148,7 +148,8 @@ npx tsc --noEmit
 │  │  │  ┌─────────────┐    ┌──────────────────────┐     │  │ │
 │  │  │  │ AgentClient │───▶│ localhost:8081       │     │  │ │
 │  │  │  │  (HTTP+SSE) │◀───│ /api/v1/chat         │     │  │ │
-│  │  │  └─────────────┘    │ /api/v1/stream/{id}  │     │  │ │
+│  │  │  └─────────────┘    │ /api/v1/execute/{id} │     │  │ │
+│  │  │                     │ /api/v1/events/{id}  │     │  │ │
 │  │  │                     └──────────────────────┘     │  │ │
 │  │  │                           │                      │  │ │
 │  │  │  Fallback: direct OpenAI  │                      │  │ │
@@ -218,6 +219,28 @@ npx tsc --noEmit
 | Checking... | Default | Detecting Agent Server |
 | Agent Mode | Green | Using Agent Server (localhost:8081) |
 | Direct Mode | Orange | Using direct OpenAI calls |
+
+## 🔄 API Migration Note
+
+The system has migrated from the deprecated `/stream` endpoint to the modern `/execute` + `/events` pattern:
+
+**Old Pattern (Deprecated)**:
+```
+POST /api/v1/chat → triggers execution + returns stream_url
+GET /api/v1/stream/{id} → SSE events
+```
+
+**New Pattern (Current)**:
+```
+POST /api/v1/chat → creates/retrieves session (no execution)
+POST /api/v1/execute/{id} → triggers execution, returns events_url
+GET /api/v1/events/{id} → SSE events (passive subscription)
+```
+
+Benefits:
+- Separation of concerns: session creation vs execution vs event subscription
+- Idempotent execution: can call execute() multiple times safely
+- Better control: subscribe to events independently of execution
 
 ## 🎊 Completion Summary
 

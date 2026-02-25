@@ -124,6 +124,14 @@ export interface UtilityService {
     message: string;
   }>;
   markSetupComplete(): Promise<ApiSuccessResponse>;
+
+  /**
+   * Tauri invoke for desktop-only features
+   */
+  invoke<T = unknown>(
+    command: string,
+    args?: Record<string, unknown>,
+  ): Promise<T>;
 }
 
 class HttpUtilityService implements Partial<UtilityService> {
@@ -295,6 +303,16 @@ class TauriUtilityService {
   async resetSetupStatus(): Promise<void> {
     await invoke("mark_setup_incomplete");
   }
+
+  /**
+   * Invoke Tauri command (desktop-only)
+   */
+  async invoke<T = unknown>(
+    command: string,
+    args?: Record<string, unknown>,
+  ): Promise<T> {
+    return await invoke<T>(command, args);
+  }
 }
 
 /**
@@ -353,6 +371,9 @@ export class ServiceFactory {
       // Setup status
       getSetupStatus: () => this.httpUtilityService.getSetupStatus(),
       markSetupComplete: () => this.httpUtilityService.markSetupComplete(),
+      // Tauri invoke
+      invoke: <T = unknown>(command: string, args?: Record<string, unknown>) =>
+        this.tauriUtilityService.invoke<T>(command, args),
     };
   }
 
