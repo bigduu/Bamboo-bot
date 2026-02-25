@@ -1029,7 +1029,7 @@ dependencies = [
 
 [[package]]
 name = "copilot_chat"
-version = "0.2.2"
+version = "0.2.9"
 dependencies = [
  "anyhow",
  "arboard",
