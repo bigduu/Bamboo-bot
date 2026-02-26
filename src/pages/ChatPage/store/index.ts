@@ -18,6 +18,7 @@ import {
 import { AgentClient } from "../services/AgentService";
 import { serviceFactory } from "../../../services/common/ServiceFactory";
 import { readStoredProxyAuth } from "../../../shared/utils/proxyAuth";
+import { useBambooConfigStore } from "../../../shared/stores/bambooConfigStore";
 import type { ChatItem, Message } from "../types/chat";
 
 const DEFAULT_PROXY_AUTH_MODE = "auto";
@@ -154,7 +155,7 @@ const applyStoredProxyAuth = async (): Promise<boolean> => {
 
 const bootstrapProxyAuthGate = async (): Promise<boolean> => {
   try {
-    const config = await serviceFactory.getBambooConfig();
+    const config = await useBambooConfigStore.getState().loadConfig();
     const mode =
       typeof config?.proxy_auth_mode === "string"
         ? config.proxy_auth_mode
@@ -167,7 +168,7 @@ const bootstrapProxyAuthGate = async (): Promise<boolean> => {
 
     // If the backend already has proxy auth configured (e.g. loaded from encrypted
     // config on disk), do not gate startup on localStorage.
-    const status = await serviceFactory.getProxyAuthStatus();
+    const status = await useBambooConfigStore.getState().loadProxyAuthStatus({ force: true });
     if (status?.configured) {
       return false;
     }

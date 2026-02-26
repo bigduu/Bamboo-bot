@@ -4,6 +4,7 @@ import {
   ProxyAuthRequiredError,
 } from "../../services/ModelService";
 import { serviceFactory } from "@services/common/ServiceFactory";
+import { useBambooConfigStore } from "../../../../shared/stores/bambooConfigStore";
 import type { AppState } from "../";
 
 let fetchModelsInFlight: Promise<void> | null = null;
@@ -43,7 +44,7 @@ export const createModelSlice: StateCreator<AppState, [], [], ModelSlice> = (
   // Keeping this for backward compatibility with Copilot model list
   loadConfigModel: async () => {
     try {
-      const config = await serviceFactory.getBambooConfig();
+      const config = await useBambooConfigStore.getState().loadConfig();
       const configModel =
         typeof config?.model === "string" ? config.model : undefined;
       if (configModel) {

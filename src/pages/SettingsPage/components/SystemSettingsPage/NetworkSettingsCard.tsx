@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Button, Card, Input, Space, Typography, Alert, theme } from "antd";
-import { serviceFactory } from "@services/common/ServiceFactory";
+import { useBambooConfigStore } from "../../../../shared/stores/bambooConfigStore";
 
 const { Text } = Typography;
 const { useToken } = theme;
-
-interface ProxyAuthStatus {
-  configured: boolean;
-  username: string | null;
-}
 
 interface NetworkSettingsCardProps {
   httpProxy: string;
@@ -30,28 +25,25 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
   isLoading,
 }) => {
   const { token } = useToken();
-  const [proxyAuthStatus, setProxyAuthStatus] = useState<ProxyAuthStatus>({
-    configured: false,
-    username: null,
-  });
+  const proxyAuthStatus = useBambooConfigStore((state) => state.proxyAuthStatus);
+  const isLoadingProxyAuthStatus = useBambooConfigStore(
+    (state) => state.isLoadingProxyAuthStatus,
+  );
+  const loadProxyAuthStatus = useBambooConfigStore(
+    (state) => state.loadProxyAuthStatus,
+  );
+  const applyProxyAuth = useBambooConfigStore((state) => state.applyProxyAuth);
+  const clearProxyAuth = useBambooConfigStore((state) => state.clearProxyAuth);
+
   const [proxyAuthForm, setProxyAuthForm] = useState({
     username: "",
     password: "",
   });
   const [isApplyingProxyAuth, setIsApplyingProxyAuth] = useState(false);
 
-  const loadProxyAuthStatus = async () => {
-    try {
-      const status = await serviceFactory.getProxyAuthStatus();
-      setProxyAuthStatus(status);
-    } catch (error) {
-      console.error("Failed to load proxy auth status:", error);
-    }
-  };
-
   // Load proxy auth status (and allow manual refresh via Save/Reload buttons).
   useEffect(() => {
-    loadProxyAuthStatus();
+    void loadProxyAuthStatus();
   }, []);
 
   const handleApplyProxyAuth = async () => {
@@ -62,11 +54,10 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
 
     setIsApplyingProxyAuth(true);
     try {
-      await serviceFactory.setProxyAuth({
+      await applyProxyAuth({
         username,
         password: proxyAuthForm.password,
       });
-      setProxyAuthStatus({ configured: true, username });
       setProxyAuthForm({ username: "", password: "" });
     } catch (error) {
       console.error("Failed to apply proxy auth:", error);
@@ -78,8 +69,7 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
   const handleClearProxyAuth = async () => {
     setIsApplyingProxyAuth(true);
     try {
-      await serviceFactory.clearProxyAuth();
-      setProxyAuthStatus({ configured: false, username: null });
+      await clearProxyAuth();
     } catch (error) {
       console.error("Failed to clear proxy auth:", error);
     } finally {
@@ -133,16 +123,16 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
           title="Proxy Authentication"
           style={{ marginTop: token.marginSM }}
         >
-          {proxyAuthStatus.configured ? (
+          {proxyAuthStatus?.configured ? (
             <Space direction="vertical" style={{ width: "100%" }}>
               <Alert
                 type="success"
-                message={`Configured for user: ${proxyAuthStatus.username}`}
+                message={`Configured for user: ${proxyAuthStatus.username ?? ""}`}
                 showIcon
               />
               <Button
                 onClick={handleClearProxyAuth}
-                loading={isApplyingProxyAuth}
+                loading={isApplyingProxyAuth || isLoadingProxyAuthStatus}
                 danger
               >
                 Clear Credentials
@@ -177,7 +167,7 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
               <Button
                 type="primary"
                 onClick={handleApplyProxyAuth}
-                loading={isApplyingProxyAuth}
+                loading={isApplyingProxyAuth || isLoadingProxyAuthStatus}
                 disabled={!proxyAuthForm.username.trim()}
               >
                 Apply
@@ -201,7 +191,9 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
         >
           <Button
             onClick={() =>
-              Promise.resolve(onReload()).finally(() => loadProxyAuthStatus())
+              Promise.resolve(onReload()).finally(() =>
+                loadProxyAuthStatus({ force: true }),
+              )
             }
             disabled={isLoading}
           >
@@ -211,7 +203,9 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
             data-testid="save-proxy-settings"
             type="primary"
             onClick={() =>
-              Promise.resolve(onSave()).finally(() => loadProxyAuthStatus())
+              Promise.resolve(onSave()).finally(() =>
+                loadProxyAuthStatus({ force: true }),
+              )
             }
             disabled={isLoading}
           >
