@@ -29,6 +29,7 @@ export function useAgentEventSubscription() {
   const updateTokenUsage = useAppStore((state) => state.updateTokenUsage);
   const setTruncationInfo = useAppStore((state) => state.setTruncationInfo);
   const updateChat = useAppStore((state) => state.updateChat);
+  const updateMessage = useAppStore((state) => state.updateMessage);
   const setTodoList = useAppStore((state) => state.setTodoList);
   const updateTodoListDelta = useAppStore((state) => state.updateTodoListDelta);
   const setEvaluationState = useAppStore((state) => state.setEvaluationState);
@@ -50,6 +51,8 @@ export function useAgentEventSubscription() {
 
   // toolCallId -> toolName mapping for tracking tool names across start/complete
   const toolNamesByCallIdRef = useRef<Map<string, string>>(new Map());
+  // toolCallId -> messageId mapping so we can update the tool call card in-place
+  const toolCallMessageIdByCallIdRef = useRef<Map<string, string>>(new Map());
 
   // Chats that are processing but we couldn't subscribe yet (missing sessionId)
   const pendingChatIdsRef = useRef<Set<string>>(new Set());
@@ -112,12 +115,47 @@ export function useAgentEventSubscription() {
               // Track tool name for later use in onToolComplete
               toolNamesByCallIdRef.current.set(toolCallId, toolName);
 
+              const messageId = crypto.randomUUID();
+              toolCallMessageIdByCallIdRef.current.set(toolCallId, messageId);
+
               void addMessage(chatId, {
-                id: crypto.randomUUID(),
+                id: messageId,
                 role: "assistant",
                 type: "tool_call",
-                toolCalls: [{ toolCallId, toolName, parameters: args || {} }],
+                toolCalls: [
+                  {
+                    toolCallId,
+                    toolName,
+                    parameters: args || {},
+                    streamingOutput: "",
+                  },
+                ],
                 createdAt: new Date().toISOString(),
+              });
+            },
+
+            onToolToken: (toolCallId: string, tokenContent: string) => {
+              const messageId =
+                toolCallMessageIdByCallIdRef.current.get(toolCallId);
+              if (!messageId) return;
+
+              const chat = useAppStore
+                .getState()
+                .chats.find((c) => c.id === chatId);
+              if (!chat) return;
+              const msg = chat?.messages.find((m) => m.id === messageId) as any;
+              if (!msg || msg.type !== "tool_call" || !Array.isArray(msg.toolCalls)) {
+                return;
+              }
+
+              const updatedToolCalls = msg.toolCalls.map((call: any) => {
+                if (call.toolCallId !== toolCallId) return call;
+                const next = (call.streamingOutput || "") + (tokenContent || "");
+                return { ...call, streamingOutput: next };
+              });
+
+              updateMessage(chatId, messageId, {
+                toolCalls: updatedToolCalls,
               });
             },
 
@@ -125,6 +163,7 @@ export function useAgentEventSubscription() {
               // Retrieve tool name tracked in onToolStart
               const toolName = toolNamesByCallIdRef.current.get(toolCallId) || "unknown";
               toolNamesByCallIdRef.current.delete(toolCallId);
+              toolCallMessageIdByCallIdRef.current.delete(toolCallId);
 
               const displayPreference =
                 (result?.display_preference as
@@ -149,6 +188,8 @@ export function useAgentEventSubscription() {
             },
 
             onToolError: (toolCallId, error: string) => {
+              toolNamesByCallIdRef.current.delete(toolCallId);
+              toolCallMessageIdByCallIdRef.current.delete(toolCallId);
               void addMessage(chatId, {
                 id: crypto.randomUUID(),
                 role: "assistant",
@@ -310,6 +351,7 @@ export function useAgentEventSubscription() {
       updateTokenUsage,
       setTruncationInfo,
       updateChat,
+      updateMessage,
       setTodoList,
       updateTodoListDelta,
       setEvaluationState,

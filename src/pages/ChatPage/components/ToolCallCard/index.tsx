@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Collapse, Space, Button, Typography, theme, Tooltip } from "antd";
 import { ToolOutlined, CopyOutlined } from "@ant-design/icons";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -11,6 +11,7 @@ export interface ToolCallCardProps {
   toolName: string;
   parameters: Record<string, any>;
   toolCallId: string;
+  streamingOutput?: string;
   defaultExpanded?: boolean;
 }
 
@@ -52,9 +53,34 @@ const ToolCallCardComponent: React.FC<ToolCallCardProps> = ({
   toolName,
   parameters,
   toolCallId,
+  streamingOutput,
   defaultExpanded = false,
 }) => {
   const { token } = theme.useToken();
+
+  const [activeKeys, setActiveKeys] = useState<string[]>(
+    defaultExpanded ? [toolCallId] : [],
+  );
+  const autoExpandedOnceRef = useRef(false);
+  const liveOutputScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-expand the card the first time we receive any live output so users can
+  // actually see streaming stdout without manually expanding.
+  useEffect(() => {
+    if (autoExpandedOnceRef.current) return;
+    if (!streamingOutput || streamingOutput.trim().length === 0) return;
+    setActiveKeys((prev) => (prev.includes(toolCallId) ? prev : [toolCallId]));
+    autoExpandedOnceRef.current = true;
+  }, [streamingOutput, toolCallId]);
+
+  // Keep the live output viewport scrolled to the bottom as new chunks arrive.
+  useEffect(() => {
+    if (!streamingOutput || streamingOutput.trim().length === 0) return;
+    if (!activeKeys.includes(toolCallId)) return;
+    const el = liveOutputScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [streamingOutput, activeKeys, toolCallId]);
 
   const intentDescription = useMemo(
     () => generateIntentDescription(toolName, parameters),
@@ -98,7 +124,18 @@ const ToolCallCardComponent: React.FC<ToolCallCardProps> = ({
 
   return (
     <Collapse
-      defaultActiveKey={defaultExpanded ? [toolCallId] : []}
+      activeKey={activeKeys}
+      onChange={(next) => {
+        const keys = Array.isArray(next)
+          ? (next as string[]).map(String)
+          : next == null
+            ? []
+            : [String(next)];
+        setActiveKeys(keys);
+        if (keys.includes(toolCallId)) {
+          autoExpandedOnceRef.current = true;
+        }
+      }}
       style={{
         backgroundColor: token.colorInfoBg,
         borderColor: token.colorInfoBorder,
@@ -139,6 +176,44 @@ const ToolCallCardComponent: React.FC<ToolCallCardProps> = ({
               style={{ width: "100%" }}
               size={token.marginSM}
             >
+              {/* Live Output Section (optional) */}
+              {streamingOutput && streamingOutput.trim().length > 0 && (
+                <div>
+                  <Text strong style={{ fontSize: token.fontSizeSM }}>
+                    Live output:
+                  </Text>
+                  <div
+                    ref={liveOutputScrollRef}
+                    style={{
+                      marginTop: token.marginXS,
+                      borderRadius: token.borderRadiusSM,
+                      backgroundColor: token.colorBgContainer,
+                      maxHeight: 240,
+                      overflow: "auto",
+                    }}
+                  >
+                    <SyntaxHighlighter
+                      language="text"
+                      style={oneDark}
+                      wrapLongLines={true}
+                      customStyle={{
+                        margin: 0,
+                        backgroundColor: "transparent",
+                        fontSize: token.fontSizeSM,
+                      }}
+                      codeTagProps={{
+                        style: {
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        },
+                      }}
+                    >
+                      {streamingOutput}
+                    </SyntaxHighlighter>
+                  </div>
+                </div>
+              )}
+
               {/* Key Parameters Section */}
               {keyParamsList.length > 0 && (
                 <div>

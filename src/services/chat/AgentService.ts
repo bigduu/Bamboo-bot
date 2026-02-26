@@ -9,6 +9,7 @@ import { agentApiClient } from "../api";
 // Agent Event Types (matching Rust backend)
 export type AgentEventType =
   | "token"
+  | "tool_token"
   | "tool_start"
   | "tool_complete"
   | "tool_error"
@@ -150,6 +151,7 @@ export interface HistoryResponse {
 // Event handlers type
 export interface AgentEventHandlers {
   onToken?: (content: string) => void;
+  onToolToken?: (toolCallId: string, content: string) => void;
   onToolStart?: (
     toolCallId: string,
     toolName: string,
@@ -309,6 +311,9 @@ export class AgentClient {
     switch (event.type) {
       case "token":
         handlers.onToken?.(event.content || "");
+        break;
+      case "tool_token":
+        handlers.onToolToken?.(event.tool_call_id || "", event.content || "");
         break;
       case "tool_start":
         handlers.onToolStart?.(
