@@ -106,6 +106,16 @@ export interface McpActionResponse {
   error?: string;
 }
 
+export interface McpImportResponse {
+  message: string;
+  mode: "merge" | "replace";
+  added: number;
+  updated: number;
+  removed: number;
+  server_ids: string[];
+  start_errors?: Array<{ server_id: string; error: string }>;
+}
+
 export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 export const DEFAULT_HEALTHCHECK_INTERVAL_MS = 30_000;
 export const DEFAULT_STDIO_STARTUP_TIMEOUT_MS = 20_000;

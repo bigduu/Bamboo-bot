@@ -5,7 +5,7 @@ import {
   waitFor,
   act,
 } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { QuestionDialog } from "../QuestionDialog";
 import { useAppStore } from "../../../pages/ChatPage/store";
 
@@ -23,21 +23,35 @@ vi.mock("../../../services/api", () => ({
 
 describe("QuestionDialog", () => {
   const mockSetChatProcessing = vi.fn();
+  const mockIsChatProcessing = vi.fn();
   const defaultProps = {
     sessionId: "test-session-1",
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsChatProcessing.mockReturnValue(false);
     (useAppStore as any).mockImplementation((selector: (state: any) => any) => {
       if (typeof selector === "function") {
         return selector({
           setChatProcessing: mockSetChatProcessing,
+          isChatProcessing: mockIsChatProcessing,
           chats: [],
+          selectedModel: "gpt-5-mini",
         });
       }
-      return { setChatProcessing: mockSetChatProcessing, chats: [] };
+      return {
+        setChatProcessing: mockSetChatProcessing,
+        isChatProcessing: mockIsChatProcessing,
+        chats: [],
+        selectedModel: "gpt-5-mini",
+      };
     });
+  });
+
+  afterEach(() => {
+    // Ensure fake timers don't leak into other tests on failure.
+    vi.useRealTimers();
   });
 
   it("should fetch pending question on mount", async () => {
@@ -136,6 +150,7 @@ describe("QuestionDialog", () => {
       // Then call /execute
       expect(agentApiClient.post).toHaveBeenCalledWith(
         "execute/test-session-1",
+        { model: "gpt-5-mini" },
       );
 
       // Should set processing to activate subscription (but chatId is undefined in test)
@@ -208,27 +223,41 @@ describe("QuestionDialog", () => {
     );
   });
 
-  it("should stop polling after MAX_EMPTY_COUNT consecutive empty responses", async () => {
+  it("should keep polling and eventually show a question after empty responses", async () => {
+    vi.useFakeTimers();
+
     const { agentApiClient } = await import("../../../services/api");
-    (agentApiClient.get as any).mockResolvedValue({
-      has_pending_question: false,
+    let callCount = 0;
+    (agentApiClient.get as any).mockImplementation(() => {
+      callCount += 1;
+      // First few polls: nothing pending
+      if (callCount <= 4) {
+        return Promise.resolve({ has_pending_question: false });
+      }
+      return Promise.resolve({
+        has_pending_question: true,
+        question: "Late question?",
+        options: ["A"],
+        allow_custom: false,
+      });
     });
 
     await act(async () => {
       render(<QuestionDialog {...defaultProps} />);
     });
 
-    // Should call GET multiple times initially
-    await waitFor(
-      () => {
-        const callCount = (agentApiClient.get as any).mock.calls.length;
-        expect(callCount).toBeGreaterThan(0);
-      },
-      { timeout: 2000 },
-    );
+    // Advance enough time for multiple 15s polls to happen.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
 
-    // After MAX_EMPTY_COUNT (3) responses, polling should slow down or stop
-    // This is hard to test precisely without controlling timers
+    // Flush pending microtasks from async fetches.
+    await act(async () => {
+      // eslint-disable-next-line @typescript-eslint/await-thenable
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Late question?")).toBeInTheDocument();
   });
 
   it("should handle /execute failure gracefully", async () => {
@@ -279,6 +308,7 @@ describe("QuestionDialog", () => {
       // Should attempt /execute
       expect(agentApiClient.post).toHaveBeenCalledWith(
         "execute/test-session-1",
+        { model: "gpt-5-mini" },
       );
 
       // Should log error

@@ -2,6 +2,7 @@ export { McpService, mcpService } from "./McpService";
 export type {
   HeaderConfig,
   McpActionResponse,
+  McpImportResponse,
   McpServer,
   McpServerApiRecord,
   McpServerConfig,

@@ -72,6 +72,16 @@ fn read_proxy_auth_from_config(
     read_proxy_auth_from_plain(config, &plain_key)
 }
 
+fn read_proxy_auth_unified(config: &Value) -> Option<bamboo_agent::core::ProxyAuth> {
+    // Canonical Bamboo key (preferred).
+    if let Some(auth) = read_proxy_auth_from_encrypted(config, "proxy_auth_encrypted") {
+        return Some(auth);
+    }
+
+    // Legacy per-scheme keys (back-compat).
+    read_proxy_auth_from_config(config, "http").or_else(|| read_proxy_auth_from_config(config, "https"))
+}
+
 fn bamboo_dir() -> PathBuf {
     std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
@@ -123,8 +133,7 @@ async fn get_proxy_config() -> Result<serde_json::Value, String> {
         .unwrap_or_default()
         .to_string();
 
-    let stored_auth = read_proxy_auth_from_config(&config, "http")
-        .or_else(|| read_proxy_auth_from_config(&config, "https"));
+    let stored_auth = read_proxy_auth_unified(&config);
 
     let (username, password, remember) = if let Some(auth) = stored_auth {
         (Some(auth.username), Some(auth.password), true)
@@ -212,8 +221,14 @@ async fn set_proxy_config(
     // Never persist plaintext proxy auth fields.
     config_obj.remove("http_proxy_auth");
     config_obj.remove("https_proxy_auth");
+    config_obj.remove("proxy_auth");
 
-    if remember && has_auth {
+    // Legacy keys (back-compat): older builds stored per-scheme encrypted values.
+    // We now persist the canonical Bamboo field `proxy_auth_encrypted`.
+    config_obj.remove("http_proxy_auth_encrypted");
+    config_obj.remove("https_proxy_auth_encrypted");
+
+    if remember && has_auth && (!http_proxy.is_empty() || !https_proxy.is_empty()) {
         let auth = bamboo_agent::core::ProxyAuth {
             username: username.clone(),
             password: password.clone(),
@@ -224,26 +239,12 @@ async fn set_proxy_config(
         let encrypted = bamboo_agent::core::encryption::encrypt(&auth_json)
             .map_err(|e| format!("Failed to encrypt auth: {}", e))?;
 
-        if !http_proxy.is_empty() {
-            config_obj.insert(
-                "http_proxy_auth_encrypted".to_string(),
-                Value::String(encrypted.clone()),
-            );
-        } else {
-            config_obj.remove("http_proxy_auth_encrypted");
-        }
-
-        if !https_proxy.is_empty() {
-            config_obj.insert(
-                "https_proxy_auth_encrypted".to_string(),
-                Value::String(encrypted),
-            );
-        } else {
-            config_obj.remove("https_proxy_auth_encrypted");
-        }
+        config_obj.insert(
+            "proxy_auth_encrypted".to_string(),
+            Value::String(encrypted),
+        );
     } else {
-        config_obj.remove("http_proxy_auth_encrypted");
-        config_obj.remove("https_proxy_auth_encrypted");
+        config_obj.remove("proxy_auth_encrypted");
     }
 
     write_config_json(&config)?;

@@ -182,14 +182,163 @@ const validateJson = (
   | { valid: true; config: McpServerConfig }
   | { valid: false; error: string } => {
   try {
-    const parsed = JSON.parse(json) as McpServerConfig;
-    if (!parsed.id || typeof parsed.id !== "string") {
+    const parsed = JSON.parse(json) as unknown;
+    if (!parsed || typeof parsed !== "object") {
+      return { valid: false, error: "JSON must be an object" };
+    }
+
+    const record = parsed as Record<string, unknown>;
+
+    // Common user flow: paste Claude Desktop-style config.
+    // Bulk import is not supported in this modal (single server only).
+    if (record.mcpServers && typeof record.mcpServers === "object") {
+      return {
+        valid: false,
+        error:
+          "Detected 'mcpServers' (bulk config). Use the MCP tab Import button for bulk import, or paste a single server config here.",
+      };
+    }
+
+    const id = typeof record.id === "string" ? record.id : "";
+    if (!id.trim()) {
       return { valid: false, error: "Missing or invalid 'id' field" };
     }
-    if (!parsed.transport || typeof parsed.transport !== "object") {
-      return { valid: false, error: "Missing or invalid 'transport' field" };
+
+    // Preferred (internal) format
+    if (record.transport && typeof record.transport === "object") {
+      const config = record as unknown as McpServerConfig;
+      if (!config.transport || typeof config.transport !== "object") {
+        return { valid: false, error: "Missing or invalid 'transport' field" };
+      }
+      return { valid: true, config };
     }
-    return { valid: true, config: parsed };
+
+    // Mainstream MCP format (Claude Desktop-style): command/args/env/cwd OR url/headers
+    const enabled =
+      typeof record.enabled === "boolean"
+        ? record.enabled
+        : typeof record.disabled === "boolean"
+          ? !record.disabled
+          : true;
+
+    const request_timeout_ms =
+      typeof record.request_timeout_ms === "number"
+        ? record.request_timeout_ms
+        : DEFAULT_REQUEST_TIMEOUT_MS;
+    const healthcheck_interval_ms =
+      typeof record.healthcheck_interval_ms === "number"
+        ? record.healthcheck_interval_ms
+        : DEFAULT_HEALTHCHECK_INTERVAL_MS;
+
+    const allowed_tools = Array.isArray(record.allowed_tools)
+      ? record.allowed_tools.filter((item): item is string => typeof item === "string")
+      : [];
+    const denied_tools = Array.isArray(record.denied_tools)
+      ? record.denied_tools.filter((item): item is string => typeof item === "string")
+      : [];
+
+    const name = typeof record.name === "string" ? record.name : undefined;
+
+    if (typeof record.url === "string") {
+      const headersRaw = record.headers;
+      const headers: HeaderConfig[] = Array.isArray(headersRaw)
+        ? headersRaw
+            .map((item) => {
+              if (!item || typeof item !== "object") return null;
+              const pair = item as Record<string, unknown>;
+              const headerName = typeof pair.name === "string" ? pair.name : "";
+              const headerValue = typeof pair.value === "string" ? pair.value : "";
+              if (!headerName.trim()) return null;
+              return { name: headerName, value: headerValue };
+            })
+            .filter((item): item is HeaderConfig => Boolean(item))
+        : headersRaw && typeof headersRaw === "object"
+          ? Object.entries(headersRaw as Record<string, unknown>)
+              .filter(([key]) => key.trim())
+              .map(([key, value]) => ({
+                name: key,
+                value: typeof value === "string" ? value : "",
+              }))
+          : [];
+
+      const connect_timeout_ms =
+        typeof record.connect_timeout_ms === "number"
+          ? record.connect_timeout_ms
+          : DEFAULT_SSE_CONNECT_TIMEOUT_MS;
+
+      return {
+        valid: true,
+        config: {
+          id,
+          name,
+          enabled,
+          transport: {
+            type: "sse",
+            url: record.url,
+            headers,
+            connect_timeout_ms,
+          },
+          request_timeout_ms,
+          healthcheck_interval_ms,
+          allowed_tools,
+          denied_tools,
+          reconnect: undefined,
+        },
+      };
+    }
+
+    if (typeof record.command === "string") {
+      const args = Array.isArray(record.args)
+        ? record.args.filter((item): item is string => typeof item === "string")
+        : [];
+
+      const envRaw = record.env;
+      const env =
+        envRaw && typeof envRaw === "object"
+          ? Object.entries(envRaw as Record<string, unknown>).reduce<Record<string, string>>(
+              (acc, [key, value]) => {
+                if (typeof value === "string") {
+                  acc[key] = value;
+                }
+                return acc;
+              },
+              {},
+            )
+          : {};
+
+      const startup_timeout_ms =
+        typeof record.startup_timeout_ms === "number"
+          ? record.startup_timeout_ms
+          : DEFAULT_STDIO_STARTUP_TIMEOUT_MS;
+
+      return {
+        valid: true,
+        config: {
+          id,
+          name,
+          enabled,
+          transport: {
+            type: "stdio",
+            command: record.command,
+            args,
+            cwd: typeof record.cwd === "string" ? record.cwd : undefined,
+            env,
+            startup_timeout_ms,
+          },
+          request_timeout_ms,
+          healthcheck_interval_ms,
+          allowed_tools,
+          denied_tools,
+          reconnect: undefined,
+        },
+      };
+    }
+
+    return {
+      valid: false,
+      error:
+        "Missing transport info. Expected either 'transport' (Bodhi format) or 'command'/'url' (mainstream MCP format).",
+    };
   } catch (e) {
     return {
       valid: false,

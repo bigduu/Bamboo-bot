@@ -18,6 +18,10 @@ export interface OpenAIConfig {
   api_key: string;
   base_url?: string;
   model?: string;
+  // Models that must use the OpenAI Responses API upstream (instead of chat/completions).
+  // Supports exact match (e.g. "gpt-5.3-codex") and a single trailing wildcard for prefix match
+  // (e.g. "gpt-5*").
+  responses_only_models?: string[];
 }
 
 export interface AnthropicConfig {
@@ -37,6 +41,10 @@ export interface CopilotConfig {
   // Copilot uses OAuth - no API key required
   headless_auth?: boolean; // Print login URL in console instead of opening browser
   model?: string; // Selected model id (fetched from backend /models)
+  // Models that must use the OpenAI Responses API upstream (instead of chat/completions).
+  // Supports exact match (e.g. "gpt-5.3-codex") and a single trailing wildcard for prefix match
+  // (e.g. "gpt-5*").
+  responses_only_models?: string[];
 }
 
 export type ProviderType = "copilot" | "openai" | "anthropic" | "gemini";

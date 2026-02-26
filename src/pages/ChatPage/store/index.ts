@@ -22,8 +22,6 @@ import type { ChatItem, Message } from "../types/chat";
 
 const DEFAULT_PROXY_AUTH_MODE = "auto";
 const REQUIRED_PROXY_AUTH_MODE = "required";
-const STARTUP_FALLBACK_MODELS = ["gpt-5-mini", "gpt-5", "gemini-2.5-pro"];
-const SELECTED_MODEL_LS_KEY = "bamboo_selected_model_id";
 const AGENT_HEALTH_CHECK_INTERVAL_MS = 10000;
 
 type AgentAvailabilitySlice = {
@@ -167,21 +165,22 @@ const bootstrapProxyAuthGate = async (): Promise<boolean> => {
       return false;
     }
 
+    // If the backend already has proxy auth configured (e.g. loaded from encrypted
+    // config on disk), do not gate startup on localStorage.
+    const status = await serviceFactory.getProxyAuthStatus();
+    if (status?.configured) {
+      return false;
+    }
+
     const hasAppliedStoredAuth = await applyStoredProxyAuth();
     if (hasAppliedStoredAuth) {
       return false;
     }
 
-    const storedModel = localStorage.getItem(SELECTED_MODEL_LS_KEY);
-    const selectedModel = storedModel || STARTUP_FALLBACK_MODELS[0];
-    if (!storedModel) {
-      localStorage.setItem(SELECTED_MODEL_LS_KEY, selectedModel);
-    }
-
     useAppStore.setState((state) => ({
       ...state,
-      models: STARTUP_FALLBACK_MODELS,
-      selectedModel,
+      models: [],
+      selectedModel: undefined,
       modelsError:
         "Proxy auth mode is set to required. Please configure proxy username/password and apply it.",
       isLoadingModels: false,

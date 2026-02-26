@@ -11,6 +11,7 @@ import {
 } from "antd";
 import { agentApiClient } from "../../services/api";
 import { useAppStore } from "../../pages/ChatPage/store";
+import { AgentClient } from "../../services/chat/AgentService";
 import styles from "./QuestionDialog.module.css";
 
 const { Text, Title } = Typography;
@@ -40,15 +41,21 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
   const [customInput, setCustomInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [pollingEnabled, setPollingEnabled] = useState(true); // Use state instead of ref
+  // NOTE: We intentionally avoid permanently stopping polling. The agent may ask
+  // questions later in the session; stopping polling would prevent the dialog
+  // from ever appearing.
   const emptyCountRef = useRef(0);
-  const MAX_EMPTY_COUNT = 3; // Stop polling after 3 consecutive empty responses
 
   const setChatProcessing = useAppStore((state) => state.setChatProcessing);
   const chats = useAppStore((state) => state.chats);
+  const selectedModel = useAppStore((state) => state.selectedModel);
 
   // Find the chatId for this sessionId
-  const chatId = chats.find((chat) => chat.config.agentSessionId === sessionId)?.id;
+  const chatId = chats.find((chat) => chat.config.agentSessionId === sessionId)
+    ?.id;
+  const isChatProcessing = useAppStore((state) =>
+    chatId ? state.isChatProcessing(chatId) : false,
+  );
 
   // Fetch pending question
   const fetchPendingQuestion = useCallback(async () => {
@@ -58,26 +65,16 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
       );
       if (data.has_pending_question) {
         setPendingQuestion(data);
-        emptyCountRef.current = 0; // Reset counter when we have a question
+        emptyCountRef.current = 0;
       } else {
         setPendingQuestion(null);
         emptyCountRef.current += 1;
-
-        // Stop polling after reaching threshold
-        if (emptyCountRef.current >= MAX_EMPTY_COUNT) {
-          setPollingEnabled(false);
-        }
       }
     } catch (err) {
       // Handle 404 - no pending question for this session
       if (err instanceof Error && err.message.includes("404")) {
         setPendingQuestion(null);
         emptyCountRef.current += 1;
-
-        // Stop polling after reaching threshold
-        if (emptyCountRef.current >= MAX_EMPTY_COUNT) {
-          setPollingEnabled(false);
-        }
         return;
       }
       console.error("Failed to fetch pending question:", err);
@@ -89,29 +86,26 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
   // Reset polling when session changes
   useEffect(() => {
     emptyCountRef.current = 0;
-    setPollingEnabled(true);
     setIsLoading(true);
   }, [sessionId]);
 
   // Poll for pending question periodically
-  const pollInterval = pendingQuestion?.has_pending_question ? 3000 : 15000;
+  // When the agent is actively running, poll faster so the dialog shows quickly.
+  // Otherwise keep it light.
+  const pollInterval =
+    pendingQuestion?.has_pending_question || isChatProcessing ? 3000 : 15000;
 
   useEffect(() => {
-    // Don't poll if polling is disabled
-    if (!pollingEnabled) {
-      return;
-    }
-
     fetchPendingQuestion();
 
     const interval = setInterval(() => {
-      if (!isSubmitting && pollingEnabled) {
+      if (!isSubmitting) {
         fetchPendingQuestion();
       }
     }, pollInterval);
 
     return () => clearInterval(interval);
-  }, [fetchPendingQuestion, isSubmitting, pollInterval, pollingEnabled]);
+  }, [fetchPendingQuestion, isSubmitting, pollInterval]);
 
   // Submit response
   const handleSubmit = async () => {
@@ -133,24 +127,32 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
       setPendingQuestion(null);
       setSelectedOption(null);
       setCustomInput("");
-      emptyCountRef.current = 0; // Reset counter to resume polling
-      setPollingEnabled(true); // Re-enable polling in case it was stopped
+      emptyCountRef.current = 0;
 
       // Step 2: Restart agent execution
       try {
-        const executeResult = await agentApiClient.post<{
-          status: string;
-          events_url: string;
-        }>(`execute/${sessionId}`);
-        console.log(
-          "[QuestionDialog] Agent execution restarted:",
-          executeResult.status,
-        );
+        const modelToUse = selectedModel?.trim();
+        if (!modelToUse) {
+          // Do not guess a model here. Models can be disabled/removed; the user must
+          // explicitly select one before we can resume agent execution.
+          message.error(
+            "No model selected. Please select a model first, then continue the chat to resume the agent.",
+          );
+        } else {
+          const executeResult = await AgentClient.getInstance().execute(
+            sessionId,
+            modelToUse,
+          );
+          console.log(
+            "[QuestionDialog] Agent execution restarted:",
+            executeResult.status,
+          );
 
-        // Set processing flag to activate event subscription
-        if (["started", "already_running"].includes(executeResult.status)) {
-          if (chatId) {
-            setChatProcessing(chatId, true);
+          // Set processing flag to activate event subscription
+          if (["started", "already_running"].includes(executeResult.status)) {
+            if (chatId) {
+              setChatProcessing(chatId, true);
+            }
           }
         }
       } catch (execError) {

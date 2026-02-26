@@ -60,7 +60,18 @@ export function renderMermaidCached(
 
     // 用 chartKey 派生一个确定性的 id，避免每次 render 生成不同 id 导致缓存难复用
     const id = `mermaid-${chartKey}`;
-    const renderResult = await mermaid.render(id, normalizedChart);
+    // Mermaid v11 expects a DOM container in some environments; provide a hidden
+    // element to ensure rendering works reliably across WebViews (e.g. Tauri).
+    const renderHost = document.createElement("div");
+    renderHost.style.cssText =
+      "position:absolute;left:-9999px;top:-9999px;width:0;height:0;overflow:hidden;visibility:hidden;";
+    document.body.appendChild(renderHost);
+    let renderResult: any;
+    try {
+      renderResult = await mermaid.render(id, normalizedChart, renderHost);
+    } finally {
+      document.body.removeChild(renderHost);
+    }
     const svg = renderResult.svg ?? renderResult;
 
     // 使用 DOMParser 测量 SVG 尺寸

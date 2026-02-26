@@ -3,49 +3,78 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SetupPage } from "./SetupPage";
 
-const mockInvoke = vi.fn();
-
 // Mock fetch globally for HTTP API calls
 global.fetch = vi.fn();
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args),
-}));
 
 describe("SetupPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock Tauri invoke for proxy config
-    mockInvoke.mockImplementation((command: string) => {
-      if (command === "get_proxy_config") {
-        return Promise.resolve({
-          http_proxy: "",
-          https_proxy: "",
-          username: null,
-          password: null,
-          remember: false,
-        });
+    // Mock fetch for HTTP API calls (default happy path).
+    (fetch as any).mockImplementation(async (url: string, init?: RequestInit) => {
+      const method = (init?.method || "GET").toUpperCase();
+      const path = url.toString();
+
+      // Initial config prefill
+      if (method === "GET" && path.includes("/bamboo/config")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({ http_proxy: "", https_proxy: "" }),
+        };
+      }
+      if (method === "GET" && path.includes("/bamboo/proxy-auth/status")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({ configured: false, username: null }),
+        };
       }
 
-      if (command === "set_proxy_config") {
-        return Promise.resolve(undefined);
+      // Setup status
+      if (method === "GET" && path.includes("/bamboo/setup/status")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({
+            is_complete: false,
+            has_proxy_config: false,
+            has_proxy_env: false,
+            message:
+              "No proxy environment variables detected. You can proceed without proxy or configure one manually if needed.",
+          }),
+        };
       }
 
-      return Promise.resolve(undefined);
+      // Save config/auth + mark setup complete
+      if (method === "POST" && path.includes("/bamboo/config")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({}),
+        };
+      }
+      if (method === "POST" && path.includes("/bamboo/proxy-auth")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({ success: true }),
+        };
+      }
+      if (method === "POST" && path.includes("/bamboo/setup/complete")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({ success: true }),
+        };
+      }
+
+      return {
+        ok: true,
+        headers: { get: () => "application/json" },
+        json: async () => ({}),
+      };
     });
-
-    // Mock fetch for HTTP API calls
-    (fetch as any).mockImplementation(async () => ({
-      ok: true,
-      json: async () => ({
-        is_complete: false,
-        has_proxy_config: false,
-        has_proxy_env: false,
-        message:
-          "No proxy environment variables detected. You can proceed without proxy or configure one manually if needed.",
-      }),
-    }));
   });
 
   it("loads backend setup status and shows the status message", async () => {
@@ -92,14 +121,27 @@ describe("SetupPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Complete Setup" }));
 
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith("set_proxy_config", {
-        httpProxy: "http://proxy.example.com:8080",
-        httpsProxy: "",
-        username: "alice",
-        password: "secret",
-        remember: true,
-      });
-      expect(fetch).toHaveBeenCalled(); // markSetupComplete
+      // setBambooConfig + setProxyAuth + markSetupComplete
+      expect(
+        (fetch as any).mock.calls.some(
+          (call: any[]) =>
+            call[0].includes("/bamboo/config") &&
+            ((call[1]?.method || "GET") as string).toUpperCase() === "POST",
+        ),
+      ).toBe(true);
+      expect(
+        (fetch as any).mock.calls.some(
+          (call: any[]) =>
+            call[0].includes("/bamboo/proxy-auth") &&
+            !call[0].includes("/bamboo/proxy-auth/status") &&
+            ((call[1]?.method || "GET") as string).toUpperCase() === "POST",
+        ),
+      ).toBe(true);
+      expect(
+        (fetch as any).mock.calls.some((call: any[]) =>
+          call[0].includes("/bamboo/setup/complete"),
+        ),
+      ).toBe(true);
     });
 
     expect(await screen.findByText("Setup Complete!")).toBeTruthy();
@@ -126,7 +168,11 @@ describe("SetupPage", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalled(); // markSetupComplete
       expect(
-        mockInvoke.mock.calls.some((call) => call[0] === "set_proxy_config"),
+        (fetch as any).mock.calls.some(
+          (call: any[]) =>
+            call[0].includes("/bamboo/config") &&
+            ((call[1]?.method || "GET") as string).toUpperCase() === "POST",
+        ),
       ).toBe(false);
     });
     expect(await screen.findByText("Setup Complete!")).toBeTruthy();

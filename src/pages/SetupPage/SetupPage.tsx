@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { Alert, Button, Card, Checkbox, Input, Spin, Steps } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import { ServiceFactory } from "../../services/common/ServiceFactory";
@@ -46,19 +45,21 @@ export const SetupPage = () => {
       let hasExistingProxy = false;
 
       try {
-        const existingConfig =
-          await invoke<Record<string, unknown>>("get_proxy_config");
+        const serviceFactory = ServiceFactory.getInstance();
 
+        const existingConfig = await serviceFactory.getBambooConfig();
         const httpProxy = parseString(existingConfig.http_proxy);
         const httpsProxy = parseString(existingConfig.https_proxy);
-        const username = parseString(existingConfig.username);
-        const password = parseString(existingConfig.password);
+
+        // We can only prefill username (never the password).
+        const authStatus = await serviceFactory.getProxyAuthStatus();
+        const username = parseString(authStatus.username);
 
         setConfig({
           httpProxy,
           httpsProxy,
           proxyUsername: username,
-          proxyPassword: password,
+          proxyPassword: "",
           rememberProxyAuth: DEFAULT_CONFIG.rememberProxyAuth,
         });
 
@@ -106,19 +107,29 @@ export const SetupPage = () => {
     const httpProxy = config.httpProxy.trim();
     const httpsProxy = config.httpsProxy.trim();
     const hasProxy = Boolean(httpProxy || httpsProxy);
+    const username = config.proxyUsername.trim();
+    const hasAuth = Boolean(username);
 
     try {
       setErrorMessage(null);
       setIsSaving(true);
 
       if (hasProxy) {
-        await invoke("set_proxy_config", {
-          httpProxy,
-          httpsProxy,
-          username: config.proxyUsername.trim() || null,
-          password: config.proxyPassword || null,
-          remember: config.rememberProxyAuth,
+        const serviceFactory = ServiceFactory.getInstance();
+        await serviceFactory.setBambooConfig({
+          http_proxy: httpProxy,
+          https_proxy: httpsProxy,
         });
+
+        if (config.rememberProxyAuth && hasAuth) {
+          await serviceFactory.setProxyAuth({
+            username,
+            password: config.proxyPassword || "",
+          });
+        } else {
+          // Clear any previously-stored proxy auth to avoid stale credentials.
+          await serviceFactory.clearProxyAuth();
+        }
       }
 
       const serviceFactory = ServiceFactory.getInstance();

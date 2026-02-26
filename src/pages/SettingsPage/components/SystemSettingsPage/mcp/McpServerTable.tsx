@@ -9,7 +9,6 @@ interface McpServerTableProps {
   loading?: boolean;
   selectedServerId?: string | null;
   onSelectServer?: (serverId: string) => void;
-  onEditServer?: (server: McpServer) => void;
   onDeleteServer?: (server: McpServer) => Promise<void> | void;
   onConnectServer?: (server: McpServer) => Promise<void> | void;
   onDisconnectServer?: (server: McpServer) => Promise<void> | void;
@@ -38,7 +37,6 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
   loading = false,
   selectedServerId,
   onSelectServer,
-  onEditServer,
   onDeleteServer,
   onConnectServer,
   onDisconnectServer,
@@ -83,16 +81,12 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
       {
         key: "actions",
         title: "Actions",
-        width: 360,
+        width: 300,
         render: (_, record) => {
           const status = record.runtime?.status ?? ServerStatus.Stopped;
           const isConnected = isConnectedStatus(status);
           return (
             <Space size={token.marginXS}>
-              <Button size="small" onClick={() => onEditServer?.(record)}>
-                Edit
-              </Button>
-
               <Popconfirm
                 title="Delete MCP server"
                 description={`Delete server \"${record.name || record.id}\"?`}
@@ -149,7 +143,6 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
       onConnectServer,
       onDeleteServer,
       onDisconnectServer,
-      onEditServer,
       onRefreshTools,
       token.marginXS,
     ],

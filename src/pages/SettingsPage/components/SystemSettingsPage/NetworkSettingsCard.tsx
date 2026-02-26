@@ -40,17 +40,18 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
   });
   const [isApplyingProxyAuth, setIsApplyingProxyAuth] = useState(false);
 
-  // Load proxy auth status
+  const loadProxyAuthStatus = async () => {
+    try {
+      const status = await serviceFactory.getProxyAuthStatus();
+      setProxyAuthStatus(status);
+    } catch (error) {
+      console.error("Failed to load proxy auth status:", error);
+    }
+  };
+
+  // Load proxy auth status (and allow manual refresh via Save/Reload buttons).
   useEffect(() => {
-    const loadStatus = async () => {
-      try {
-        const status = await serviceFactory.getProxyAuthStatus();
-        setProxyAuthStatus(status);
-      } catch (error) {
-        console.error("Failed to load proxy auth status:", error);
-      }
-    };
-    loadStatus();
+    loadProxyAuthStatus();
   }, []);
 
   const handleApplyProxyAuth = async () => {
@@ -198,13 +199,20 @@ export const NetworkSettingsCard: React.FC<NetworkSettingsCardProps> = ({
             gap: token.marginSM,
           }}
         >
-          <Button onClick={onReload} disabled={isLoading}>
+          <Button
+            onClick={() =>
+              Promise.resolve(onReload()).finally(() => loadProxyAuthStatus())
+            }
+            disabled={isLoading}
+          >
             Reload
           </Button>
           <Button
             data-testid="save-proxy-settings"
             type="primary"
-            onClick={onSave}
+            onClick={() =>
+              Promise.resolve(onSave()).finally(() => loadProxyAuthStatus())
+            }
             disabled={isLoading}
           >
             Save

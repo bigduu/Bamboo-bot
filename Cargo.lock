@@ -571,6 +571,62 @@ dependencies = [
 ]
 
 [[package]]
+name = "bamboo-agent"
+version = "0.3.0"
+dependencies = [
+ "actix-cors",
+ "actix-files",
+ "actix-governor",
+ "actix-web",
+ "aes-gcm",
+ "anyhow",
+ "arboard",
+ "async-stream",
+ "async-trait",
+ "base64 0.22.1",
+ "bytes",
+ "chrono",
+ "clap",
+ "colored",
+ "dashmap 6.1.0",
+ "dirs 5.0.1",
+ "env_logger",
+ "eventsource-client",
+ "eventsource-stream",
+ "futures",
+ "glob",
+ "globset",
+ "hex",
+ "lazy_static",
+ "libc",
+ "log",
+ "parking_lot 0.12.5",
+ "rand 0.8.5",
+ "regex",
+ "reqwest 0.12.28",
+ "reqwest-eventsource",
+ "reqwest-middleware",
+ "reqwest-retry",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "sysinfo",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
 name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1029,12 +1085,12 @@ dependencies = [
 
 [[package]]
 name = "copilot_chat"
-version = "0.2.9"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "arboard",
  "async-stream",
- "bamboo-agent",
+ "bamboo-agent 0.3.0",
  "chrono",
  "crossbeam",
  "dirs 5.0.1",
@@ -1507,7 +1563,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 name = "e2e-backend"
 version = "0.1.0"
 dependencies = [
- "bamboo-agent",
+ "bamboo-agent 0.2.10",
  "clap",
  "env_logger",
  "log",

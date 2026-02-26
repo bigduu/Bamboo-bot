@@ -47,6 +47,19 @@ const { Option } = Select;
 const { Password } = Input;
 const { Text, Paragraph } = Typography;
 
+const RESPONSES_ONLY_MODELS_HELP = (
+  <Space direction="vertical" size={4}>
+    <Text type="secondary">
+      Some models only support the OpenAI Responses API (not chat/completions).
+      Add model ids here to force Bamboo to use upstream <Text code>/responses</Text>.
+    </Text>
+    <Text type="secondary">
+      Supports exact match (e.g. <Text code>gpt-5.3-codex</Text>) and prefix
+      match with a trailing <Text code>*</Text> (e.g. <Text code>gpt-5*</Text>).
+    </Text>
+  </Space>
+);
+
 /**
  * Provider Settings Component
  *
@@ -750,6 +763,18 @@ export const ProviderSettings: React.FC = () => {
                 ))}
               </Select>
             </Form.Item>
+
+            <Form.Item
+              name={["providers", "openai", "responses_only_models"]}
+              label="Responses-Only Models (Optional)"
+              extra={RESPONSES_ONLY_MODELS_HELP}
+            >
+              <Select
+                mode="tags"
+                placeholder='e.g. "gpt-5.3-codex", "gpt-5*"'
+                tokenSeparators={[",", " ", "\n", "\t"]}
+              />
+            </Form.Item>
           </>
         );
 
@@ -1145,6 +1170,18 @@ export const ProviderSettings: React.FC = () => {
                   </Option>
                 ))}
               </Select>
+            </Form.Item>
+
+            <Form.Item
+              name={["providers", "copilot", "responses_only_models"]}
+              label="Responses-Only Models (Optional)"
+              extra={RESPONSES_ONLY_MODELS_HELP}
+            >
+              <Select
+                mode="tags"
+                placeholder='e.g. "gpt-5.3-codex", "gpt-5*"'
+                tokenSeparators={[",", " ", "\n", "\t"]}
+              />
             </Form.Item>
 
             <Paragraph type="secondary">

@@ -8,6 +8,7 @@ import {
   DEFAULT_STDIO_STARTUP_TIMEOUT_MS,
   ServerStatus,
   type McpActionResponse,
+  type McpImportResponse,
   type McpServer,
   type McpServerApiRecord,
   type McpServerConfig,
@@ -287,6 +288,13 @@ export class McpService {
     const path = serverId ? `mcp/servers/${serverId}/tools` : "mcp/tools";
     const response = await agentApiClient.get<ToolListResponse>(path);
     return Array.isArray(response.tools) ? response.tools : [];
+  }
+
+  async importServers(payload: {
+    mcpServers: unknown;
+    mode?: "merge" | "replace";
+  }): Promise<McpImportResponse> {
+    return agentApiClient.post<McpImportResponse>("mcp/servers/import", payload);
   }
 }
 
