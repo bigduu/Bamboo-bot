@@ -112,4 +112,18 @@ describe("AgentClient", () => {
       );
     });
   });
+
+  it("dispatches tool_token events to onToolToken handler", () => {
+    const client = AgentClient.getInstance();
+    const onToolToken = vi.fn();
+
+    // `handleEvent` is intentionally private; we still test the dispatch logic
+    // because SSE parsing ultimately routes through this switch.
+    (client as any).handleEvent(
+      { type: "tool_token", tool_call_id: "call_1", content: "chunk" },
+      { onToolToken },
+    );
+
+    expect(onToolToken).toHaveBeenCalledWith("call_1", "chunk");
+  });
 });

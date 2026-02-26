@@ -115,6 +115,8 @@ export interface AssistantToolCallMessage extends BaseMessage {
     toolCallId: string;
     toolName: string;
     parameters: Record<string, any>;
+    // Optional live output streamed during tool execution (e.g. Claude Code CLI).
+    streamingOutput?: string;
   }[];
   model?: string;
   finishReason?: "tool_calls";

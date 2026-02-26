@@ -97,6 +97,7 @@ const MessageCardContent: React.FC<MessageCardContentProps> = ({
             toolName={call.toolName}
             parameters={call.parameters}
             toolCallId={call.toolCallId}
+            streamingOutput={call.streamingOutput}
             defaultExpanded={false}
           />
         ))}

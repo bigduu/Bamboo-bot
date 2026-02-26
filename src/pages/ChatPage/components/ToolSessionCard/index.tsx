@@ -209,6 +209,7 @@ const ToolSessionCardComponent: React.FC<ToolSessionCardProps> = ({
                 toolName={toolCall.toolName}
                 parameters={toolCall.parameters}
                 toolCallId={toolCall.toolCallId}
+                streamingOutput={toolCall.streamingOutput}
                 defaultExpanded={true}
               />
               {item.result && (

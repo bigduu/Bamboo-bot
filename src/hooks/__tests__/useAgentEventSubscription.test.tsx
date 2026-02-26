@@ -34,6 +34,7 @@ const createMockState = (overrides: Partial<any> = {}) => ({
       config: {
         agentSessionId: "session-1",
       },
+      messages: [],
     },
   ],
   processingChats: new Set<string>(),
@@ -42,6 +43,7 @@ const createMockState = (overrides: Partial<any> = {}) => ({
   updateTokenUsage: vi.fn(),
   setTruncationInfo: vi.fn(),
   updateChat: vi.fn(),
+  updateMessage: vi.fn(),
   setTodoList: vi.fn(),
   updateTodoListDelta: vi.fn(),
   setEvaluationState: vi.fn(),
@@ -261,6 +263,68 @@ describe("useAgentEventSubscription", () => {
     });
 
     // Should stream tokens (verified via streamingMessageBus, not mocked here)
+  });
+
+  it("should append tool_token output to the matching tool_call card", async () => {
+    let capturedHandlers: any;
+    mockSubscribeToEvents.mockImplementation(
+      async (_sessionId: string, handlers: any) => {
+        capturedHandlers = handlers;
+      },
+    );
+
+    const updateMessage = vi.fn(
+      (_chatId: string, messageId: string, patch: any) => {
+        // Simulate store mutation so subsequent onToolToken calls can append.
+        const msg = mockState.chats[0].messages.find((m: any) => m.id === messageId);
+        if (!msg) return;
+        if (patch?.toolCalls) {
+          msg.toolCalls = patch.toolCalls;
+        }
+      },
+    );
+    let toolCallMessageId: string | undefined;
+    const addMessage = vi.fn((_chatId: string, msg: any) => {
+      // Simulate store mutation so onToolToken can find the message.
+      toolCallMessageId = msg?.id;
+      mockState.chats[0].messages.push(msg);
+    });
+
+    mockState = createMockState({
+      addMessage,
+      updateMessage,
+      setChatProcessing: mockSetChatProcessing,
+    });
+
+    mockState.processingChats = new Set(["chat-1"]);
+    mockStore.getState.mockReturnValue(mockState);
+    mockStore.mockImplementation((selector: MockSelector) => selector(mockState));
+
+    renderHook(() => useAgentEventSubscription());
+
+    await waitFor(() => {
+      expect(mockSubscribeToEvents).toHaveBeenCalled();
+      expect(capturedHandlers).toBeTruthy();
+    });
+
+    act(() => {
+      capturedHandlers.onToolStart?.("call_1", "claude_code", { project_path: "/tmp" });
+    });
+
+    act(() => {
+      capturedHandlers.onToolToken?.("call_1", "hello");
+      capturedHandlers.onToolToken?.("call_1", " world");
+    });
+
+    await waitFor(() => {
+      expect(toolCallMessageId).toBeTruthy();
+      expect(updateMessage).toHaveBeenCalled();
+
+      const toolMsg = mockState.chats[0].messages.find(
+        (m: any) => m.id === toolCallMessageId,
+      );
+      expect(toolMsg?.toolCalls?.[0]?.streamingOutput).toBe("hello world");
+    });
   });
 
   it("should cleanup subscription on unmount", async () => {
