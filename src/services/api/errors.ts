@@ -36,7 +36,13 @@ export function getErrorMessage(error: unknown): string {
       return "The requested resource was not found.";
     }
     if (error.status >= 500) {
-      return "Server error. Please try again later.";
+      // Keep HTTP semantics (500) but still surface the server-provided message when available.
+      // Our ApiClient extracts it from JSON bodies like:
+      // - { error: { message: "..." } }
+      // - { success: false, error: "..." }
+      return error.message?.trim()
+        ? error.message
+        : "Server error. Please try again later.";
     }
     return error.message;
   }

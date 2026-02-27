@@ -67,9 +67,22 @@ export class ApiClient {
       if (body) {
         try {
           const errorData = JSON.parse(body);
-          // Check for common error field names
+          // Check for common error field names.
+          //
+          // Bamboo backend ResponseError shape:
+          //   { "error": { "message": "...", "type": "...", "code": "..." } }
+          // Some endpoints also return:
+          //   { "success": false, "error": "..." }
+          const nestedMessage =
+            typeof errorData?.error === "object"
+              ? (errorData.error?.message as unknown)
+              : undefined;
+          const directError =
+            typeof errorData?.error === "string" ? errorData.error : undefined;
+
           errorMessage =
-            errorData.error ||
+            directError ||
+            (typeof nestedMessage === "string" ? nestedMessage : undefined) ||
             errorData.message ||
             errorData.detail ||
             response.statusText;

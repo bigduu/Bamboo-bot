@@ -28,6 +28,16 @@ export interface ApiSuccessResponse {
   success: boolean;
 }
 
+export interface BambooConfigValidationIssue {
+  path: string;
+  message: string;
+}
+
+export interface ValidateBambooConfigResponse {
+  valid: boolean;
+  errors: Record<string, BambooConfigValidationIssue[]>;
+}
+
 export interface UtilityService {
   /**
    * Copy text to clipboard
@@ -43,6 +53,13 @@ export interface UtilityService {
    * Set Bamboo config
    */
   setBambooConfig(config: BambooConfig): Promise<BambooConfig>;
+
+  /**
+   * Validate a Bamboo config patch without saving.
+   */
+  validateBambooConfigPatch(
+    patch: BambooConfig,
+  ): Promise<ValidateBambooConfigResponse>;
 
   /**
    * Set proxy auth credentials
@@ -146,6 +163,15 @@ class HttpUtilityService implements Partial<UtilityService> {
 
   async setBambooConfig(config: BambooConfig): Promise<BambooConfig> {
     return apiClient.post<BambooConfig>("bamboo/config", config);
+  }
+
+  async validateBambooConfigPatch(
+    patch: BambooConfig,
+  ): Promise<ValidateBambooConfigResponse> {
+    return apiClient.post<ValidateBambooConfigResponse>(
+      "bamboo/config/validate",
+      patch,
+    );
   }
 
   async setProxyAuth(auth: {
@@ -346,6 +372,8 @@ export class ServiceFactory {
       getBambooConfig: () => this.httpUtilityService.getBambooConfig(),
       setBambooConfig: (config: BambooConfig) =>
         this.httpUtilityService.setBambooConfig(config),
+      validateBambooConfigPatch: (patch: BambooConfig) =>
+        this.httpUtilityService.validateBambooConfigPatch(patch),
       setProxyAuth: (auth: { username: string; password: string }) =>
         this.httpUtilityService.setProxyAuth(auth),
       getProxyAuthStatus: () => this.httpUtilityService.getProxyAuthStatus(),
@@ -388,6 +416,12 @@ export class ServiceFactory {
 
   async setBambooConfig(config: BambooConfig): Promise<BambooConfig> {
     return this.getUtilityService().setBambooConfig(config);
+  }
+
+  async validateBambooConfigPatch(
+    patch: BambooConfig,
+  ): Promise<ValidateBambooConfigResponse> {
+    return this.getUtilityService().validateBambooConfigPatch(patch);
   }
 
   async setProxyAuth(auth: {

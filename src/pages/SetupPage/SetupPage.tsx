@@ -116,6 +116,31 @@ export const SetupPage = () => {
 
       if (hasProxy) {
         const serviceFactory = ServiceFactory.getInstance();
+
+        // Friendly frontend validation: only validate the proxy domain (setup page does not
+        // configure providers).
+        const validation = await serviceFactory.validateBambooConfigPatch({
+          http_proxy: httpProxy,
+          https_proxy: httpsProxy,
+        });
+        if (!validation.valid) {
+          const proxyIssue = validation.errors?.proxy?.[0];
+          const issue =
+            proxyIssue ??
+            Object.values(validation.errors || {})
+              .flat()
+              .filter(Boolean)[0];
+          setErrorMessage(issue?.message || "Proxy settings are invalid.");
+          return;
+        }
+
+        if (config.rememberProxyAuth && !hasAuth && config.proxyPassword.trim()) {
+          setErrorMessage(
+            "To store proxy credentials, please enter a username or uncheck 'Remember credentials'.",
+          );
+          return;
+        }
+
         await serviceFactory.setBambooConfig({
           http_proxy: httpProxy,
           https_proxy: httpsProxy,
@@ -137,11 +162,13 @@ export const SetupPage = () => {
       setIsComplete(true);
     } catch (error) {
       console.error("Failed to complete setup:", error);
-      setErrorMessage(
-        hasProxy
-          ? "Failed to save proxy configuration. Please try again."
-          : "Failed to complete setup. Please try again.",
-      );
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : hasProxy
+            ? "Failed to save proxy configuration. Please try again."
+            : "Failed to complete setup. Please try again.";
+      setErrorMessage(message);
     } finally {
       setIsSaving(false);
     }
@@ -198,6 +225,12 @@ export const SetupPage = () => {
               message="If you're behind a corporate proxy, configure it below."
               type="info"
               showIcon
+            />
+            <Alert
+              message="Provider configuration is done later in Provider Settings. This setup step only stores network/proxy settings."
+              type="info"
+              showIcon
+              style={{ marginTop: 16 }}
             />
 
             {isDetecting ? (

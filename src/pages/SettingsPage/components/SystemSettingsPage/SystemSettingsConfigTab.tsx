@@ -60,11 +60,27 @@ export const SystemSettingsConfigTab: React.FC<
   const handleSaveConfig = async () => {
     setIsLoading(true);
     try {
+      const validation = await serviceFactory.validateBambooConfigPatch(config);
+      if (!validation.valid) {
+        const proxyIssue = validation.errors?.proxy?.[0];
+        const issue =
+          proxyIssue ??
+          Object.values(validation.errors || {})
+            .flat()
+            .filter(Boolean)[0];
+        msgApi.error(issue?.message || "Invalid configuration");
+        return;
+      }
+
       await serviceFactory.setBambooConfig(config);
       msgApi.success("Configuration saved successfully");
     } catch (error) {
       console.error("Failed to save config:", error);
-      msgApi.error("Failed to save configuration");
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Failed to save configuration";
+      msgApi.error(message);
     } finally {
       setIsLoading(false);
     }

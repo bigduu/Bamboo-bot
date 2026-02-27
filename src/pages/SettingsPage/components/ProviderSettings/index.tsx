@@ -42,6 +42,10 @@ import {
   GEMINI_MODELS,
 } from "../../../ChatPage/types/providerConfig";
 import { modelService } from "@services/chat/ModelService";
+import {
+  ServiceFactory,
+  type BambooConfigValidationIssue,
+} from "../../../../services/common/ServiceFactory";
 
 const { Option } = Select;
 const { Password } = Input;
@@ -322,6 +326,89 @@ export const ProviderSettings: React.FC = () => {
     return "Unknown error";
   };
 
+  const clearProviderValidationErrors = (provider: ProviderType) => {
+    // Clear the most common provider-scoped fields to avoid stale errors.
+    form.setFields([
+      { name: ["provider"], errors: [] },
+      { name: ["providers", provider, "api_key"], errors: [] },
+      { name: ["providers", provider, "model"], errors: [] },
+    ]);
+  };
+
+  const pathToName = (path: string): Array<string | number> | null => {
+    const trimmed = path.trim();
+    if (!trimmed) return null;
+    if (trimmed.includes(".")) return trimmed.split(".").filter(Boolean);
+    if (trimmed === "provider") return ["provider"];
+    if (trimmed === "provider/providers") return ["provider"];
+    return null;
+  };
+
+  const applyValidationIssuesToForm = (
+    issues: BambooConfigValidationIssue[],
+    provider: ProviderType,
+  ) => {
+    if (!issues.length) return;
+
+    const fields = issues
+      .map((issue) => {
+        // Prefer backend-provided paths (e.g. providers.openai.api_key).
+        const direct = pathToName(issue.path);
+        if (direct) {
+          return { name: direct, errors: [issue.message] };
+        }
+
+        // Fallback mapping for older/less specific server errors.
+        if (issue.message.toLowerCase().includes("api key")) {
+          return {
+            name: ["providers", provider, "api_key"],
+            errors: [issue.message],
+          };
+        }
+
+        return { name: ["provider"], errors: [issue.message] };
+      })
+      // De-dupe by name to avoid antd warnings.
+      .filter(
+        (field, index, arr) =>
+          arr.findIndex((f) => JSON.stringify(f.name) === JSON.stringify(field.name)) === index,
+      );
+
+    if (fields.length) {
+      form.setFields(fields as any);
+    }
+  };
+
+  const validateProviderPatch = async (values: ProviderConfig): Promise<{
+    valid: boolean;
+    message?: string;
+  }> => {
+    const provider = (values.provider || currentProvider) as ProviderType;
+    clearProviderValidationErrors(provider);
+
+    try {
+      const serviceFactory = ServiceFactory.getInstance();
+      const result = await serviceFactory.validateBambooConfigPatch({
+        provider: values.provider,
+        providers: values.providers || {},
+      });
+
+      if (result.valid) {
+        return { valid: true };
+      }
+
+      const providerIssues = result.errors?.provider || [];
+      applyValidationIssuesToForm(providerIssues, provider);
+      const first = providerIssues[0];
+      return { valid: false, message: first?.message || "Invalid configuration" };
+    } catch (error) {
+      // Validation is best-effort; if it fails (network/server mismatch), fall back to strict
+      // backend validation on save.
+      console.warn("Config validation failed, falling back to save:", error);
+      return { valid: true };
+    }
+  };
+
   const handleFetchOpenAIModels = async (options?: {
     force?: boolean;
     showMessage?: boolean;
@@ -503,6 +590,16 @@ export const ProviderSettings: React.FC = () => {
         provider: values.provider,
         providers: values.providers || {},
       };
+
+      const validation = await validateProviderPatch(values);
+      if (!validation.valid) {
+        const errorMessage = validation.message || "Invalid configuration";
+        if (options?.showMessage !== false) {
+          message.error(`Invalid configuration: ${errorMessage}`);
+        }
+        if (options?.throwOnError) throw new Error(errorMessage);
+        return;
+      }
 
       console.log("Saving provider config:", payload);
       await settingsService.saveProviderConfig(payload);

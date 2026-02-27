@@ -47,6 +47,13 @@ describe("SetupPage", () => {
       }
 
       // Save config/auth + mark setup complete
+      if (method === "POST" && path.includes("/bamboo/config/validate")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({ valid: true, errors: {} }),
+        };
+      }
       if (method === "POST" && path.includes("/bamboo/config")) {
         return {
           ok: true,
@@ -121,6 +128,13 @@ describe("SetupPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Complete Setup" }));
 
     await waitFor(() => {
+      expect(
+        (fetch as any).mock.calls.some(
+          (call: any[]) =>
+            call[0].includes("/bamboo/config/validate") &&
+            ((call[1]?.method || "GET") as string).toUpperCase() === "POST",
+        ),
+      ).toBe(true);
       // setBambooConfig + setProxyAuth + markSetupComplete
       expect(
         (fetch as any).mock.calls.some(
@@ -176,6 +190,85 @@ describe("SetupPage", () => {
       ).toBe(false);
     });
     expect(await screen.findByText("Setup Complete!")).toBeTruthy();
+  });
+
+  it("shows validation error and does not save when proxy URL is invalid", async () => {
+    (fetch as any).mockImplementation(async (url: string, init?: RequestInit) => {
+      const method = (init?.method || "GET").toUpperCase();
+      const path = url.toString();
+
+      if (method === "GET" && path.includes("/bamboo/config")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({ http_proxy: "", https_proxy: "" }),
+        };
+      }
+      if (method === "GET" && path.includes("/bamboo/proxy-auth/status")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({ configured: false, username: null }),
+        };
+      }
+      if (method === "GET" && path.includes("/bamboo/setup/status")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({
+            is_complete: false,
+            has_proxy_config: false,
+            has_proxy_env: false,
+            message: "OK",
+          }),
+        };
+      }
+      if (method === "POST" && path.includes("/bamboo/config/validate")) {
+        return {
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => ({
+            valid: false,
+            errors: {
+              proxy: [
+                {
+                  path: "http_proxy/https_proxy",
+                  message: "Invalid proxy URL",
+                },
+              ],
+            },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        headers: { get: () => "application/json" },
+        json: async () => ({}),
+      };
+    });
+
+    render(<SetupPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Next" }));
+
+    fireEvent.change(screen.getByLabelText("HTTP Proxy URL:"), {
+      target: { value: "http://" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Complete Setup" }));
+
+    expect(await screen.findByText("Invalid proxy URL")).toBeTruthy();
+
+    // Must not persist invalid config.
+    expect(
+      (fetch as any).mock.calls.some(
+        (call: any[]) =>
+          call[0].includes("/bamboo/config") &&
+          !call[0].includes("/bamboo/config/validate") &&
+          ((call[1]?.method || "GET") as string).toUpperCase() === "POST",
+      ),
+    ).toBe(false);
   });
 
   it("shows error when marking setup completion fails", async () => {
