@@ -73,6 +73,9 @@ tauri-plugin-fs = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-shell = "2"
 
+# Bamboo engine (shared by src-tauri and e2e-backend)
+bamboo-agent = { path = "../bamboo" }
+
 # Development
 tempfile = "3"
 wiremock = "0.5"
@@ -90,4 +93,3 @@ zstd = "0.13"
 webbrowser = "1"
 portable-pty = "0.8"
 toml = "0.8"
-

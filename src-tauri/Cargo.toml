@@ -1,6 +1,6 @@
 [package]
 name = "copilot_chat"
-version = "0.3.0"
+version = "0.3.1"
 description = "A Tauri App"
 authors = ["bigduu"]
 edition = "2021"
@@ -18,9 +18,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { workspace = true }
 
 [dependencies]
-# Prefer crates.io for reproducible builds. Uncomment the path override for local bamboo-agent development.
-bamboo-agent = { path = "../../bamboo" }
-# bamboo-agent = "0.2.10"
+# Shared Bamboo engine dependency (managed at `bodhi/Cargo.toml` workspace level).
+bamboo-agent = { workspace = true }
 
 # Tauri core and plugins
 tauri = { workspace = true }

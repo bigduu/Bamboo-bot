@@ -2,8 +2,8 @@
 //!
 //! This binary runs the bamboo-agent web service without Tauri for testing purposes.
 
-use std::io;
 use std::path::PathBuf;
+use anyhow::Context;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -28,7 +28,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     // Initialize logging
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
@@ -41,10 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| std::env::temp_dir().join("bamboo-test-data"));
 
     // Ensure data directory exists
-    if let Err(e) = std::fs::create_dir_all(&data_dir) {
-        eprintln!("ERROR: Failed to create data directory {:?}: {}", data_dir, e);
-        return Err(e.into());
-    }
+    std::fs::create_dir_all(&data_dir)
+        .with_context(|| format!("Failed to create data directory {:?}", data_dir))?;
 
     log::info!("Starting web service on port {}", port);
     log::info!("Data directory: {:?}", data_dir);
@@ -55,32 +53,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(ref static_path) = args.static_dir {
         if !static_path.exists() {
             eprintln!("ERROR: Static directory does not exist: {:?}", static_path);
-            return Err(format!("Static directory not found: {:?}", static_path).into());
+            anyhow::bail!("Static directory not found: {:?}", static_path);
         }
         if !static_path.is_dir() {
             eprintln!("ERROR: Static path is not a directory: {:?}", static_path);
-            return Err(format!("Static path is not a directory: {:?}", static_path).into());
+            anyhow::bail!("Static path is not a directory: {:?}", static_path);
         }
         log::info!("Static directory validated: {:?}", static_path);
     }
 
     // Run the web service with bind and static file support
-    log::info!("Calling bamboo_agent::web_service::server::run_with_bind_and_static...");
-    match bamboo_agent::web_service::server::run_with_bind_and_static(
+    log::info!("Calling bamboo_agent::server::run_with_bind_and_static...");
+    bamboo_agent::server::run_with_bind_and_static(
         data_dir,
         port,
         &args.bind,
         args.static_dir,
     )
     .await
-    {
-        Ok(_) => {
-            log::info!("Web service exited successfully");
-            Ok(())
-        }
-        Err(e) => {
-            eprintln!("ERROR: Web service failed: {}", e);
-            Err(e.into())
-        }
-    }
+    .map_err(|e| anyhow::anyhow!(e))?;
+
+    log::info!("Web service exited successfully");
+    Ok(())
 }
