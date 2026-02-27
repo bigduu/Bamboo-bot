@@ -12,6 +12,7 @@ import {
 import { agentApiClient } from "../../services/api";
 import { useAppStore } from "../../pages/ChatPage/store";
 import { AgentClient } from "../../services/chat/AgentService";
+import { useActiveModel } from "../../pages/ChatPage/hooks/useActiveModel";
 import styles from "./QuestionDialog.module.css";
 
 const { Text, Title } = Typography;
@@ -49,6 +50,7 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
   const setChatProcessing = useAppStore((state) => state.setChatProcessing);
   const chats = useAppStore((state) => state.chats);
   const selectedModel = useAppStore((state) => state.selectedModel);
+  const activeModel = useActiveModel();
 
   // Find the chatId for this sessionId
   const chatId = chats.find((chat) => chat.config.agentSessionId === sessionId)
@@ -131,12 +133,13 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
 
       // Step 2: Restart agent execution
       try {
-        const modelToUse = selectedModel?.trim();
+        // Prefer the chat-selected model (if any), otherwise fall back to the
+        // provider's configured default model.
+        const modelToUse = selectedModel?.trim() || activeModel?.trim();
         if (!modelToUse) {
-          // Do not guess a model here. Models can be disabled/removed; the user must
-          // explicitly select one before we can resume agent execution.
+          // Do not guess a model here. The user must explicitly configure one.
           message.error(
-            "No model selected. Please select a model first, then continue the chat to resume the agent.",
+            "No model configured. Please select a default model in Provider Settings, then resume the agent.",
           );
         } else {
           const executeResult = await AgentClient.getInstance().execute(

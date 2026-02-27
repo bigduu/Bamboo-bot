@@ -8,6 +8,7 @@ import {
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { QuestionDialog } from "../QuestionDialog";
 import { useAppStore } from "../../../pages/ChatPage/store";
+import { useProviderStore } from "../../../pages/ChatPage/store/slices/providerSlice";
 
 // Mock dependencies
 vi.mock("../../../pages/ChatPage/store", () => ({
@@ -31,6 +32,20 @@ describe("QuestionDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsChatProcessing.mockReturnValue(false);
+    // Ensure provider store has a default model available (QuestionDialog falls back to it
+    // when the per-chat selectedModel is not set).
+    useProviderStore.setState({
+      currentProvider: "openai",
+      providerConfig: {
+        provider: "openai",
+        providers: {
+          openai: { model: "gpt-5-mini" } as any,
+        },
+      } as any,
+      isLoading: false,
+      error: null,
+    } as any);
+
     (useAppStore as any).mockImplementation((selector: (state: any) => any) => {
       if (typeof selector === "function") {
         return selector({
@@ -155,6 +170,61 @@ describe("QuestionDialog", () => {
 
       // Should set processing to activate subscription (but chatId is undefined in test)
       // Note: In real usage, chatId would be found from the sessionId
+    });
+  });
+
+  it("should fall back to active provider model when selectedModel is not set", async () => {
+    const { agentApiClient } = await import("../../../services/api");
+    (agentApiClient.get as any).mockResolvedValue({
+      has_pending_question: true,
+      question: "Test?",
+      options: ["A", "B"],
+      allow_custom: false,
+      tool_call_id: "tool-1",
+    });
+
+    (agentApiClient.post as any)
+      .mockResolvedValueOnce({}) // /respond
+      .mockResolvedValueOnce({
+        status: "started",
+        events_url: "/events/test-session-1",
+      }); // /execute
+
+    // No per-chat model selected.
+    (useAppStore as any).mockImplementation((selector: (state: any) => any) => {
+      if (typeof selector === "function") {
+        return selector({
+          setChatProcessing: mockSetChatProcessing,
+          isChatProcessing: mockIsChatProcessing,
+          chats: [],
+          selectedModel: undefined,
+        });
+      }
+      return {
+        setChatProcessing: mockSetChatProcessing,
+        isChatProcessing: mockIsChatProcessing,
+        chats: [],
+        selectedModel: undefined,
+      };
+    });
+
+    await act(async () => {
+      render(<QuestionDialog {...defaultProps} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Test?")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("A"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Confirm Selection"));
+    });
+
+    await waitFor(() => {
+      expect(agentApiClient.post).toHaveBeenCalledWith("execute/test-session-1", {
+        model: "gpt-5-mini",
+      });
     });
   });
 

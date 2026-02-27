@@ -17,7 +17,11 @@ describe("SystemSettingsKeywordMaskingTab", () => {
   it("applies example selection to pattern and match type", async () => {
     render(<SystemSettingsKeywordMaskingTab />);
 
-    fireEvent.click(await screen.findByText("Add Keyword"));
+    const addButton = await screen.findByTestId("add-keyword");
+    // The button is disabled while initial config load is in-flight; avoid flakiness
+    // under parallel test execution.
+    await waitFor(() => expect(addButton).not.toBeDisabled());
+    fireEvent.click(addButton);
 
     const examplesSelect = await screen.findByRole("combobox", {
       name: "Examples",
