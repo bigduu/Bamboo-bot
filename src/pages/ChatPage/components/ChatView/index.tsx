@@ -29,39 +29,23 @@ import {
 const { useToken } = theme;
 const { useBreakpoint } = Grid;
 
-export type ChatViewProps = {
-  /**
-   * If omitted, falls back to the globally selected chat.
-   * Multi-pane mode should always pass an explicit chatId.
-   */
-  chatId?: string | null;
-  /**
-   * When embedded in split panes, use full width and tighter spacing.
-   */
-  embedded?: boolean;
-};
-
-export const ChatView: React.FC<ChatViewProps> = ({
-  chatId: chatIdProp,
-  embedded = false,
-}) => {
+export const ChatView: React.FC = () => {
   // Load provider configuration on mount
   const loadProviderConfig = useProviderStore(
     (state) => state.loadProviderConfig,
   );
 
   useEffect(() => {
-    if (embedded) return;
     loadProviderConfig();
-  }, [embedded, loadProviderConfig]);
+  }, [loadProviderConfig]);
 
   // Maintain persistent subscription to agent events for real-time streaming
-  useAgentEventSubscription({ enabled: !embedded });
+  useAgentEventSubscription();
 
-  const chatId = useAppStore((state) => chatIdProp ?? state.currentChatId);
+  const currentChatId = useAppStore((state) => state.currentChatId);
   const currentChat = useAppStore(
     (state) =>
-      chatId ? state.chats.find((chat) => chat.id === chatId) || null : null,
+      state.chats.find((chat) => chat.id === state.currentChatId) || null,
   );
   const deleteMessage = useAppStore((state) => state.deleteMessage);
   const updateChat = useAppStore((state) => state.updateChat);
@@ -74,8 +58,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
     [currentChat],
   );
 
-  const isProcessing = chatId
-    ? processingChats.has(chatId)
+  const isProcessing = currentChatId
+    ? processingChats.has(currentChatId)
     : false;
 
   const interactionState = useMemo(() => {
@@ -96,11 +80,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const handleDeleteMessage = useCallback(
     (messageId: string) => {
-      if (chatId) {
-        deleteMessage(chatId, messageId);
+      if (currentChatId) {
+        deleteMessage(currentChatId, messageId);
       }
     },
-    [chatId, deleteMessage],
+    [currentChatId, deleteMessage],
   );
 
   const messagesListRef = useRef<HTMLDivElement>(null);
@@ -111,7 +95,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
   );
 
   const getContainerMaxWidth = () => {
-    if (embedded) return "100%";
     if (screens.xs) return "100%";
     if (screens.sm) return "100%";
     if (screens.md) return "90%";
@@ -120,14 +103,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const getContainerPadding = () => {
-    if (embedded) return token.paddingSM;
     if (screens.xs) return token.paddingXS;
     if (screens.sm) return token.paddingSM;
     return token.padding;
   };
 
   useEffect(() => {
-    if (chatId && currentMessages) {
+    if (currentChatId && currentMessages) {
       const messagesNeedingIds = currentMessages.some((msg) => !msg.id);
 
       if (messagesNeedingIds) {
@@ -138,14 +120,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
           return msg;
         });
 
-        updateChat(chatId, { messages: updatedMessages });
+        updateChat(currentChatId, { messages: updatedMessages });
       }
     }
-  }, [chatId, currentMessages, updateChat]);
+  }, [currentChatId, currentMessages, updateChat]);
 
   useEffect(() => {
     setWorkflowDraft(null);
-  }, [chatId]);
+  }, [currentChatId]);
 
   const { systemPromptMessage, renderableMessages, convertRenderableEntry } =
     useChatViewMessages(currentChat, currentMessages);
@@ -154,7 +136,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const hasWorkflowDraft = Boolean(workflowDraft?.content);
   const hasSystemPrompt = Boolean(systemPromptMessage);
   const showMessagesView =
-    chatId && (hasMessages || hasSystemPrompt || hasWorkflowDraft);
+    currentChatId && (hasMessages || hasSystemPrompt || hasWorkflowDraft);
 
   const renderableMessagesWithDraft = useMemo<RenderableEntry[]>(() => {
     if (!workflowDraft?.content) {
@@ -178,18 +160,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const agentSessionId = currentChat?.config?.agentSessionId;
 
   // Get token usage - prefer store (real-time), fallback to chat config (persisted)
-  const storeTokenUsage = chatId ? tokenUsages[chatId] : null;
+  const storeTokenUsage = currentChatId ? tokenUsages[currentChatId] : null;
   const configTokenUsage = currentChat?.config?.tokenUsage;
   const currentTokenUsage = storeTokenUsage || configTokenUsage || null;
 
-  const storeTruncation = chatId
-    ? truncationOccurred[chatId]
+  const storeTruncation = currentChatId
+    ? truncationOccurred[currentChatId]
     : false;
   const configTruncation = currentChat?.config?.truncationOccurred;
   const currentTruncationOccurred =
     storeTruncation || configTruncation || false;
 
-  const storeSegments = chatId ? segmentsRemoved[chatId] : 0;
+  const storeSegments = currentChatId ? segmentsRemoved[currentChatId] : 0;
   const configSegments = currentChat?.config?.segmentsRemoved;
   const currentSegmentsRemoved = storeSegments || configSegments || 0;
 
@@ -219,7 +201,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     showScrollToBottom,
     showScrollToTop,
   } = useChatViewScroll({
-    currentChatId: chatId,
+    currentChatId,
     interactionState,
     messagesListRef,
     renderableMessages: renderableMessagesWithDraft,
@@ -309,7 +291,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         )}
 
         <ChatMessagesList
-          currentChatId={chatId}
+          currentChatId={currentChatId}
           convertRenderableEntry={convertRenderableEntry}
           handleDeleteMessage={handleDeleteMessage}
           handleMessagesScroll={handleMessagesScroll}
@@ -325,8 +307,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
           padding={getContainerPadding()}
         />
 
-        {/* Scroll buttons (bottom-right) */}
-        {!embedded && (showScrollToTop || showScrollToBottom) && (
+        {/* 滚动按钮组 - 都在右下角 */}
+        {(showScrollToTop || showScrollToBottom) && (
           <FloatButton.Group
             style={{
               right: getScrollButtonPosition(),
