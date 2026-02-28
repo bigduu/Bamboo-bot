@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Flex, Layout, theme } from "antd";
+import { Flex, theme } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import { Grid } from "antd";
@@ -10,7 +10,6 @@ import { ChatSidebarDateGroups } from "./ChatSidebarDateGroups";
 import { ChatSidebarFooter } from "./ChatSidebarFooter";
 import { useChatSidebarState } from "./useChatSidebarState";
 
-const { Sider } = Layout;
 const { useBreakpoint } = Grid;
 const { useToken } = theme;
 
@@ -23,8 +22,6 @@ export const ChatSidebar: React.FC = () => {
     collapsed,
     currentChatId,
     expandedKeys,
-    footerHeight,
-    footerRef,
     groupedChatsByDate,
     handleCollapseChange,
     handleDelete,
@@ -46,34 +43,27 @@ export const ChatSidebar: React.FC = () => {
   } = useChatSidebarState();
 
   useEffect(() => {
-    if (screens.xs === false && screens.sm === false) {
+    // `useBreakpoint()` returns a fresh object reference very frequently.
+    // Depend only on the primitive booleans to avoid effect re-running every render.
+    const { xs, sm } = screens;
+    if (typeof xs !== "boolean" || typeof sm !== "boolean") return;
+    if (xs === false && sm === false) {
       setCollapsed(true);
     }
-  }, [screens, setCollapsed]);
-
-  const getSiderWidth = () => {
-    if (screens.xxl) return 300;
-    if (screens.xl) return 280;
-    if (screens.lg) return 260;
-    if (screens.md) return 240;
-    return 220;
-  };
+  }, [screens.xs, screens.sm, setCollapsed]);
 
   return (
-    <Sider
-      breakpoint="md"
-      collapsedWidth={72}
-      width={getSiderWidth()}
-      collapsible
-      collapsed={collapsed}
-      onCollapse={(value) => setCollapsed(value)}
-      trigger={null}
+    <div
       style={{
+        width: "100%",
+        height: "100%",
         background: token.colorBgContainer,
         borderRight: `1px solid ${token.colorBorderSecondary}`,
         position: "relative",
-        height: "100vh",
         overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
       }}
     >
       <Flex
@@ -97,7 +87,8 @@ export const ChatSidebar: React.FC = () => {
       <Flex
         vertical
         style={{
-          height: `calc(100vh - ${footerHeight}px)`,
+          flex: 1,
+          minHeight: 0,
           overflowY: "auto",
           padding: collapsed ? "40px 10px 0 10px" : "40px 12px 0 12px",
         }}
@@ -132,7 +123,6 @@ export const ChatSidebar: React.FC = () => {
 
       <ChatSidebarFooter
         collapsed={collapsed}
-        footerRef={footerRef}
         onNewChat={handleNewChat}
         onOpenSettings={handleOpenSettings}
         screens={screens}
@@ -147,6 +137,6 @@ export const ChatSidebar: React.FC = () => {
         title="Create New Chat - Select System Prompt"
         showCancelButton={true}
       />
-    </Sider>
+    </div>
   );
 };

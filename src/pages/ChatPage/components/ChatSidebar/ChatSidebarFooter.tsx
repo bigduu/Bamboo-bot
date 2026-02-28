@@ -1,10 +1,9 @@
 import React from "react";
-import { Button, Flex, Tooltip } from "antd";
+import { Button, Flex } from "antd";
 import { PlusOutlined, SettingOutlined } from "@ant-design/icons";
 
 type ChatSidebarFooterProps = {
   collapsed: boolean;
-  footerRef: React.RefObject<HTMLDivElement>;
   onNewChat: () => void;
   onOpenSettings: () => void;
   screens: { xs?: boolean };
@@ -13,15 +12,16 @@ type ChatSidebarFooterProps = {
 
 export const ChatSidebarFooter: React.FC<ChatSidebarFooterProps> = ({
   collapsed,
-  footerRef,
   onNewChat,
   onOpenSettings,
   screens,
   token,
 }) => {
+  const newChatLabel = "New Chat";
+  const settingsLabel = "System Settings";
+
   return (
     <Flex
-      ref={footerRef}
       vertical
       gap={collapsed ? "small" : "middle"}
       style={{
@@ -30,37 +30,37 @@ export const ChatSidebarFooter: React.FC<ChatSidebarFooterProps> = ({
         borderTop: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
-      <Tooltip placement={collapsed ? "right" : "top"} title="New Chat">
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={onNewChat}
-          block={!collapsed}
-          shape={collapsed ? "circle" : "default"}
-          size={collapsed ? "large" : screens.xs ? "small" : "middle"}
-          style={
-            collapsed ? { width: "44px", height: "44px", margin: "0 auto" } : {}
-          }
-        >
-          {!collapsed && "New Chat"}
-        </Button>
-      </Tooltip>
+      <Button
+        type="primary"
+        icon={<PlusOutlined />}
+        onClick={onNewChat}
+        block={!collapsed}
+        shape={collapsed ? "circle" : "default"}
+        size={collapsed ? "large" : screens.xs ? "small" : "middle"}
+        title={newChatLabel}
+        aria-label={newChatLabel}
+        style={
+          collapsed ? { width: "44px", height: "44px", margin: "0 auto" } : {}
+        }
+      >
+        {!collapsed && newChatLabel}
+      </Button>
 
-      <Tooltip placement={collapsed ? "right" : "top"} title="System Settings">
-        <Button
-          data-testid="open-settings"
-          icon={<SettingOutlined />}
-          onClick={onOpenSettings}
-          block={!collapsed}
-          shape={collapsed ? "circle" : "default"}
-          size={collapsed ? "large" : screens.xs ? "small" : "middle"}
-          style={
-            collapsed ? { width: "44px", height: "44px", margin: "0 auto" } : {}
-          }
-        >
-          {!collapsed && "System Settings"}
-        </Button>
-      </Tooltip>
+      <Button
+        data-testid="open-settings"
+        icon={<SettingOutlined />}
+        onClick={onOpenSettings}
+        block={!collapsed}
+        shape={collapsed ? "circle" : "default"}
+        size={collapsed ? "large" : screens.xs ? "small" : "middle"}
+        title={settingsLabel}
+        aria-label={settingsLabel}
+        style={
+          collapsed ? { width: "44px", height: "44px", margin: "0 auto" } : {}
+        }
+      >
+        {!collapsed && settingsLabel}
+      </Button>
     </Flex>
   );
 };

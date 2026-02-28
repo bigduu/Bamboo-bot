@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Modal } from "antd";
 
 import {
@@ -10,13 +10,18 @@ import {
 } from "../../utils/chatUtils";
 import { useSettingsViewStore } from "../../../../shared/store/settingsViewStore";
 import { useChatTitleGeneration } from "../../hooks/useChatManager/useChatTitleGeneration";
-import { useAppStore } from "../../store";
+import { selectChatById, useAppStore } from "../../store";
 import type { ChatItem, UserSystemPrompt } from "../../types/chat";
+import {
+  findLeafIdByChatId,
+  useUILayoutStore,
+} from "@shared/store/uiLayoutStore";
+import { uiLayoutDebug } from "@shared/utils/debugFlags";
 
 export const useChatSidebarState = () => {
   const chats = useAppStore((state) => state.chats);
   const currentChatId = useAppStore((state) => state.currentChatId);
-  const selectChat = useAppStore((state) => state.selectChat);
+  const selectChatGlobal = useAppStore((state) => state.selectChat);
   const deleteChat = useAppStore((state) => state.deleteChat);
   const deleteChats = useAppStore((state) => state.deleteChats);
   const pinChat = useAppStore((state) => state.pinChat);
@@ -27,7 +32,15 @@ export const useChatSidebarState = () => {
     (state) => state.lastSelectedPromptId,
   );
   const systemPrompts = useAppStore((state) => state.systemPrompts);
-  const loadSystemPrompts = useAppStore((state) => state.loadSystemPrompts);
+
+  const sidebarCollapsed = useUILayoutStore((s) => s.sidebar.collapsed);
+  const setSidebarCollapsed = useUILayoutStore((s) => s.setSidebarCollapsed);
+  const activeLeafId = useUILayoutStore((s) => s.activeLeafId);
+  const setActiveLeafId = useUILayoutStore((s) => s.setActiveLeafId);
+  const setLeafChatId = useUILayoutStore((s) => s.setLeafChatId);
+  const clearChatFromAllLeaves = useUILayoutStore(
+    (s) => s.clearChatFromAllLeaves,
+  );
 
   const { generateChatTitle, titleGenerationState } = useChatTitleGeneration({
     chats,
@@ -64,63 +77,99 @@ export const useChatSidebarState = () => {
         currentInteraction: null,
         ...options,
       };
-      await addChat(newChatData);
+      const newChatId = await addChat(newChatData);
+
+      // Assign the new chat to the currently active pane (read from store to
+      // avoid stale closures when the user just split panes).
+      const { activeLeafId: targetLeafId } = useUILayoutStore.getState();
+      useUILayoutStore.getState().setLeafChatId(targetLeafId, newChatId);
+      useUILayoutStore.getState().setActiveLeafId(targetLeafId);
+
+      uiLayoutDebug("createNewChat -> assign", {
+        targetLeafId,
+        newChatId,
+      });
     },
-    [addChat, lastSelectedPromptId, systemPrompts],
+    [
+      activeLeafId,
+      addChat,
+      lastSelectedPromptId,
+      setActiveLeafId,
+      setLeafChatId,
+      systemPrompts,
+    ],
   );
 
   const [isNewChatSelectorOpen, setIsNewChatSelectorOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const [footerHeight, setFooterHeight] = useState(0);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(
     new Set(["Today"]),
   );
-  const footerRef = useRef<HTMLDivElement>(null);
 
-  const expandedKeys = useMemo(
-    () => Array.from(expandedDates),
-    [expandedDates],
-  );
+  const currentChat = useAppStore(selectChatById(currentChatId));
+
+  const currentDateGroupKey = useMemo(() => {
+    return currentChat ? getDateGroupKeyForChat(currentChat) : null;
+  }, [currentChat]);
+
+  // Always keep the currently selected chat's group expanded, without causing
+  // an effect-driven setState loop.
+  const expandedKeys = useMemo(() => {
+    const next = new Set(expandedDates);
+    if (currentDateGroupKey) {
+      next.add(currentDateGroupKey);
+    }
+    return Array.from(next);
+  }, [currentDateGroupKey, expandedDates]);
 
   const handleCollapseChange = (keys: string | string[]) => {
     const next = new Set(Array.isArray(keys) ? keys : [keys]);
-    setExpandedDates(next);
+    setExpandedDates((prev) => {
+      if (prev.size !== next.size) return next;
+      for (const k of next) {
+        if (!prev.has(k)) return next;
+      }
+      return prev;
+    });
   };
-
-  useEffect(() => {
-    loadSystemPrompts();
-  }, [loadSystemPrompts]);
-
-  useEffect(() => {
-    function updateFooterHeight() {
-      if (footerRef.current) {
-        setFooterHeight(footerRef.current.offsetHeight);
-      }
-    }
-    updateFooterHeight();
-    window.addEventListener("resize", updateFooterHeight);
-    return () => window.removeEventListener("resize", updateFooterHeight);
-  }, []);
-
-  useEffect(() => {
-    if (currentChatId && chats.length > 0) {
-      const currentChat = chats.find((chat) => chat.id === currentChatId);
-      if (currentChat) {
-        const dateGroupKey = getDateGroupKeyForChat(currentChat);
-        setExpandedDates((prev) => {
-          if (!prev.has(dateGroupKey)) {
-            const newSet = new Set(prev);
-            newSet.add(dateGroupKey);
-            return newSet;
-          }
-          return prev;
-        });
-      }
-    }
-  }, [currentChatId, chats]);
 
   const groupedChatsByDate = groupChatsByDate(chats);
   const sortedDateKeys = getSortedDateKeys(groupedChatsByDate);
+
+  const handlePinChat = useCallback(
+    (chatId: string) => {
+      pinChat(chatId);
+      // Pinned chats move into the "Pinned" group; expand it so the chat doesn't
+      // appear to "disappear" immediately after pinning.
+      setExpandedDates((prev) => {
+        if (prev.has("Pinned")) return prev;
+        const next = new Set(prev);
+        next.add("Pinned");
+        return next;
+      });
+    },
+    [pinChat],
+  );
+
+  const handleUnpinChat = useCallback(
+    (chatId: string) => {
+      // Compute the destination group key (best-effort) so the chat remains visible.
+      const chat = chats.find((c) => c.id === chatId);
+      const nextGroupKey = chat
+        ? getDateGroupKeyForChat({ ...chat, pinned: false })
+        : null;
+
+      unpinChat(chatId);
+
+      if (!nextGroupKey) return;
+      setExpandedDates((prev) => {
+        if (prev.has(nextGroupKey)) return prev;
+        const next = new Set(prev);
+        next.add(nextGroupKey);
+        return next;
+      });
+    },
+    [chats, unpinChat],
+  );
 
   const handleDelete = (chatId: string) => {
     Modal.confirm({
@@ -131,6 +180,7 @@ export const useChatSidebarState = () => {
       okType: "danger",
       cancelText: "Cancel",
       onOk: () => {
+        clearChatFromAllLeaves(chatId);
         deleteChat(chatId);
       },
     });
@@ -165,6 +215,7 @@ export const useChatSidebarState = () => {
       okType: "danger",
       cancelText: "Cancel",
       onOk: () => {
+        chatIds.forEach((id) => clearChatFromAllLeaves(id));
         deleteChats(chatIds);
       },
     });
@@ -200,13 +251,75 @@ export const useChatSidebarState = () => {
     }
   };
 
+  const selectChat = useCallback(
+    (chatId: string) => {
+      // Read latest layout state to avoid stale closure when split/focus changes
+      // and the user immediately clicks a chat in the sidebar.
+      const {
+        activeLeafId: targetLeafId,
+        leafChatIds: leafChatIdsNow,
+      } = useUILayoutStore.getState();
+
+      // If the chat is already open in a pane, focus it.
+      const existingLeafId = findLeafIdByChatId(leafChatIdsNow, chatId);
+      const activeLeafChatId = leafChatIdsNow[targetLeafId] ?? null;
+
+      uiLayoutDebug("sidebar selectChat (input)", {
+        activeLeafId: targetLeafId,
+        activeLeafChatId,
+        selectedChatId: chatId,
+        existingLeafId,
+      });
+
+      if (existingLeafId) {
+        if (existingLeafId === targetLeafId) {
+          // no-op
+          uiLayoutDebug("sidebar selectChat (decision)", {
+            action: "noop_already_active",
+            leafId: targetLeafId,
+            chatId,
+          });
+        } else if (!activeLeafChatId) {
+          // If the currently focused pane is empty, prefer filling it even if the
+          // chat is already open elsewhere. This matches user expectations when
+          // creating a new split and selecting a chat from the sidebar.
+          useUILayoutStore.getState().setLeafChatId(targetLeafId, chatId);
+          useUILayoutStore.getState().setActiveLeafId(targetLeafId);
+          uiLayoutDebug("sidebar selectChat (decision)", {
+            action: "assign_to_empty_active_leaf",
+            fromLeafId: existingLeafId,
+            toLeafId: targetLeafId,
+            chatId,
+          });
+        } else {
+          useUILayoutStore.getState().setActiveLeafId(existingLeafId);
+          uiLayoutDebug("sidebar selectChat (decision)", {
+            action: "focus_existing_leaf",
+            leafId: existingLeafId,
+            chatId,
+          });
+        }
+      } else {
+        useUILayoutStore.getState().setLeafChatId(targetLeafId, chatId);
+        uiLayoutDebug("sidebar selectChat (decision)", {
+          action: "assign_to_active_leaf",
+          leafId: targetLeafId,
+          chatId,
+        });
+      }
+
+      selectChatGlobal(chatId);
+    },
+    [
+      selectChatGlobal,
+    ],
+  );
+
   return {
     chats,
-    collapsed,
+    collapsed: sidebarCollapsed,
     currentChatId,
     expandedKeys,
-    footerHeight,
-    footerRef,
     groupedChatsByDate,
     handleCollapseChange,
     handleDelete,
@@ -218,12 +331,12 @@ export const useChatSidebarState = () => {
     handleOpenSettings,
     handleSystemPromptSelect,
     isNewChatSelectorOpen,
-    pinChat,
+    pinChat: handlePinChat,
     selectChat,
-    setCollapsed,
+    setCollapsed: setSidebarCollapsed,
     sortedDateKeys,
     systemPrompts,
     titleGenerationState,
-    unpinChat,
+    unpinChat: handleUnpinChat,
   };
 };

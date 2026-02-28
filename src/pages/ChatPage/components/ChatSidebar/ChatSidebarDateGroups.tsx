@@ -1,12 +1,15 @@
 import React, { useMemo } from "react";
-import { Button, Collapse, Empty, Flex, List, Space, Typography } from "antd";
-import { CalendarOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Button, Empty, Flex, List, Space } from "antd";
+import {
+  CalendarOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  RightOutlined,
+} from "@ant-design/icons";
 
 import { ChatItem as ChatItemComponent } from "../ChatItem";
 import type { ChatItem } from "../../types/chat";
 import { getChatCountByDate } from "../../utils/chatUtils";
-
-const { Text } = Typography;
 
 type ChatSidebarDateGroupsProps = {
   groupedChatsByDate: Record<string, ChatItem[]>;
@@ -44,7 +47,7 @@ export const ChatSidebarDateGroups: React.FC<ChatSidebarDateGroupsProps> = ({
   titleGenerationState,
   token,
 }) => {
-  const items = useMemo(() => {
+  const groups = useMemo(() => {
     if (!sortedDateKeys.length) {
       return [];
     }
@@ -54,69 +57,14 @@ export const ChatSidebarDateGroups: React.FC<ChatSidebarDateGroupsProps> = ({
       const totalChatsInDate = getChatCountByDate(groupedChatsByDate, dateKey);
 
       return {
-        key: dateKey,
-        label: (
-          <Flex align="center" gap="small" style={{ minWidth: 0 }}>
-            <CalendarOutlined />
-            <Text
-              strong
-              style={{
-                fontSize: 14,
-                color:
-                  dateKey === "Today" ? token.colorPrimary : token.colorText,
-              }}
-            >
-              {dateKey} ({totalChatsInDate})
-            </Text>
-          </Flex>
-        ),
-        extra: (
-          <Button
-            type="text"
-            size="small"
-            icon={<DeleteOutlined />}
-            danger
-            onClick={(event) => {
-              event.stopPropagation();
-              onDeleteByDate(dateKey);
-            }}
-          />
-        ),
-        children: (
-          <List
-            itemLayout="horizontal"
-            dataSource={dateGroup}
-            split={false}
-            renderItem={(chat: ChatItem) => (
-              <ChatItemComponent
-                key={chat.id}
-                chat={chat}
-                isSelected={chat.id === currentChatId}
-                onSelect={onSelectChat}
-                onDelete={onDeleteChat}
-                onPin={onPinChat}
-                onUnpin={onUnpinChat}
-                onEdit={onEditTitle}
-                onGenerateTitle={onGenerateTitle}
-                isGeneratingTitle={
-                  titleGenerationState[chat.id]?.status === "loading"
-                }
-                titleGenerationError={
-                  titleGenerationState[chat.id]?.status === "error"
-                    ? titleGenerationState[chat.id]?.error
-                    : undefined
-                }
-              />
-            )}
-          />
-        ),
+        dateKey,
+        dateGroup,
+        totalChatsInDate,
       };
     });
   }, [
     groupedChatsByDate,
     sortedDateKeys,
-    currentChatId,
-    onDeleteByDate,
     onDeleteChat,
     onEditTitle,
     onGenerateTitle,
@@ -124,8 +72,6 @@ export const ChatSidebarDateGroups: React.FC<ChatSidebarDateGroupsProps> = ({
     onSelectChat,
     onUnpinChat,
     titleGenerationState,
-    token.colorPrimary,
-    token.colorText,
   ]);
 
   if (!sortedDateKeys.length) {
@@ -134,25 +80,114 @@ export const ChatSidebarDateGroups: React.FC<ChatSidebarDateGroupsProps> = ({
         image={Empty.PRESENTED_IMAGE_SIMPLE}
         description={
           <Space direction="vertical" size={4}>
-            <Text type="secondary">No chats yet</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <span style={{ color: token.colorTextSecondary }}>
+              No chats yet
+            </span>
+            <span style={{ color: token.colorTextSecondary, fontSize: 12 }}>
               Click "New Chat" to get started
-            </Text>
+            </span>
           </Space>
         }
       />
     );
   }
 
+  const expanded = new Set(expandedKeys);
+
   return (
     <Space direction="vertical" size="small" style={{ width: "100%" }}>
-      <Collapse
-        size="small"
-        ghost
-        activeKey={expandedKeys}
-        onChange={onCollapseChange}
-        items={items}
-      />
+      {groups.map(({ dateKey, dateGroup, totalChatsInDate }) => {
+        const isExpanded = expanded.has(dateKey);
+
+        return (
+          <div
+            key={dateKey}
+            style={{
+              borderRadius: token.borderRadiusSM,
+              background: isExpanded ? token.colorFillQuaternary : "transparent",
+              padding: 4,
+            }}
+          >
+            <Flex
+              align="center"
+              justify="space-between"
+              style={{ cursor: "pointer" }}
+              onClick={() => {
+                const next = new Set(expanded);
+                if (next.has(dateKey)) {
+                  next.delete(dateKey);
+                } else {
+                  next.add(dateKey);
+                }
+                onCollapseChange(Array.from(next));
+              }}
+            >
+              <Flex align="center" gap="small" style={{ minWidth: 0 }}>
+                {isExpanded ? <DownOutlined /> : <RightOutlined />}
+                <CalendarOutlined />
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color:
+                      dateKey === "Today"
+                        ? token.colorPrimary
+                        : token.colorText,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {dateKey} ({totalChatsInDate})
+                </span>
+              </Flex>
+
+              <Button
+                type="text"
+                size="small"
+                icon={<DeleteOutlined />}
+                danger
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteByDate(dateKey);
+                }}
+              />
+            </Flex>
+
+            {isExpanded ? (
+              <div style={{ marginTop: 4 }}>
+                <List
+                  itemLayout="horizontal"
+                  dataSource={dateGroup}
+                  split={false}
+                  renderItem={(chat: ChatItem) => (
+                    <ChatItemComponent
+                      key={chat.id}
+                      chat={chat}
+                      isSelected={chat.id === currentChatId}
+                      onSelect={onSelectChat}
+                      onDelete={onDeleteChat}
+                      onPin={onPinChat}
+                      onUnpin={onUnpinChat}
+                      onEdit={onEditTitle}
+                      onGenerateTitle={onGenerateTitle}
+                      isGeneratingTitle={
+                        titleGenerationState[chat.id]?.status === "loading"
+                      }
+                      titleGenerationError={
+                        titleGenerationState[chat.id]?.status === "error"
+                          ? titleGenerationState[chat.id]?.error
+                          : undefined
+                      }
+                    />
+                  )}
+                />
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
     </Space>
   );
 };

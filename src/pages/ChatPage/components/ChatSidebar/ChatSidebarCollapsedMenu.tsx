@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Avatar, Flex, Tooltip } from "antd";
+import { Avatar, Flex } from "antd";
 
 import type { ChatItem } from "../../types/chat";
 
@@ -22,39 +22,40 @@ export const ChatSidebarCollapsedMenu: React.FC<
         const isSelected = chat.id === currentChatId;
 
         return (
-          <Tooltip key={chat.id} placement="right" title={chat.title}>
-            <button
-              type="button"
-              onClick={() => onSelectChat(chat.id)}
+          <button
+            key={chat.id}
+            type="button"
+            onClick={() => onSelectChat(chat.id)}
+            title={chat.title}
+            aria-label={chat.title}
+            style={{
+              border: "none",
+              background: "transparent",
+              width: 44,
+              height: 44,
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto",
+              cursor: "pointer",
+              borderRadius: 999,
+            }}
+          >
+            <Avatar
+              size={screens.xs ? 30 : 34}
               style={{
-                border: "none",
-                background: "transparent",
-                width: 44,
-                height: 44,
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto",
-                cursor: "pointer",
-                borderRadius: 999,
+                backgroundColor: isSelected
+                  ? token.colorPrimary
+                  : token.colorFillTertiary,
+                color: isSelected
+                  ? token.colorTextLightSolid
+                  : token.colorTextSecondary,
               }}
             >
-              <Avatar
-                size={screens.xs ? 30 : 34}
-                style={{
-                  backgroundColor: isSelected
-                    ? token.colorPrimary
-                    : token.colorFillTertiary,
-                  color: isSelected
-                    ? token.colorTextLightSolid
-                    : token.colorTextSecondary,
-                }}
-              >
-                {chat.title.charAt(0)}
-              </Avatar>
-            </button>
-          </Tooltip>
+              {chat.title.charAt(0)}
+            </Avatar>
+          </button>
         );
       })}
     </Flex>
