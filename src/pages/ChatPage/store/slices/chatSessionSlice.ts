@@ -77,6 +77,14 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
   },
 
   selectChat: (chatId) => {
+    const prev = get();
+    // Avoid notifying subscribers when nothing effectively changes.
+    // This is especially important in multi-pane mode where we may attempt to
+    // re-select the currently active chat as panes gain focus.
+    if (prev.currentChatId === chatId && prev.latestActiveChatId === chatId) {
+      return;
+    }
+
     set({ currentChatId: chatId, latestActiveChatId: chatId });
     if (chatId) {
       localStorage.setItem(ACTIVE_CHAT_ID_KEY, chatId);
@@ -228,7 +236,14 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
   },
 
   loadChats: async () => {
-    const storedChats = loadChatsFromStorage();
+    const storedChatsRaw = loadChatsFromStorage();
+    const { chats: storedChats, changed: chatsNormalized } =
+      normalizeChats(storedChatsRaw);
+    if (chatsNormalized) {
+      // Persist normalization once so runtime components don't need to "fix up" chat state
+      // via effects (which can cause update-depth loops).
+      persistChats(storedChats);
+    }
     const activeChatId = localStorage.getItem(ACTIVE_CHAT_ID_KEY);
     const storedAutoTitles = localStorage.getItem(AUTO_TITLE_KEY);
     const autoGenerateTitles =
@@ -331,6 +346,60 @@ const loadChatsFromStorage = (): ChatItem[] => {
     console.error("Failed to load chats from localStorage:", error);
     return [];
   }
+};
+
+const safeRandomId = (): string => {
+  try {
+    const c: any = (globalThis as any).crypto;
+    if (c?.randomUUID) return c.randomUUID();
+  } catch {
+    // ignore
+  }
+  return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+};
+
+const normalizeChats = (
+  chats: ChatItem[],
+): { chats: ChatItem[]; changed: boolean } => {
+  let changed = false;
+
+  const next = chats.map((chat) => {
+    let chatChanged = false;
+
+    const chatId =
+      typeof (chat as any)?.id === "string" && (chat as any).id.trim()
+        ? (chat as any).id
+        : (() => {
+            chatChanged = true;
+            changed = true;
+            return safeRandomId();
+          })();
+
+    const rawMessages = Array.isArray((chat as any)?.messages)
+      ? ((chat as any).messages as any[])
+      : (() => {
+          chatChanged = true;
+          changed = true;
+          return [];
+        })();
+
+    let messagesChanged = false;
+    const messages = rawMessages.map((msg) => {
+      const id =
+        typeof (msg as any)?.id === "string" && (msg as any).id.trim()
+          ? (msg as any).id
+          : null;
+      if (id) return msg;
+      messagesChanged = true;
+      changed = true;
+      return { ...(msg as any), id: safeRandomId() };
+    });
+
+    if (!chatChanged && !messagesChanged) return chat;
+    return { ...(chat as any), id: chatId, messages } as ChatItem;
+  });
+
+  return { chats: changed ? next : chats, changed };
 };
 
 const persistChats = (chats: ChatItem[]): void => {
