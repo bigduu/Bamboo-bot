@@ -115,6 +115,12 @@ export interface ChatRequest {
   system_prompt?: string;
   enhance_prompt?: string;
   workspace_path?: string;
+  images?: Array<{
+    base64: string;
+    name?: string;
+    size?: number;
+    type?: string;
+  }>;
   model: string; // Required
 }
 

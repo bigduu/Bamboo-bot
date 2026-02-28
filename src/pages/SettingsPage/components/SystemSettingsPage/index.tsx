@@ -22,6 +22,7 @@ import SystemSettingsKeywordMaskingTab from "./SystemSettingsKeywordMaskingTab";
 import SystemSettingsWorkflowsTab from "./SystemSettingsWorkflowsTab";
 import SystemSettingsMcpTab from "./SystemSettingsMcpTab";
 import SystemSettingsMetricsTab from "./SystemSettingsMetricsTab";
+import SystemSettingsHooksTab from "./SystemSettingsHooksTab";
 import MermaidSettingsTab from "./MermaidSettingsTab";
 import { ProviderSettings } from "../ProviderSettings";
 import { SkillManager } from "../../../../components/Skill";
@@ -241,6 +242,11 @@ const SystemSettingsPage = ({
               key: "provider",
               label: "Provider",
               children: <ProviderSettings />,
+            },
+            {
+              key: "hooks",
+              label: "Hooks",
+              children: <SystemSettingsHooksTab />,
             },
             {
               key: "masking",

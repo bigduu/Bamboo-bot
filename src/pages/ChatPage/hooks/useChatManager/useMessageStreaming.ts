@@ -79,7 +79,7 @@ export function useMessageStreaming(
    * Note: Event subscription is handled by useAgentEventSubscription hook in ChatView
    */
   const sendWithAgent = useCallback(
-    async (content: string, chatId: string, _userMessage: UserMessage) => {
+    async (content: string, chatId: string, userMessage: UserMessage) => {
       // Validate model is available (TypeScript type guard)
       if (!activeModel) {
         throw new Error("Model not selected");
@@ -107,6 +107,12 @@ export function useMessageStreaming(
           system_prompt: baseSystemPrompt || undefined,
           enhance_prompt: enhancePrompt || undefined,
           workspace_path: workspacePath || undefined,
+          images: userMessage.images?.map((img) => ({
+            base64: img.base64,
+            name: img.name,
+            size: img.size,
+            type: img.type,
+          })),
           model: activeModel,
         });
 
