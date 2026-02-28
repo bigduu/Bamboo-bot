@@ -1,17 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect } from "react";
 import { Layout, theme } from "antd";
 import { ChatSidebar } from "../pages/ChatPage/components/ChatSidebar";
-import { ChatView } from "../pages/ChatPage/components/ChatView";
-import { FavoritesPanel } from "../pages/ChatPage/components/FavoritesPanel";
 import { SystemSettingsPage } from "../pages/SettingsPage/components/SystemSettingsPage";
 import { ChatAutoTitleEffect } from "../pages/ChatPage/components/ChatAutoTitleEffect";
-import { useAppStore } from "../pages/ChatPage/store";
-import { Message } from "../pages/ChatPage/types/chat";
 import { useSettingsViewStore } from "../shared/store/settingsViewStore";
 import { useMermaidTheme } from "../shared/components/MermaidChart/useMermaidTheme";
 import { mermaidCache } from "../shared/components/MermaidChart/mermaidConfig";
 import { clearMermaidRenderCache } from "../shared/components/MermaidChart/mermaidRenderManager";
 import { useMermaidSettings } from "../shared/store/mermaidSettingsStore";
+import { useAgentEventSubscription } from "@hooks/useAgentEventSubscription";
+import { useProviderStore } from "../pages/ChatPage/store/slices/providerSlice";
+import { MultiPaneChatView } from "../pages/ChatPage/components/MultiPaneChatView";
+import { useUILayoutStore } from "../shared/store/uiLayoutStore";
+import { ResizableSplit } from "../shared/components/ResizableSplit";
 
 export const MainLayout: React.FC<{
   themeMode: "light" | "dark";
@@ -20,55 +21,39 @@ export const MainLayout: React.FC<{
   const settingsOpen = useSettingsViewStore((s) => s.isOpen);
   const closeSettings = useSettingsViewStore((s) => s.close);
   const { token } = theme.useToken();
-  const currentChatId = useAppStore((state) => state.currentChatId);
-  const chats = useAppStore((state) => state.chats);
   const mermaidSettings = useMermaidSettings();
+
+  // Load provider configuration once for the whole app.
+  const loadProviderConfig = useProviderStore((state) => state.loadProviderConfig);
+  useEffect(() => {
+    loadProviderConfig();
+  }, [loadProviderConfig]);
+
+  // Maintain a single persistent subscription to agent events.
+  useAgentEventSubscription();
 
   // Enable global Mermaid theme updates
   useMermaidTheme();
 
   // Clear Mermaid cache when theme changes to force re-render
   useEffect(() => {
-    console.log("🔄 Theme changed, clearing Mermaid cache");
     mermaidCache.clear();
     clearMermaidRenderCache();
   }, [themeMode]);
 
   // Clear Mermaid cache when user settings change
   useEffect(() => {
-    console.log("🔄 Mermaid settings changed, clearing cache");
     mermaidCache.clear();
     clearMermaidRenderCache();
   }, [mermaidSettings]);
 
-  // Memoize currentMessages to avoid infinite loop
-  const currentMessages = useMemo<Message[]>(() => {
-    if (!currentChatId) return [];
-    const chat = chats.find((c) => c.id === currentChatId);
-    return chat?.messages ?? [];
-  }, [chats, currentChatId]);
-
-  const [showFavorites, setShowFavorites] = useState(true);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "f" &&
-        !e.ctrlKey &&
-        !e.metaKey &&
-        !e.altKey &&
-        document.activeElement?.tagName !== "INPUT" &&
-        document.activeElement?.tagName !== "TEXTAREA"
-      ) {
-        setShowFavorites((prev) => !prev);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
+  // Sidebar sizing (persisted)
+  const sidebarCollapsed = useUILayoutStore((s) => s.sidebar.collapsed);
+  const sidebarWidthPx = useUILayoutStore((s) => s.sidebar.widthPx);
+  const sidebarCollapsedWidthPx = useUILayoutStore((s) => s.sidebar.collapsedWidthPx);
+  const sidebarMinWidthPx = useUILayoutStore((s) => s.sidebar.minWidthPx);
+  const sidebarMaxWidthPx = useUILayoutStore((s) => s.sidebar.maxWidthPx);
+  const setSidebarWidthPx = useUILayoutStore((s) => s.setSidebarWidthPx);
 
   return (
     <Layout
@@ -77,31 +62,75 @@ export const MainLayout: React.FC<{
         height: "100vh",
         overflow: "hidden",
         background: token.colorBgLayout,
+        display: "flex",
+        flexDirection: "row",
       }}
     >
-      {!settingsOpen ? <ChatSidebar /> : null}
-      {!settingsOpen ? <ChatAutoTitleEffect /> : null}
-      <Layout
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          background: token.colorBgContainer,
-        }}
-      >
-        {settingsOpen ? (
+      {settingsOpen ? (
+        <Layout
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            background: token.colorBgContainer,
+            minHeight: 0,
+          }}
+        >
           <SystemSettingsPage
             themeMode={themeMode}
             onThemeModeChange={onThemeModeChange}
             onBack={closeSettings}
           />
-        ) : (
-          <ChatView />
-        )}
-      </Layout>
-      {!settingsOpen &&
-        showFavorites &&
-        currentChatId &&
-        currentMessages.length > 0 && <FavoritesPanel />}
+        </Layout>
+      ) : (
+        <>
+          <ChatAutoTitleEffect />
+
+          <ResizableSplit
+            layout="horizontal"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              height: "100%",
+              background: token.colorBgContainer,
+            }}
+            sizesPx={[
+              sidebarCollapsed ? sidebarCollapsedWidthPx : sidebarWidthPx,
+              0,
+            ]}
+            minFirstPx={
+              sidebarCollapsed ? sidebarCollapsedWidthPx : sidebarMinWidthPx
+            }
+            // Keep the same max behavior by clamping in the store setter.
+            // We still want the drag interaction to feel bounded though.
+            minSecondPx={320}
+            disabled={sidebarCollapsed}
+            handleSizePx={sidebarCollapsed ? 0 : 6}
+            onResizeEnd={([firstPx]) => {
+              if (sidebarCollapsed) return;
+              const clamped = Math.max(
+                sidebarMinWidthPx,
+                Math.min(sidebarMaxWidthPx, firstPx),
+              );
+              setSidebarWidthPx(clamped);
+            }}
+            first={<ChatSidebar />}
+            second={
+              <Layout
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  background: token.colorBgContainer,
+                  minHeight: 0,
+                  height: "100%",
+                }}
+              >
+                <MultiPaneChatView />
+              </Layout>
+            }
+          />
+        </>
+      )}
     </Layout>
   );
 };
