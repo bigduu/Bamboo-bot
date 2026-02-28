@@ -1,12 +1,15 @@
 import { StateCreator } from "zustand";
 import { ChatItem, Message } from "../../types/chat";
 import { AgentClient } from "../../services/AgentService";
+import { getDefaultSystemPrompts } from "../../utils/defaultSystemPrompts";
 import type { AppState } from "../";
 
 const CHAT_STORAGE_KEY = "copilot_chats_v3";
 const ACTIVE_CHAT_ID_KEY = "copilot_active_chat_id";
 const AUTO_TITLE_KEY = "copilot_auto_generate_titles";
 const agentClient = AgentClient.getInstance();
+const DEFAULT_BASE_SYSTEM_PROMPT =
+  getDefaultSystemPrompts()[0]?.content?.trim() || "";
 
 export interface ChatSlice {
   // State
@@ -273,7 +276,8 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
         messages: [],
         config: {
           systemPromptId: "general_assistant",
-          baseSystemPrompt: "",
+          // Ensure first-run releases have a stable, build-time default prompt.
+          baseSystemPrompt: DEFAULT_BASE_SYSTEM_PROMPT,
           lastUsedEnhancedPrompt: null,
         },
         currentInteraction: null,

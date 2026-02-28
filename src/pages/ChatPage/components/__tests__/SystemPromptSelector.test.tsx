@@ -19,9 +19,9 @@ vi.mock("../../../store", () => ({
 describe("SystemPromptSelector", () => {
   const mockPrompts: UserSystemPrompt[] = [
     {
-      id: "local_default",
-      name: "Default",
-      content: "You are a helpful assistant.",
+      id: "general_assistant",
+      name: "Bamboo",
+      content: "You are Bamboo, a highly capable AI assistant.",
       description: "Default system prompt.",
       isDefault: true,
     },
@@ -290,7 +290,7 @@ describe("SystemPromptSelector", () => {
       expect(mockOnSelect).toHaveBeenCalled();
       expect(mockOnSelect).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: "local_default", // Default prompt should be selected
+          id: "general_assistant", // Default prompt should be selected
         }),
       );
     });
