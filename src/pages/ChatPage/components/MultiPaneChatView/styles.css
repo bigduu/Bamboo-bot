@@ -1,0 +1,14 @@
+.chat-pane-shell .chat-pane-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-in-out;
+}
+
+.chat-pane-shell:hover .chat-pane-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
