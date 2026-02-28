@@ -20,7 +20,8 @@ type SubscriptionEntry = {
 const isAbortError = (err: unknown) =>
   (err as any)?.name === "AbortError" || (err as any)?.code === 20;
 
-export function useAgentEventSubscription() {
+export function useAgentEventSubscription(opts?: { enabled?: boolean }) {
+  const enabled = opts?.enabled ?? true;
   const processingChats = useAppStore((state) => state.processingChats);
 
   // Stable store actions
@@ -383,6 +384,16 @@ export function useAgentEventSubscription() {
 
   // Effect A: reconcile active subscriptions when processingChats changes (NO global cleanup return)
   useEffect(() => {
+    if (!enabled) {
+      // If a view mounts this hook in "disabled" mode (e.g. embedded panes),
+      // ensure we aren't leaving behind any active SSE subscriptions.
+      for (const chatId of Array.from(subscriptionsByChatRef.current.keys())) {
+        cleanupChat(chatId);
+      }
+      pendingChatIdsRef.current.clear();
+      return;
+    }
+
     // Start needed subscriptions
     processingChats.forEach((chatId) => ensureSubscription(chatId));
 
@@ -399,10 +410,13 @@ export function useAgentEventSubscription() {
         pendingChatIdsRef.current.delete(chatId);
       }
     }
-  }, [processingChats, ensureSubscription, cleanupChat]);
+  }, [enabled, processingChats, ensureSubscription, cleanupChat]);
 
   // Retry pending processing chats when chats/config updates (e.g. sessionId arrives)
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
     return useAppStore.subscribe(
       (s) => s.chats,
       () => {
@@ -417,7 +431,7 @@ export function useAgentEventSubscription() {
         }
       },
     );
-  }, [ensureSubscription]);
+  }, [enabled, ensureSubscription]);
 
   // Effect B: unmount cleanup only
   useEffect(() => {

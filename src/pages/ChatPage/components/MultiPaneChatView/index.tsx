@@ -8,6 +8,8 @@ import {
 
 import { useAppStore } from "../../store";
 import { ChatView } from "../ChatView";
+import { useProviderStore } from "../../store/slices/providerSlice";
+import { useAgentEventSubscription } from "@hooks/useAgentEventSubscription";
 import {
   type LayoutNode,
   type LayoutSplitNode,
@@ -91,8 +93,8 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
             type="text"
             icon={<BorderHorizontalOutlined />}
             disabled={!canSplit}
-            title="左右分屏"
-            aria-label="左右分屏"
+            title="Split horizontally"
+            aria-label="Split horizontally"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -110,8 +112,8 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
             type="text"
             icon={<BorderVerticleOutlined />}
             disabled={!canSplit}
-            title="上下分屏"
-            aria-label="上下分屏"
+            title="Split vertically"
+            aria-label="Split vertically"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -129,8 +131,8 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
             danger
             icon={<CloseOutlined />}
             disabled={!canClose}
-            title="关闭"
-            aria-label="关闭"
+            title="Close pane"
+            aria-label="Close pane"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -145,26 +147,7 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
       </div>
 
       {chatId ? (
-        isActive ? (
-          // NOTE: The current ChatView is still bound to the global selected chat in the app store.
-          // Multi-pane rendering for different chats will require a deeper refactor to make ChatView
-          // accept a `chatId` prop. For now, only the active pane renders ChatView.
-          <ChatView />
-        ) : (
-          <Flex
-            vertical
-            align="center"
-            justify="center"
-            style={{ height: "100%", minHeight: 0, padding: token.paddingLG }}
-          >
-            <div style={{ color: token.colorTextSecondary }}>
-              点击激活该分屏
-            </div>
-            <div style={{ color: token.colorTextTertiary, fontSize: 12 }}>
-              {chatId}
-            </div>
-          </Flex>
-        )
+        <ChatView chatId={chatId} embedded={true} />
       ) : (
         <Flex
           vertical
@@ -173,10 +156,10 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
           style={{ height: "100%", minHeight: 0, padding: token.paddingLG }}
         >
           <div style={{ color: token.colorTextSecondary }}>
-            选择一个会话开始聊天
+            Select a chat to start chatting
           </div>
           <div style={{ color: token.colorTextTertiary, fontSize: 12 }}>
-            悬停右上角可以分屏/关闭
+            Use the top-right buttons to split or close panes
           </div>
         </Flex>
       )}
@@ -215,6 +198,14 @@ const LayoutNodeView: React.FC<{ node: LayoutNode }> = ({ node }) => {
 
 export const MultiPaneChatView: React.FC = () => {
   const { token } = useToken();
+
+  // Multi-pane renders multiple ChatView instances; keep these global side-effects
+  // in a single place to avoid duplicate subscriptions/config loads.
+  const loadProviderConfig = useProviderStore((s) => s.loadProviderConfig);
+  useEffect(() => {
+    loadProviderConfig();
+  }, [loadProviderConfig]);
+  useAgentEventSubscription();
 
   const tree = useUILayoutStore((s) => s.tree);
   const leafChatIds = useUILayoutStore((s) => s.leafChatIds);

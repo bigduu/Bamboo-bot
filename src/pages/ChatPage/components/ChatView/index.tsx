@@ -29,23 +29,39 @@ import {
 const { useToken } = theme;
 const { useBreakpoint } = Grid;
 
-export const ChatView: React.FC = () => {
+export type ChatViewProps = {
+  /**
+   * If omitted, falls back to the globally selected chat.
+   * Multi-pane mode should always pass an explicit chatId.
+   */
+  chatId?: string | null;
+  /**
+   * When embedded in split panes, use full width and tighter spacing.
+   */
+  embedded?: boolean;
+};
+
+export const ChatView: React.FC<ChatViewProps> = ({
+  chatId: chatIdProp,
+  embedded = false,
+}) => {
   // Load provider configuration on mount
   const loadProviderConfig = useProviderStore(
     (state) => state.loadProviderConfig,
   );
 
   useEffect(() => {
+    if (embedded) return;
     loadProviderConfig();
-  }, [loadProviderConfig]);
+  }, [embedded, loadProviderConfig]);
 
   // Maintain persistent subscription to agent events for real-time streaming
-  useAgentEventSubscription();
+  useAgentEventSubscription({ enabled: !embedded });
 
-  const currentChatId = useAppStore((state) => state.currentChatId);
+  const chatId = useAppStore((state) => chatIdProp ?? state.currentChatId);
   const currentChat = useAppStore(
     (state) =>
-      state.chats.find((chat) => chat.id === state.currentChatId) || null,
+      chatId ? state.chats.find((chat) => chat.id === chatId) || null : null,
   );
   const deleteMessage = useAppStore((state) => state.deleteMessage);
   const updateChat = useAppStore((state) => state.updateChat);
@@ -58,8 +74,8 @@ export const ChatView: React.FC = () => {
     [currentChat],
   );
 
-  const isProcessing = currentChatId
-    ? processingChats.has(currentChatId)
+  const isProcessing = chatId
+    ? processingChats.has(chatId)
     : false;
 
   const interactionState = useMemo(() => {
@@ -80,11 +96,11 @@ export const ChatView: React.FC = () => {
 
   const handleDeleteMessage = useCallback(
     (messageId: string) => {
-      if (currentChatId) {
-        deleteMessage(currentChatId, messageId);
+      if (chatId) {
+        deleteMessage(chatId, messageId);
       }
     },
-    [currentChatId, deleteMessage],
+    [chatId, deleteMessage],
   );
 
   const messagesListRef = useRef<HTMLDivElement>(null);
@@ -95,6 +111,7 @@ export const ChatView: React.FC = () => {
   );
 
   const getContainerMaxWidth = () => {
+    if (embedded) return "100%";
     if (screens.xs) return "100%";
     if (screens.sm) return "100%";
     if (screens.md) return "90%";
@@ -103,13 +120,14 @@ export const ChatView: React.FC = () => {
   };
 
   const getContainerPadding = () => {
+    if (embedded) return token.paddingSM;
     if (screens.xs) return token.paddingXS;
     if (screens.sm) return token.paddingSM;
     return token.padding;
   };
 
   useEffect(() => {
-    if (currentChatId && currentMessages) {
+    if (chatId && currentMessages) {
       const messagesNeedingIds = currentMessages.some((msg) => !msg.id);
 
       if (messagesNeedingIds) {
@@ -120,14 +138,14 @@ export const ChatView: React.FC = () => {
           return msg;
         });
 
-        updateChat(currentChatId, { messages: updatedMessages });
+        updateChat(chatId, { messages: updatedMessages });
       }
     }
-  }, [currentChatId, currentMessages, updateChat]);
+  }, [chatId, currentMessages, updateChat]);
 
   useEffect(() => {
     setWorkflowDraft(null);
-  }, [currentChatId]);
+  }, [chatId]);
 
   const { systemPromptMessage, renderableMessages, convertRenderableEntry } =
     useChatViewMessages(currentChat, currentMessages);
@@ -136,7 +154,7 @@ export const ChatView: React.FC = () => {
   const hasWorkflowDraft = Boolean(workflowDraft?.content);
   const hasSystemPrompt = Boolean(systemPromptMessage);
   const showMessagesView =
-    currentChatId && (hasMessages || hasSystemPrompt || hasWorkflowDraft);
+    chatId && (hasMessages || hasSystemPrompt || hasWorkflowDraft);
 
   const renderableMessagesWithDraft = useMemo<RenderableEntry[]>(() => {
     if (!workflowDraft?.content) {
@@ -160,18 +178,18 @@ export const ChatView: React.FC = () => {
   const agentSessionId = currentChat?.config?.agentSessionId;
 
   // Get token usage - prefer store (real-time), fallback to chat config (persisted)
-  const storeTokenUsage = currentChatId ? tokenUsages[currentChatId] : null;
+  const storeTokenUsage = chatId ? tokenUsages[chatId] : null;
   const configTokenUsage = currentChat?.config?.tokenUsage;
   const currentTokenUsage = storeTokenUsage || configTokenUsage || null;
 
-  const storeTruncation = currentChatId
-    ? truncationOccurred[currentChatId]
+  const storeTruncation = chatId
+    ? truncationOccurred[chatId]
     : false;
   const configTruncation = currentChat?.config?.truncationOccurred;
   const currentTruncationOccurred =
     storeTruncation || configTruncation || false;
 
-  const storeSegments = currentChatId ? segmentsRemoved[currentChatId] : 0;
+  const storeSegments = chatId ? segmentsRemoved[chatId] : 0;
   const configSegments = currentChat?.config?.segmentsRemoved;
   const currentSegmentsRemoved = storeSegments || configSegments || 0;
 
@@ -201,7 +219,7 @@ export const ChatView: React.FC = () => {
     showScrollToBottom,
     showScrollToTop,
   } = useChatViewScroll({
-    currentChatId,
+    currentChatId: chatId,
     interactionState,
     messagesListRef,
     renderableMessages: renderableMessagesWithDraft,
@@ -291,7 +309,7 @@ export const ChatView: React.FC = () => {
         )}
 
         <ChatMessagesList
-          currentChatId={currentChatId}
+          currentChatId={chatId}
           convertRenderableEntry={convertRenderableEntry}
           handleDeleteMessage={handleDeleteMessage}
           handleMessagesScroll={handleMessagesScroll}
@@ -307,8 +325,8 @@ export const ChatView: React.FC = () => {
           padding={getContainerPadding()}
         />
 
-        {/* 滚动按钮组 - 都在右下角 */}
-        {(showScrollToTop || showScrollToBottom) && (
+        {/* Scroll buttons (bottom-right) */}
+        {!embedded && (showScrollToTop || showScrollToBottom) && (
           <FloatButton.Group
             style={{
               right: getScrollButtonPosition(),
