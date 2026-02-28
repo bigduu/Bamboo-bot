@@ -3,7 +3,6 @@ import { devtools, subscribeWithSelector } from "zustand/middleware";
 import { ChatSlice, createChatSlice } from "./slices/chatSessionSlice";
 import { ModelSlice, createModelSlice } from "./slices/modelSlice";
 import { PromptSlice, createPromptSlice } from "./slices/promptSlice";
-import { FavoritesSlice, createFavoritesSlice } from "./slices/favoritesSlice";
 import { SessionSlice, createSessionSlice } from "./slices/appSettingsSlice";
 import { SkillSlice, createSkillSlice } from "./slices/skillSlice";
 import {
@@ -43,7 +42,6 @@ const chatLookupCache = new WeakMap<
 export type AppState = ChatSlice &
   ModelSlice &
   PromptSlice &
-  FavoritesSlice &
   SessionSlice &
   SkillSlice &
   TokenBudgetSlice &
@@ -57,7 +55,6 @@ export const useAppStore = create<AppState>()(
       ...createChatSlice(set, get, api),
       ...createModelSlice(set, get, api),
       ...createPromptSlice(set, get, api),
-      ...createFavoritesSlice(set, get, api),
       ...createSessionSlice(set, get, api),
       ...createSkillSlice(set, get, api),
       ...createTokenBudgetSlice(set, get, api),
@@ -199,7 +196,6 @@ let isInitialized = false;
 
 const initializeStore = async (force: boolean = false) => {
   if (isInitialized && !force) {
-    console.log("Store already initialized, skipping");
     return;
   }
   isInitialized = true;
@@ -220,7 +216,6 @@ const initializeStore = async (force: boolean = false) => {
   }
 
   await useAppStore.getState().loadSystemPrompts();
-  await useAppStore.getState().loadFavorites();
 };
 
 // Export for explicit initialization by App.tsx after setup is complete

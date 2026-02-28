@@ -19,5 +19,3 @@ export const SUPPORTED_IMAGE_TYPES = [
   "image/gif",
   "image/webp",
 ] as const;
-
-export const SUPPORTED_EXPORT_FORMATS = ["markdown", "pdf"] as const;

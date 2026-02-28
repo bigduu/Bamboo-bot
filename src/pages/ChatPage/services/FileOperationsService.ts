@@ -5,12 +5,12 @@
 
 export interface FileFilter {
   name: string;
-  extensions: string[];
+  extensions: ReadonlyArray<string>;
 }
 
 export interface SaveFileOptions {
   content: Uint8Array | string;
-  filters: FileFilter[];
+  filters: ReadonlyArray<FileFilter>;
   defaultPath: string;
 }
 
@@ -36,7 +36,8 @@ export class FileOperationsService {
 
       // Show save dialog
       const filePath = await save({
-        filters,
+        // Convert readonly arrays into the mutable shape expected by the Tauri dialog types.
+        filters: filters.map((f) => ({ name: f.name, extensions: [...f.extensions] })),
         defaultPath,
       });
 
@@ -73,7 +74,7 @@ export class FileOperationsService {
    */
   static async saveTextFile(
     content: string,
-    filters: FileFilter[],
+    filters: ReadonlyArray<FileFilter>,
     defaultPath: string,
   ): Promise<SaveFileResult> {
     return this.saveFile({ content, filters, defaultPath });
@@ -84,7 +85,7 @@ export class FileOperationsService {
    */
   static async saveBinaryFile(
     content: Uint8Array,
-    filters: FileFilter[],
+    filters: ReadonlyArray<FileFilter>,
     defaultPath: string,
   ): Promise<SaveFileResult> {
     return this.saveFile({ content, filters, defaultPath });
@@ -110,19 +111,5 @@ export class FileOperationsService {
   ): string {
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
     return `${prefix}-${timestamp}.${extension}`;
-  }
-
-  /**
-   * Generate filename for chat exports
-   */
-  static generateChatExportFilename(
-    chatId: string,
-    format: "md" | "pdf",
-  ): string {
-    const shortId = chatId.slice(0, 8);
-    return this.generateTimestampedFilename(
-      `chat-favorites-${shortId}`,
-      format,
-    );
   }
 }
