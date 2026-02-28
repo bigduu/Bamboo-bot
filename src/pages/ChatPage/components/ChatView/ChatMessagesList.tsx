@@ -6,6 +6,7 @@ import MessageCard from "../MessageCard";
 import StreamingMessageCard from "../StreamingMessageCard";
 import ToolSessionCard from "../ToolSessionCard";
 import type { RenderableEntry, ConvertedEntry } from "./useChatViewMessages";
+import type { ChatItem } from "../../types/chat";
 
 const { Content } = Layout;
 
@@ -14,6 +15,7 @@ type InteractionState = {
 };
 
 type ChatMessagesListProps = {
+  currentChat: ChatItem | null;
   currentChatId: string | null;
   convertRenderableEntry: (entry: RenderableEntry) => ConvertedEntry;
   handleDeleteMessage: (messageId: string) => void;
@@ -35,6 +37,7 @@ type ChatMessagesListProps = {
 };
 
 export const ChatMessagesList: React.FC<ChatMessagesListProps> = ({
+  currentChat,
   currentChatId,
   convertRenderableEntry,
   handleDeleteMessage,
@@ -122,7 +125,10 @@ export const ChatMessagesList: React.FC<ChatMessagesListProps> = ({
                       </div>
                     </Flex>
                   ) : convertedEntry.message.role === "system" ? (
-                    <SystemMessageCard message={convertedEntry.message} />
+                    <SystemMessageCard
+                      currentChat={currentChat}
+                      message={convertedEntry.message}
+                    />
                   ) : (
                     <Flex
                       justify={convertedEntry.align}
@@ -138,6 +144,7 @@ export const ChatMessagesList: React.FC<ChatMessagesListProps> = ({
                         }}
                       >
                         <MessageCard
+                          chatId={currentChatId}
                           message={convertedEntry.message}
                           messageType={convertedEntry.messageType}
                           onDelete={

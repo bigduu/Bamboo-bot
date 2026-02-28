@@ -5,6 +5,7 @@ import { InputContainer } from "../InputContainer";
 import type { WorkflowDraft } from "../InputContainer";
 
 type ChatInputAreaProps = {
+  chatId: string | null;
   isCenteredLayout: boolean;
   maxWidth: string;
   onWorkflowDraftChange: (draft: WorkflowDraft | null) => void;
@@ -12,6 +13,7 @@ type ChatInputAreaProps = {
 };
 
 export const ChatInputArea: React.FC<ChatInputAreaProps> = ({
+  chatId,
   isCenteredLayout,
   maxWidth,
   onWorkflowDraftChange,
@@ -32,6 +34,7 @@ export const ChatInputArea: React.FC<ChatInputAreaProps> = ({
         }}
       >
         <InputContainer
+          chatId={chatId}
           isCenteredLayout={isCenteredLayout}
           onWorkflowDraftChange={onWorkflowDraftChange}
         />

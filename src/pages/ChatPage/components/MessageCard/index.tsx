@@ -8,7 +8,6 @@ import { ImageGrid } from "../ImageGrid";
 import {
   ActionButtonGroup,
   createCopyButton,
-  createFavoriteButton,
   createReferenceButton,
 } from "../ActionButtonGroup";
 import { useAppStore } from "../../store";
@@ -42,18 +41,21 @@ const CHAT_SEND_MESSAGE_EVENT = "chat-send-message";
 
 type ChatSendMessageEventDetail = {
   content: string;
+  chatId?: string | null;
   handled?: boolean;
   resolve?: () => void;
   reject?: (error: unknown) => void;
 };
 
 interface MessageCardProps {
+  chatId: string | null;
   message: Message;
   onDelete?: (messageId: string) => void;
   messageType?: "text" | "plan" | "question" | "tool_call" | "tool_result";
 }
 
 const MessageCardComponent: React.FC<MessageCardProps> = ({
+  chatId,
   message,
   onDelete,
   messageType,
@@ -61,16 +63,13 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
   const { role, id: messageId } = message;
   const { token } = useToken();
   const screens = useBreakpoint();
-  const currentChatId = useAppStore((state) => state.currentChatId);
   const updateChat = useAppStore((state) => state.updateChat);
-  const addFavorite = useAppStore((state) => state.addFavorite);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState<boolean>(false);
 
   // Select only the boolean we need, not the whole Set
   const isProcessing = useAppStore((state) => {
-    const id = state.currentChatId;
-    return id ? state.processingChats.has(id) : false;
+    return chatId ? state.processingChats.has(chatId) : false;
   });
 
   const sendMessage = useCallback((content: string) => {
@@ -81,6 +80,7 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
     return new Promise<void>((resolve, reject) => {
       const detail: ChatSendMessageEventDetail = {
         content,
+        chatId,
         handled: false,
         resolve,
         reject,
@@ -134,14 +134,11 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
     contextMenuItems,
     handleMouseUp,
     copyToClipboard,
-    addMessageToFavorites,
     referenceMessage,
   } = useMessageCardActions({
     messageText,
     messageId,
-    role,
-    currentChatId,
-    addFavorite,
+    currentChatId: chatId,
     onDelete,
     cardRef,
   });
@@ -165,15 +162,14 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
   const actionButtons = useMemo(
     () => [
       createCopyButton(() => copyToClipboard(messageText)),
-      createFavoriteButton(addMessageToFavorites),
       createReferenceButton(referenceMessage),
     ],
-    [messageText, copyToClipboard, addMessageToFavorites, referenceMessage],
+    [messageText, copyToClipboard, referenceMessage],
   );
 
   const { handleExecutePlan, handleRefinePlan, handleQuestionAnswer } =
     useMessageCardPlanActions({
-      currentChatId,
+      currentChatId: chatId,
       updateChat,
       sendMessage,
     });
@@ -182,7 +178,7 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
     return (
       <PlanMessageCard
         plan={parsedPlan}
-        contextId={currentChatId || ""}
+        contextId={chatId || ""}
         onExecute={handleExecutePlan}
         onRefine={handleRefinePlan}
         timestamp={formattedTimestamp ?? undefined}
@@ -198,7 +194,7 @@ const MessageCardComponent: React.FC<MessageCardProps> = ({
     return (
       <QuestionMessageCard
         question={parsedQuestion}
-        contextId={currentChatId || ""}
+        contextId={chatId || ""}
         onAnswer={handleQuestionAnswer}
         disabled={isProcessing || false}
         timestamp={formattedTimestamp ?? undefined}

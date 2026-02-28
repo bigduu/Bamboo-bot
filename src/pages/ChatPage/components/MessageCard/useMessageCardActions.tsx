@@ -4,21 +4,16 @@ import {
   BookOutlined,
   CopyOutlined,
   DeleteOutlined,
-  StarOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
+import { App as AntApp } from "antd";
+import { MessageExportService } from "../../services/MessageExportService";
 
 interface UseMessageCardActionsProps {
   messageText: string;
   messageId?: string;
-  role: "user" | "assistant" | "system";
   currentChatId?: string | null;
-  addFavorite: (favorite: {
-    chatId: string;
-    content: string;
-    role: "user" | "assistant";
-    messageId: string;
-  }) => void;
   onDelete?: (messageId: string) => void;
   cardRef: RefObject<HTMLDivElement>;
 }
@@ -26,12 +21,11 @@ interface UseMessageCardActionsProps {
 export const useMessageCardActions = ({
   messageText,
   messageId,
-  role,
   currentChatId,
-  addFavorite,
   onDelete,
   cardRef,
 }: UseMessageCardActionsProps) => {
+  const { message: appMessage } = AntApp.useApp();
   const [selectedText, setSelectedText] = useState<string>("");
 
   const copyToClipboard = useCallback(async (text: string) => {
@@ -41,40 +35,6 @@ export const useMessageCardActions = ({
       console.error("Failed to copy text:", e);
     }
   }, []);
-
-  const addSelectedToFavorites = useCallback(() => {
-    if (currentChatId && selectedText && messageId) {
-      addFavorite({
-        chatId: currentChatId,
-        content: selectedText,
-        role: role as "user" | "assistant",
-        messageId,
-      });
-      setSelectedText("");
-    }
-  }, [addFavorite, currentChatId, messageId, role, selectedText]);
-
-  const addMessageToFavorites = useCallback(() => {
-    if (!currentChatId || !messageId) return;
-    if (selectedText) {
-      addSelectedToFavorites();
-      return;
-    }
-    addFavorite({
-      chatId: currentChatId,
-      content: messageText,
-      role: role as "user" | "assistant",
-      messageId,
-    });
-  }, [
-    addFavorite,
-    addSelectedToFavorites,
-    currentChatId,
-    messageId,
-    messageText,
-    role,
-    selectedText,
-  ]);
 
   const createReference = useCallback((text: string) => {
     return `> ${text.replace(/\n/g, "\n> ")}`;
@@ -90,6 +50,34 @@ export const useMessageCardActions = ({
     });
     window.dispatchEvent(event);
   }, [createReference, currentChatId, messageText, selectedText]);
+
+  const exportContent = useCallback(
+    async (format: "markdown" | "pdf") => {
+      const text = selectedText || messageText;
+      if (!text) {
+        appMessage.warning("Nothing to export");
+        return;
+      }
+
+      const result = await MessageExportService.exportMessageText({
+        format,
+        content: text,
+        chatId: currentChatId ?? null,
+        messageId: messageId ?? null,
+      });
+
+      if (result.success) {
+        appMessage.success(`Saved: ${result.filename}`);
+      } else {
+        // "User cancelled" is not actionable; keep it quiet.
+        if (result.error?.toLowerCase().includes("cancel")) {
+          return;
+        }
+        appMessage.error(result.error || "Export failed");
+      }
+    },
+    [appMessage, currentChatId, messageId, messageText, selectedText],
+  );
 
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
@@ -126,16 +114,23 @@ export const useMessageCardActions = ({
         },
       },
       {
-        key: "favorite",
-        label: "Add to favorites",
-        icon: <StarOutlined />,
-        onClick: addMessageToFavorites,
-      },
-      {
         key: "reference",
         label: "Reference message",
         icon: <BookOutlined />,
         onClick: referenceMessage,
+      },
+      { type: "divider" },
+      {
+        key: "export-md",
+        label: "Export as Markdown",
+        icon: <DownloadOutlined />,
+        onClick: () => exportContent("markdown"),
+      },
+      {
+        key: "export-pdf",
+        label: "Export as PDF",
+        icon: <DownloadOutlined />,
+        onClick: () => exportContent("pdf"),
       },
     ];
 
@@ -151,8 +146,8 @@ export const useMessageCardActions = ({
 
     return baseItems;
   }, [
-    addMessageToFavorites,
     copyToClipboard,
+    exportContent,
     messageId,
     messageText,
     onDelete,
@@ -164,7 +159,6 @@ export const useMessageCardActions = ({
     contextMenuItems,
     handleMouseUp,
     copyToClipboard,
-    addMessageToFavorites,
     referenceMessage,
   };
 };

@@ -6,13 +6,13 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import { Space, theme, Tag, Alert, message as antdMessage, Spin } from "antd";
+import { App as AntApp, Space, theme, Tag, Alert, Spin } from "antd";
 import type { TextAreaRef } from "antd/es/input/TextArea";
 import { ToolOutlined, RobotOutlined, SettingOutlined } from "@ant-design/icons";
 import { MessageInput } from "../MessageInput";
 import InputPreview from "./InputPreview";
 import { useMessageStreaming } from "../../hooks/useChatManager/useMessageStreaming";
-import { selectCurrentChat, useAppStore } from "../../store";
+import { selectChatById, useAppStore } from "../../store";
 import { useSystemPrompt } from "../../hooks/useSystemPrompt";
 import { useChatInputHistory } from "../../hooks/useChatInputHistory";
 import { useInputContainerCommand } from "./useInputContainerCommand";
@@ -34,6 +34,7 @@ const CHAT_SEND_MESSAGE_EVENT = "chat-send-message";
 
 type ChatSendMessageEventDetail = {
   content: string;
+  chatId?: string | null;
   handled?: boolean;
   resolve?: () => void;
   reject?: (error: unknown) => void;
@@ -50,19 +51,22 @@ export type WorkflowDraft = {
 };
 
 interface InputContainerProps {
+  chatId?: string | null;
   isCenteredLayout?: boolean;
   onWorkflowDraftChange?: (workflow: WorkflowDraft | null) => void;
 }
 
 export const InputContainer: React.FC<InputContainerProps> = ({
+  chatId: chatIdProp,
   isCenteredLayout = false,
   onWorkflowDraftChange,
 }) => {
   const textAreaRef = useRef<TextAreaRef>(null); // Add ref for cursor position
   const { token } = useToken();
   const openSettings = useSettingsViewStore((state) => state.open);
-  const currentChatId = useAppStore((state) => state.currentChatId);
-  const currentChat = useAppStore(selectCurrentChat);
+  const chatId = useAppStore((state) => chatIdProp ?? state.currentChatId);
+  const activeChatId = useAppStore((state) => state.currentChatId);
+  const currentChat = useAppStore(selectChatById(chatId));
   const currentMessages = currentChat?.messages || [];
   const addMessage = useAppStore((state) => state.addMessage);
   const updateChat = useAppStore((state) => state.updateChat);
@@ -73,7 +77,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
 
   // Get input state from Zustand slice (persisted per session)
   const inputState = useAppStore((state) =>
-    currentChatId ? state.inputStates[currentChatId] : undefined,
+    chatId ? state.inputStates[chatId] : undefined,
   );
   const setInputContent = useAppStore((state) => state.setInputContent);
   const setReferenceText = useAppStore((state) => state.setReferenceText);
@@ -83,23 +87,23 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   const referenceText = inputState?.referenceText || null;
   const setContent = useCallback(
     (newContent: string) => {
-      if (currentChatId) {
-        setInputContent(currentChatId, newContent);
+      if (chatId) {
+        setInputContent(chatId, newContent);
       }
     },
-    [currentChatId, setInputContent],
+    [chatId, setInputContent],
   );
   const setReferenceTextPersisted = useCallback(
     (newRefText: string | null) => {
-      if (currentChatId) {
-        setReferenceText(currentChatId, newRefText);
+      if (chatId) {
+        setReferenceText(chatId, newRefText);
       }
     },
-    [currentChatId, setReferenceText],
+    [chatId, setReferenceText],
   );
 
-  const isProcessing = currentChatId
-    ? processingChats.has(currentChatId)
+  const isProcessing = chatId
+    ? processingChats.has(chatId)
     : false;
 
   const {
@@ -107,7 +111,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
     cancel: cancelMessage,
     agentAvailable,
   } = useMessageStreaming({
-    chatId: currentChatId,
+    chatId,
     addMessage,
     setChatProcessing,
     updateChat,
@@ -123,6 +127,20 @@ export const InputContainer: React.FC<InputContainerProps> = ({
       if (!customEvent.detail) {
         return;
       }
+
+      // If a target chatId is provided, only the matching pane should handle it.
+      // Otherwise, default to the globally active chat to avoid sending from all panes.
+      const targetChatId =
+        typeof customEvent.detail.chatId === "string"
+          ? customEvent.detail.chatId
+          : null;
+      const shouldHandle = targetChatId
+        ? chatId === targetChatId
+        : chatId !== null && chatId === activeChatId;
+      if (!shouldHandle) {
+        return;
+      }
+
       customEvent.detail.handled = true;
       const contentValue = customEvent.detail?.content;
 
@@ -156,10 +174,12 @@ export const InputContainer: React.FC<InputContainerProps> = ({
         handleExternalSend as EventListener,
       );
     };
-  }, [sendMessage]);
+  }, [activeChatId, chatId, sendMessage]);
 
   const isStreaming = isProcessing;
-  const [messageApi, contextHolder] = antdMessage.useMessage();
+  // Use the global Ant App context message API to avoid mounting a per-pane
+  // rc-notification container (which can cause update-depth loops in some layouts).
+  const { message: messageApi } = AntApp.useApp();
 
   const systemPromptId = currentChat?.config.systemPromptId || null;
   useSystemPrompt(systemPromptId);
@@ -170,7 +190,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   const autoToolPrefix = undefined;
 
   const { recordEntry, navigate, acknowledgeManualInput } =
-    useChatInputHistory(currentChatId);
+    useChatInputHistory(chatId);
 
   const {
     attachments,
@@ -184,7 +204,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
     setContent,
     onWorkflowDraftChange,
     acknowledgeManualInput,
-    currentChatId,
+    currentChatId: chatId,
     textAreaRef,
     content,
   });
@@ -192,7 +212,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   const fileReferenceState = useInputContainerFileReferences({
     content,
     setContent,
-    currentChatId,
+    currentChatId: chatId,
     currentChat,
     updateChat,
     messageApi,
@@ -221,7 +241,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   });
 
   const { retryLastMessage, handleHistoryNavigate } = useInputContainerHistory({
-    currentChatId,
+    currentChatId: chatId,
     currentChat,
     currentMessages,
     deleteMessage,
@@ -288,8 +308,6 @@ export const InputContainer: React.FC<InputContainerProps> = ({
         overflow: "visible",
       }}
     >
-      {contextHolder}
-
       {/* Model Configuration Alert */}
       {!activeModel && (
         <Alert

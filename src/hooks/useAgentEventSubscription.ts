@@ -57,7 +57,7 @@ export function useAgentEventSubscription() {
   // Chats that are processing but we couldn't subscribe yet (missing sessionId)
   const pendingChatIdsRef = useRef<Set<string>>(new Set());
 
-  const cleanupChat = useCallback((chatId: string) => {
+  const cleanupChat = useCallback((chatId: string, opts?: { clearDraft?: boolean }) => {
     pendingChatIdsRef.current.delete(chatId);
 
     const existing = subscriptionsByChatRef.current.get(chatId);
@@ -68,12 +68,16 @@ export function useAgentEventSubscription() {
     // Abort SSE
     existing.controller.abort();
 
-    // Clear streaming placeholder
+    // Clear streaming placeholder only when we really want to discard the draft.
+    // This lets us preserve in-memory draft content across view switches and
+    // transient resubscribe cycles (e.g. network hiccups) without touching storage.
     const streaming = streamingStateBySessionRef.current.get(existing.sessionId);
     if (streaming) {
-      streamingMessageBus.clear(streaming.chatId, streaming.messageId);
+      if (opts?.clearDraft) {
+        streamingMessageBus.clear(streaming.chatId, streaming.messageId);
+      }
       streamingStateBySessionRef.current.delete(existing.sessionId);
-    } else {
+    } else if (opts?.clearDraft) {
       streamingMessageBus.clear(chatId, `streaming-${chatId}`);
     }
   }, []);
@@ -88,13 +92,18 @@ export function useAgentEventSubscription() {
       });
 
       const messageId = `streaming-${chatId}`;
+      const existingDraft = streamingMessageBus.getLatest(messageId);
       streamingStateBySessionRef.current.set(sessionId, {
         chatId,
         messageId,
-        content: "",
+        content: existingDraft ?? "",
       });
 
-      streamingMessageBus.publish({ chatId, messageId, content: "" });
+      // Only publish an empty placeholder if we don't already have a draft.
+      // If we do, keep it as-is so remounting the view doesn't "blink" to empty.
+      if (existingDraft === null) {
+        streamingMessageBus.publish({ chatId, messageId, content: "" });
+      }
 
       agentClientRef.current
         .subscribeToEvents(
@@ -306,7 +315,7 @@ export function useAgentEventSubscription() {
                 });
               }
 
-              cleanupChat(chatId);
+              cleanupChat(chatId, { clearDraft: true });
               setChatProcessing(chatId, false);
             },
 
@@ -320,7 +329,7 @@ export function useAgentEventSubscription() {
                 finishReason: "error",
               });
 
-              cleanupChat(chatId);
+              cleanupChat(chatId, { clearDraft: true });
               setChatProcessing(chatId, false);
             },
           },
@@ -331,7 +340,7 @@ export function useAgentEventSubscription() {
           if (controller.signal.aborted) return;
           const current = subscriptionsByChatRef.current.get(chatId);
           if (current?.sessionId === sessionId) {
-            cleanupChat(chatId);
+            cleanupChat(chatId, { clearDraft: true });
             setChatProcessing(chatId, false);
           }
         })
@@ -341,7 +350,7 @@ export function useAgentEventSubscription() {
             "[useAgentEventSubscription] Subscription error:",
             err,
           );
-          cleanupChat(chatId);
+          cleanupChat(chatId, { clearDraft: true });
           setChatProcessing(chatId, false);
         });
     },
@@ -375,7 +384,9 @@ export function useAgentEventSubscription() {
       const existing = subscriptionsByChatRef.current.get(chatId);
       if (existing?.sessionId === sessionId) return;
 
-      if (existing) cleanupChat(chatId);
+      // If we need to restart the SSE connection (e.g. sessionId changed),
+      // keep any existing draft in-memory so the UI doesn't lose what it already rendered.
+      if (existing) cleanupChat(chatId, { clearDraft: false });
       startSubscription(chatId, sessionId);
     },
     [cleanupChat, startSubscription],
@@ -389,7 +400,7 @@ export function useAgentEventSubscription() {
     // Stop subscriptions for chats no longer processing
     for (const chatId of Array.from(subscriptionsByChatRef.current.keys())) {
       if (!processingChats.has(chatId)) {
-        cleanupChat(chatId);
+        cleanupChat(chatId, { clearDraft: true });
       }
     }
 
@@ -423,7 +434,7 @@ export function useAgentEventSubscription() {
   useEffect(() => {
     return () => {
       for (const chatId of Array.from(subscriptionsByChatRef.current.keys())) {
-        cleanupChat(chatId);
+        cleanupChat(chatId, { clearDraft: true });
       }
     };
   }, [cleanupChat]);

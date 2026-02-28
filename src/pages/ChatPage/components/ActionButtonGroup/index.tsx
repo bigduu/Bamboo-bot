@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, Flex, Tooltip, theme, Grid } from "antd";
-import { CopyOutlined, StarOutlined, BookOutlined } from "@ant-design/icons";
+import { CopyOutlined, BookOutlined } from "@ant-design/icons";
 
 const { useToken } = theme;
 const { useBreakpoint } = Grid;
@@ -88,13 +88,6 @@ export const createCopyButton = (onCopy: () => void): ActionButton => ({
   icon: <CopyOutlined />,
   title: "Copy message",
   onClick: onCopy,
-});
-
-export const createFavoriteButton = (onFavorite: () => void): ActionButton => ({
-  key: "favorite",
-  icon: <StarOutlined />,
-  title: "Add to favorites",
-  onClick: onFavorite,
 });
 
 export const createReferenceButton = (

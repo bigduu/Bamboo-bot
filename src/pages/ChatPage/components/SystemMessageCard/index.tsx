@@ -1,9 +1,8 @@
 import React, { useCallback } from "react";
-import { Button, Card, Collapse, Flex, Space, Typography, theme } from "antd";
+import { Button, Card, Flex, Space, Typography, theme } from "antd";
 import { CopyOutlined, EyeOutlined } from "@ant-design/icons";
 
-import { useChatManager } from "../../hooks/useChatManager";
-import type { Message } from "../../types/chat";
+import type { ChatItem, Message } from "../../types/chat";
 import { useAppStore } from "../../store";
 import { SystemPromptMarkdown } from "./SystemPromptMarkdown";
 import { useSystemPromptContent } from "./useSystemPromptContent";
@@ -12,24 +11,24 @@ const { Text } = Typography;
 const { useToken } = theme;
 
 interface SystemMessageCardProps {
+  currentChat: ChatItem | null;
   message: Message;
 }
 
-const SystemMessageCard: React.FC<SystemMessageCardProps> = ({ message }) => {
+const SystemMessageCard: React.FC<SystemMessageCardProps> = ({
+  currentChat,
+  message,
+}) => {
   const { token } = useToken();
-  const { currentChat } = useChatManager();
   const systemPrompts = useAppStore((state) => state.systemPrompts);
 
   const {
     basePrompt,
-    categoryDescription,
-    enhancedPrompt,
     loadingEnhanced,
     loadEnhancedPrompt,
     promptToDisplay,
     showEnhanced,
     setShowEnhanced,
-    systemMessageContent,
   } = useSystemPromptContent({ currentChat, message, systemPrompts });
 
   const copyToClipboard = useCallback(async (text: string) => {
@@ -77,6 +76,15 @@ const SystemMessageCard: React.FC<SystemMessageCardProps> = ({ message }) => {
                 View Enhanced
               </Button>
             ) : null}
+            {basePrompt && showEnhanced ? (
+              <Button
+                type="text"
+                size="small"
+                onClick={() => setShowEnhanced(false)}
+              >
+                View Base
+              </Button>
+            ) : null}
             <Button
               type="text"
               size="small"
@@ -88,66 +96,20 @@ const SystemMessageCard: React.FC<SystemMessageCardProps> = ({ message }) => {
           </Space>
         </Flex>
 
-        <Collapse
-          ghost
-          activeKey={showEnhanced ? ["enhanced"] : ["base"]}
-          onChange={(keys) => {
-            if (keys.includes("enhanced")) {
-              loadEnhancedPrompt();
-            } else {
-              setShowEnhanced(false);
-            }
+        <Flex
+          vertical
+          style={{
+            maxHeight: showEnhanced ? 400 : 300,
+            overflowY: "auto",
+            paddingRight: token.paddingXS,
           }}
-          items={[
-            {
-              key: "base",
-              label: basePrompt ? "Base Prompt" : "Description",
-              children: (
-                <Flex
-                  vertical
-                  style={{
-                    maxHeight: "300px",
-                    overflowY: "auto",
-                    paddingRight: token.paddingXS,
-                  }}
-                >
-                  <SystemPromptMarkdown
-                    content={
-                      basePrompt || categoryDescription || systemMessageContent
-                    }
-                    token={token}
-                  />
-                </Flex>
-              ),
-            },
-            ...(basePrompt
-              ? [
-                  {
-                    key: "enhanced",
-                    label: "Enhanced Prompt",
-                    children: enhancedPrompt ? (
-                      <Flex
-                        vertical
-                        style={{
-                          maxHeight: "400px",
-                          overflowY: "auto",
-                          paddingRight: token.paddingXS,
-                        }}
-                      >
-                        <SystemPromptMarkdown
-                          content={enhancedPrompt}
-                          token={token}
-                          headingColor={token.colorPrimary}
-                        />
-                      </Flex>
-                    ) : (
-                      <Text type="secondary">Loading enhanced prompt...</Text>
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-        />
+        >
+          <SystemPromptMarkdown
+            content={promptToDisplay}
+            token={token}
+            headingColor={token.colorPrimary}
+          />
+        </Flex>
       </Space>
     </Card>
   );

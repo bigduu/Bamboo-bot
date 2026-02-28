@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Message, UserSystemPrompt } from "../../types/chat";
 import { SystemPromptService } from "../../services/SystemPromptService";
@@ -18,8 +18,10 @@ export const useSystemPromptContent = ({
   message,
   systemPrompts,
 }: UseSystemPromptContentArgs) => {
-  const [categoryDescription, setCategoryDescription] = useState<string>("");
-  const [basePrompt, setBasePrompt] = useState<string>("");
+  const [presetPrompt, setPresetPrompt] = useState<{
+    content?: string;
+    description?: string;
+  } | null>(null);
   const [enhancedPrompt, setEnhancedPrompt] = useState<string | null>(null);
   const [loadingEnhanced, setLoadingEnhanced] = useState(false);
   const [showEnhanced, setShowEnhanced] = useState(false);
@@ -40,44 +42,81 @@ export const useSystemPromptContent = ({
     }
   }, [message.id, message.role, systemMessageContent]);
 
+  const currentChatId = currentChat?.id ?? null;
+  const systemPromptId = currentChat?.config?.systemPromptId ?? null;
+  const workspacePath = currentChat?.config?.workspacePath ?? null;
+
+  const userPrompt = useMemo(() => {
+    if (!systemPromptId) {
+      return null;
+    }
+    return systemPrompts.find((p) => p.id === systemPromptId) ?? null;
+  }, [systemPromptId, systemPrompts]);
+
+  const basePrompt = userPrompt?.content ?? presetPrompt?.content ?? "";
+  const categoryDescription =
+    userPrompt?.description ?? presetPrompt?.description ?? "";
+
+  const lastPresetLoadKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    const loadBasePrompt = async () => {
-      if (!currentChat?.config) {
-        return;
-      }
+    // Reset any previously fetched preset when switching chats/prompts.
+    setPresetPrompt(null);
+    lastPresetLoadKeyRef.current = null;
+  }, [currentChatId, systemPromptId]);
 
+  useEffect(() => {
+    if (!systemPromptId) {
+      return;
+    }
+    const promptId = systemPromptId;
+    // If the user prompt already has content, prefer it and avoid preset fetching.
+    if (userPrompt?.content) {
+      return;
+    }
+
+    // Avoid re-fetch loops when upstream dependencies are unstable (e.g. config objects).
+    const loadKey = `${currentChatId ?? "no-chat"}:${promptId}`;
+    if (lastPresetLoadKeyRef.current === loadKey) {
+      return;
+    }
+    lastPresetLoadKeyRef.current = loadKey;
+
+    let cancelled = false;
+    const loadPreset = async () => {
       try {
-        const { systemPromptId } = currentChat.config;
-
-        if (systemPromptId) {
-          const userPrompt = systemPrompts.find((p) => p.id === systemPromptId);
-          if (userPrompt?.content) {
-            setBasePrompt(userPrompt.content);
-            return;
-          }
-          if (userPrompt?.description) {
-            setCategoryDescription(userPrompt.description);
-          }
+        const preset = await systemPromptService.findPresetById(promptId);
+        if (cancelled) {
+          return;
         }
 
-        if (systemPromptId) {
-          const preset =
-            await systemPromptService.findPresetById(systemPromptId);
-          if (preset?.content) {
-            setBasePrompt(preset.content);
-            return;
+        const next = preset
+          ? { content: preset.content, description: preset.description }
+          : null;
+
+        setPresetPrompt((prev) => {
+          if (!prev && !next) return prev;
+          if (prev && next) {
+            if (prev.content === next.content && prev.description === next.description) {
+              return prev;
+            }
           }
-          if (preset?.description) {
-            setCategoryDescription(preset.description);
-          }
-        }
+          return next;
+        });
       } catch (error) {
-        console.error("Failed to load base prompt:", error);
+        console.error("Failed to load preset prompt:", error);
       }
     };
 
-    loadBasePrompt();
-  }, [currentChat?.config, systemPromptService, systemPrompts]);
+    void loadPreset();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentChatId,
+    systemPromptId,
+    systemPromptService,
+    userPrompt?.content,
+  ]);
 
   const loadEnhancedPrompt = useCallback(async () => {
     if (!basePrompt || loadingEnhanced) return;
@@ -86,7 +125,7 @@ export const useSystemPromptContent = ({
     try {
       const enhanced = getEffectiveSystemPrompt(
         basePrompt,
-        currentChat?.config?.workspacePath,
+        workspacePath ?? undefined,
       );
 
       setEnhancedPrompt(enhanced);
@@ -96,7 +135,7 @@ export const useSystemPromptContent = ({
     } finally {
       setLoadingEnhanced(false);
     }
-  }, [basePrompt, currentChat?.config?.workspacePath, loadingEnhanced]);
+  }, [basePrompt, loadingEnhanced, workspacePath]);
 
   const promptToDisplay = useMemo(() => {
     if (showEnhanced && enhancedPrompt) {

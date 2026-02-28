@@ -145,26 +145,7 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
       </div>
 
       {chatId ? (
-        isActive ? (
-          // NOTE: The current ChatView is still bound to the global selected chat in the app store.
-          // Multi-pane rendering for different chats will require a deeper refactor to make ChatView
-          // accept a `chatId` prop. For now, only the active pane renders ChatView.
-          <ChatView />
-        ) : (
-          <Flex
-            vertical
-            align="center"
-            justify="center"
-            style={{ height: "100%", minHeight: 0, padding: token.paddingLG }}
-          >
-            <div style={{ color: token.colorTextSecondary }}>
-              点击激活该分屏
-            </div>
-            <div style={{ color: token.colorTextTertiary, fontSize: 12 }}>
-              {chatId}
-            </div>
-          </Flex>
-        )
+        <ChatView chatId={chatId} embedded={true} />
       ) : (
         <Flex
           vertical

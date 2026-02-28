@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   WorkflowManagerService,
   type WorkflowMetadata,
@@ -27,15 +27,40 @@ export const useWorkflowSelectorState = ({
   const [isLoading, setIsLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
+  const workflowsRef = useRef<WorkflowMetadata[]>([]);
+  const selectedIndexRef = useRef(0);
+  const onSelectRef = useRef(onSelect);
+  const onCancelRef = useRef(onCancel);
+  const onAutoCompleteRef = useRef(onAutoComplete);
+  const workflowServiceRef = useRef(WorkflowManagerService.getInstance());
+
+  useEffect(() => {
+    workflowsRef.current = filteredWorkflows;
+  }, [filteredWorkflows]);
+
+  useEffect(() => {
+    selectedIndexRef.current = selectedIndex;
+  }, [selectedIndex]);
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
+
+  useEffect(() => {
+    onAutoCompleteRef.current = onAutoComplete;
+  }, [onAutoComplete]);
 
   useEffect(() => {
     if (!visible) return;
 
-    const workflowService = WorkflowManagerService.getInstance();
     const fetchWorkflows = async () => {
       setIsLoading(true);
       try {
-        const fetchedWorkflows = await workflowService.listWorkflows();
+        const fetchedWorkflows = await workflowServiceRef.current.listWorkflows();
         console.log("[WorkflowSelector] Fetched workflows:", fetchedWorkflows);
         setWorkflows(fetchedWorkflows);
         setSelectedIndex(0);
@@ -73,12 +98,11 @@ export const useWorkflowSelectorState = ({
     }
   }, [selectedIndex, filteredWorkflows]);
 
-  const handleWorkflowSelect = async (workflowName: string) => {
+  const handleWorkflowSelect = useCallback(async (workflowName: string) => {
     try {
-      const workflowService = WorkflowManagerService.getInstance();
-      const workflow = await workflowService.getWorkflow(workflowName);
+      const workflow = await workflowServiceRef.current.getWorkflow(workflowName);
 
-      onSelect({
+      onSelectRef.current({
         name: workflow.name,
         content: workflow.content,
       });
@@ -87,14 +111,14 @@ export const useWorkflowSelectorState = ({
         `[WorkflowSelector] Failed to load workflow '${workflowName}':`,
         error,
       );
-      onSelect({ name: workflowName, content: "" });
+      onSelectRef.current({ name: workflowName, content: "" });
     }
-  };
+  }, []);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!visible) return;
+    if (!visible) return;
 
+    const handleKeyDown = (event: KeyboardEvent) => {
       switch (event.key) {
         case "ArrowDown":
         case "n":
@@ -102,7 +126,7 @@ export const useWorkflowSelectorState = ({
           event.preventDefault();
           event.stopPropagation();
           setSelectedIndex((prev) =>
-            prev < filteredWorkflows.length - 1 ? prev + 1 : 0,
+            prev < workflowsRef.current.length - 1 ? prev + 1 : 0,
           );
           break;
         case "ArrowUp":
@@ -111,35 +135,35 @@ export const useWorkflowSelectorState = ({
           event.preventDefault();
           event.stopPropagation();
           setSelectedIndex((prev) =>
-            prev > 0 ? prev - 1 : filteredWorkflows.length - 1,
+            prev > 0 ? prev - 1 : Math.max(workflowsRef.current.length - 1, 0),
           );
           break;
         case "Enter":
           event.preventDefault();
           event.stopPropagation();
-          if (filteredWorkflows[selectedIndex]) {
-            handleWorkflowSelect(filteredWorkflows[selectedIndex].name);
+          if (workflowsRef.current[selectedIndexRef.current]) {
+            handleWorkflowSelect(workflowsRef.current[selectedIndexRef.current].name);
           }
           break;
         case " ":
         case "Tab":
           event.preventDefault();
           event.stopPropagation();
-          if (filteredWorkflows[selectedIndex] && onAutoComplete) {
-            onAutoComplete(filteredWorkflows[selectedIndex].name);
+          if (workflowsRef.current[selectedIndexRef.current] && onAutoCompleteRef.current) {
+            onAutoCompleteRef.current(workflowsRef.current[selectedIndexRef.current].name);
           }
           break;
         case "Escape":
           event.preventDefault();
           event.stopPropagation();
-          onCancel();
+          onCancelRef.current();
           break;
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [visible, filteredWorkflows, selectedIndex, onCancel, onAutoComplete]);
+  }, [handleWorkflowSelect, visible]);
 
   return {
     containerRef,

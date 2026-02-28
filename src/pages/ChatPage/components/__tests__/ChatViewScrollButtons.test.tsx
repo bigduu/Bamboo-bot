@@ -39,6 +39,9 @@ vi.mock("../../store", () => ({
       setState: vi.fn(),
     },
   ),
+  selectChatById:
+    (chatId: string | null) => (state: typeof mockStoreState) =>
+      chatId ? state.chats.find((c) => c.id === chatId) || null : null,
 }));
 
 vi.mock("../ChatView/useChatViewMessages", () => ({
