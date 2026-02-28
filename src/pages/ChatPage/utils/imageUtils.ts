@@ -34,6 +34,13 @@ export const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 export const MAX_IMAGE_WIDTH = 4096;
 export const MAX_IMAGE_HEIGHT = 4096;
 
+// When sending images via JSON (base64), keep dimensions modest to avoid large payloads.
+// These values are for *encoded* images; previews can remain full-size via blob URLs.
+export const MAX_SEND_IMAGE_WIDTH = 2048;
+export const MAX_SEND_IMAGE_HEIGHT = 2048;
+export const DEFAULT_SEND_JPEG_QUALITY = 0.82;
+const COMPRESS_IF_OVER_BYTES = 512 * 1024; // 512KB
+
 /**
  * Validate if a file is a supported image
  */
@@ -55,6 +62,18 @@ export const validateImageFile = (file: File): ImageValidationResult => {
   }
 
   return { isValid: true };
+};
+
+/**
+ * Load an image element (no dimension validation).
+ */
+export const loadImage = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = src;
+  });
 };
 
 /**
@@ -82,6 +101,52 @@ export const createImagePreview = (file: File): string => {
   return URL.createObjectURL(file);
 };
 
+const drawResizedImageToCanvas = (
+  canvas: HTMLCanvasElement,
+  image: HTMLImageElement,
+  maxWidth: number,
+  maxHeight: number,
+): void => {
+  let { width, height } = image;
+
+  if (width > maxWidth || height > maxHeight) {
+    const aspectRatio = width / height;
+    if (width > height) {
+      width = maxWidth;
+      height = Math.round(width / aspectRatio);
+    } else {
+      height = maxHeight;
+      width = Math.round(height * aspectRatio);
+    }
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  // JPEG does not support transparency; white background is usually the least-surprising.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+};
+
+const reencodeImageAsJpegDataUrl = async (
+  previewUrl: string,
+  quality: number,
+): Promise<string> => {
+  const img = await loadImage(previewUrl);
+  const canvas = document.createElement("canvas");
+  drawResizedImageToCanvas(
+    canvas,
+    img,
+    MAX_SEND_IMAGE_WIDTH,
+    MAX_SEND_IMAGE_HEIGHT,
+  );
+  return canvasToBase64(canvas, quality);
+};
+
 /**
  * Process image file and return ImageFile object
  */
@@ -91,19 +156,41 @@ export const processImageFile = async (file: File): Promise<ImageFile> => {
     throw new Error(validation.error);
   }
 
-  const base64 = await fileToBase64(file);
   const preview = createImagePreview(file);
-  const id = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  try {
+    // For large images, re-encode to a reasonable JPEG to avoid 413 (Payload Too Large)
+    // when sending as JSON base64 to the local agent server.
+    let base64: string;
+    if (file.type === "image/gif" || file.size < COMPRESS_IF_OVER_BYTES) {
+      base64 = await fileToBase64(file);
+    } else {
+      try {
+        base64 = await reencodeImageAsJpegDataUrl(
+          preview,
+          DEFAULT_SEND_JPEG_QUALITY,
+        );
+      } catch (e) {
+        // Fallback to original encoding if canvas conversion fails.
+        console.warn("[imageUtils] Failed to re-encode image, using original:", e);
+        base64 = await fileToBase64(file);
+      }
+    }
+    const id = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  return {
-    file,
-    base64,
-    preview,
-    id,
-    name: file.name,
-    size: file.size,
-    type: file.type,
-  };
+    return {
+      file,
+      base64,
+      preview,
+      id,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    };
+  } catch (e) {
+    // If processing fails, revoke the preview URL we created to avoid leaking.
+    cleanupImagePreview(preview);
+    throw e;
+  }
 };
 
 /**

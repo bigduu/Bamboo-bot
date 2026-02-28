@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { message } from "antd";
+import { App as AntApp } from "antd";
 import {
   ImageFile,
   processImageFiles,
@@ -7,6 +7,8 @@ import {
 } from "../utils/imageUtils";
 
 export const useImageHandler = (allowImages: boolean) => {
+  // Use context-aware antd message API to avoid dynamic theme warnings
+  const { message: appMessage } = AntApp.useApp();
   const [images, setImages] = useState<ImageFile[]>([]);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
@@ -19,13 +21,13 @@ export const useImageHandler = (allowImages: boolean) => {
         const processedImages = await processImageFiles(files);
         if (processedImages.length > 0) {
           setImages((prevImages) => [...prevImages, ...processedImages]);
-          message.success(`Added ${processedImages.length} image(s)`);
+          appMessage.success(`Added ${processedImages.length} image(s)`);
         }
       } catch (error) {
-        message.error(`Failed to process images: ${error}`);
+        appMessage.error(`Failed to process images: ${error}`);
       }
     },
-    [allowImages],
+    [allowImages, appMessage],
   );
 
   const handleRemoveImage = useCallback(

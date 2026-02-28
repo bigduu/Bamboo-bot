@@ -402,10 +402,43 @@ const normalizeChats = (
   return { chats: changed ? next : chats, changed };
 };
 
+const stripImagesFromMessagesForStorage = (messages: Message[]): Message[] => {
+  return messages.map((msg) => {
+    // Base64 image payloads can easily exceed localStorage quota. Persist text-only
+    // history and keep images in-memory for the current session.
+    if (msg.role === "user" && "images" in (msg as any)) {
+      const { images: _images, ...rest } = msg as any;
+      return rest as Message;
+    }
+    return msg;
+  });
+};
+
+const stripImagesFromChatsForStorage = (chats: ChatItem[]): ChatItem[] => {
+  return chats.map((chat) => ({
+    ...chat,
+    messages: stripImagesFromMessagesForStorage(chat.messages),
+  }));
+};
+
 const persistChats = (chats: ChatItem[]): void => {
   try {
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chats));
+    const sanitized = stripImagesFromChatsForStorage(chats);
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(sanitized));
   } catch (error) {
+    // If we exceed quota, try removing the key first and retry once with sanitized data.
+    // This typically happens when images were previously persisted and bloated the store.
+    try {
+      const name = (error as any)?.name;
+      if (name === "QuotaExceededError") {
+        localStorage.removeItem(CHAT_STORAGE_KEY);
+        const sanitized = stripImagesFromChatsForStorage(chats);
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(sanitized));
+        return;
+      }
+    } catch {
+      // ignore retry failures
+    }
     console.error("Failed to save chats to localStorage:", error);
   }
 };
