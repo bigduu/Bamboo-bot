@@ -28,10 +28,6 @@ export const useMermaidTheme = () => {
 
     previousCheckRef.current = checkString;
 
-    console.log(
-      `🎨 Updating Mermaid theme: ${userSettings.theme} (isDark: ${isDark})`,
-    );
-
     // Determine which theme to use
     // If user selected 'default' or 'neutral', we auto-switch based on app theme
     let activeTheme = userSettings.theme;

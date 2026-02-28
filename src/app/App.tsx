@@ -1,10 +1,9 @@
-import { Profiler, useCallback, useEffect, useState } from "react";
-import type { ProfilerOnRenderCallback } from "react";
+import { useEffect, useState } from "react";
 import { App as AntApp, ConfigProvider, theme } from "antd";
 import "./App.css";
 import { MainLayout } from "./MainLayout";
 import { SetupPage } from "../pages/SetupPage";
-import { useAppStore, initializeStore } from "../pages/ChatPage/store";
+import { initializeStore } from "../pages/ChatPage/store";
 import { ServiceFactory } from "../services/common/ServiceFactory";
 
 const THEME_STORAGE_KEY = "copilot_ui_theme_v1";
@@ -15,7 +14,6 @@ function App() {
     return (saved as "light" | "dark") || "light";
   });
   const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null);
-  const loadSystemPrompts = useAppStore((state) => state.loadSystemPrompts);
 
   // Save theme to localStorage when it changes
   useEffect(() => {
@@ -37,55 +35,22 @@ function App() {
     void checkSetupStatus();
   }, []);
 
-  // Dev-only instrumentation to surface expensive renders during the ongoing
-  // UI/UX refactor. Console output is gated behind the DEV flag to avoid
-  // polluting production logs.
-  const handleProfilerRender = useCallback<ProfilerOnRenderCallback>(
-    (id, phase, actualDuration, baseDuration, startTime, commitTime) => {
-      if (!import.meta.env.DEV) {
-        return;
-      }
-
-      // Only log renders that take longer than 50ms (3+ frames)
-      // This reduces noise from frequent updates like streaming
-      const slowRenderThresholdMs = 50;
-      if (actualDuration > slowRenderThresholdMs) {
-        // eslint-disable-next-line no-console -- Development-only performance trace
-        console.info(
-          `[Profiler:${id}] phase=${phase} actual=${actualDuration.toFixed(
-            2,
-          )}ms base=${baseDuration.toFixed(2)}ms start=${startTime.toFixed(
-            2,
-          )}ms commit=${commitTime.toFixed(2)}ms`,
-        );
-      }
-    },
-    [],
-  );
-
   useEffect(() => {
     document.body.setAttribute("data-theme", themeMode);
   }, [themeMode]);
 
   useEffect(() => {
     if (isSetupComplete) {
-      loadSystemPrompts();
       initializeStore();
     }
-  }, [isSetupComplete, loadSystemPrompts]);
+  }, [isSetupComplete]);
 
   if (isSetupComplete === null) {
     return <div style={{ padding: 40, textAlign: "center" }}>Loading...</div>;
   }
 
   const appContent = isSetupComplete ? (
-    import.meta.env.DEV ? (
-      <Profiler id="MainLayout" onRender={handleProfilerRender}>
-        <MainLayout themeMode={themeMode} onThemeModeChange={setThemeMode} />
-      </Profiler>
-    ) : (
-      <MainLayout themeMode={themeMode} onThemeModeChange={setThemeMode} />
-    )
+    <MainLayout themeMode={themeMode} onThemeModeChange={setThemeMode} />
   ) : (
     <SetupPage />
   );

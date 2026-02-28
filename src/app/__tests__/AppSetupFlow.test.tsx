@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockLoadSystemPrompts = vi.fn();
+const { mockInitializeStore } = vi.hoisted(() => ({
+  mockInitializeStore: vi.fn(),
+}));
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -15,12 +17,7 @@ vi.mock("../../pages/SetupPage", () => ({
 }));
 
 vi.mock("../../pages/ChatPage/store", () => ({
-  useAppStore: (
-    selector: (state: {
-      loadSystemPrompts: typeof mockLoadSystemPrompts;
-    }) => unknown,
-  ) => selector({ loadSystemPrompts: mockLoadSystemPrompts }),
-  initializeStore: vi.fn(),
+  initializeStore: mockInitializeStore,
 }));
 
 import App from "../App";
@@ -40,7 +37,7 @@ const mockSetupStatus = (status: {
 describe("App setup flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLoadSystemPrompts.mockReset();
+    mockInitializeStore.mockReset();
   });
 
   it("renders SetupPage when setup has not been completed", async () => {
@@ -56,10 +53,10 @@ describe("App setup flow", () => {
 
     expect(await screen.findByText("SetupPage")).toBeTruthy();
     expect(screen.queryByText("MainLayout")).toBeNull();
-    expect(mockLoadSystemPrompts).not.toHaveBeenCalled();
+    expect(mockInitializeStore).not.toHaveBeenCalled();
   });
 
-  it("renders MainLayout and loads prompts when proxy config exists", async () => {
+  it("renders MainLayout and initializes store when proxy config exists", async () => {
     mockSetupStatus({
       is_complete: true,
       has_proxy_config: true,
@@ -71,7 +68,7 @@ describe("App setup flow", () => {
 
     expect(await screen.findByText("MainLayout")).toBeTruthy();
     await waitFor(() => {
-      expect(mockLoadSystemPrompts).toHaveBeenCalledTimes(1);
+      expect(mockInitializeStore).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -87,7 +84,7 @@ describe("App setup flow", () => {
 
     expect(await screen.findByText("MainLayout")).toBeTruthy();
     await waitFor(() => {
-      expect(mockLoadSystemPrompts).toHaveBeenCalledTimes(1);
+      expect(mockInitializeStore).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -104,7 +101,7 @@ describe("App setup flow", () => {
 
     expect(await screen.findByText("MainLayout")).toBeTruthy();
     await waitFor(() => {
-      expect(mockLoadSystemPrompts).toHaveBeenCalledTimes(1);
+      expect(mockInitializeStore).toHaveBeenCalledTimes(1);
     });
   });
 

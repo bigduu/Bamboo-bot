@@ -69,7 +69,6 @@ export const createPromptSlice: StateCreator<AppState, [], [], PromptSlice> = (
       saveCustomPrompts(merged);
     }
     set({ systemPrompts: merged });
-    console.log("Loaded system prompts from config:", merged);
   },
 
   addSystemPrompt: async (promptData) => {
@@ -92,8 +91,6 @@ export const createPromptSlice: StateCreator<AppState, [], [], PromptSlice> = (
       const updatedCustom = [...customPrompts, newPrompt];
       saveCustomPrompts(updatedCustom);
       await get().loadSystemPrompts();
-
-      console.log("System prompt added successfully:", id);
     } catch (error) {
       console.error("Failed to add system prompt:", error);
       throw error;
@@ -120,8 +117,6 @@ export const createPromptSlice: StateCreator<AppState, [], [], PromptSlice> = (
       saveCustomPrompts(updated);
 
       await get().loadSystemPrompts();
-
-      console.log("System prompt updated successfully:", promptToUpdate.id);
     } catch (error) {
       console.error("Failed to update system prompt:", error);
       throw error;
@@ -137,8 +132,6 @@ export const createPromptSlice: StateCreator<AppState, [], [], PromptSlice> = (
       }
       saveCustomPrompts(updated);
       await get().loadSystemPrompts();
-
-      console.log("System prompt deleted successfully:", promptId);
     } catch (error) {
       console.error("Failed to delete system prompt:", error);
       throw error;
@@ -174,9 +167,6 @@ const loadCustomPrompts = (): UserSystemPrompt[] => {
       const fixedPrompts = prompts.map((p) => {
         if (!p.id || p.id.trim() === "" || !p.id.match(/^[a-z0-9_]+$/)) {
           const newId = `prompt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-          console.log(
-            `[Migration] Fixed prompt "${p.name}" with invalid ID, new ID: ${newId}`,
-          );
           return { ...p, id: newId };
         }
         return p;
