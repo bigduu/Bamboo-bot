@@ -13,7 +13,7 @@ End-to-end testing infrastructure for Bodhi using Playwright.
 
 2. Start the backend:
    ```bash
-   cargo run -p web_service_standalone -- --port 9562 --data-dir /tmp/test-data
+   cargo run -p e2e-backend --bin web_service_standalone -- --port 9562 --data-dir /tmp/test-data
    ```
 
 3. Run tests:
@@ -61,7 +61,7 @@ E2E_BASE_URL=http://localhost:1420 yarn test
 E2E_BASE_URL=http://localhost:9000 yarn test
 
 # Auto-start backend before tests
-E2E_START_SERVER="cargo run -p web_service_standalone -- --port 9562" yarn test
+E2E_START_SERVER="cargo run -p e2e-backend --bin web_service_standalone -- --port 9562" yarn test
 ```
 
 ## Test Structure
@@ -153,13 +153,13 @@ yarn test:report
 ```
 Start the backend:
 ```bash
-cargo run -p web_service_standalone -- --port 9562 --data-dir /tmp/test-data
+cargo run -p e2e-backend --bin web_service_standalone -- --port 9562 --data-dir /tmp/test-data
 ```
 
 ### Port already in use
 Change the port:
 ```bash
-cargo run -p web_service_standalone -- --port 9563 --data-dir /tmp/test-data
+cargo run -p e2e-backend --bin web_service_standalone -- --port 9563 --data-dir /tmp/test-data
 E2E_BASE_URL=http://localhost:9563 yarn test
 ```
 

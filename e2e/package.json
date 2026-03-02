@@ -12,7 +12,7 @@
     "test:docker:full": "E2E_BASE_URL=http://localhost:9562 playwright test tests/docker/docker-deployment.spec.ts",
     "test:docker:setup": "cd ../docker && docker-compose up -d --build",
     "test:docker:teardown": "cd ../docker && docker-compose down -v",
-    "test:with-server": "E2E_START_SERVER='cargo run -p web_service_standalone -- --port 9562 --data-dir /tmp/test-data' playwright test"
+    "test:with-server": "E2E_START_SERVER='cargo run -p e2e-backend --bin web_service_standalone -- --port 9562 --data-dir /tmp/test-data' playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",

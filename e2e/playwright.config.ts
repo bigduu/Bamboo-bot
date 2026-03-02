@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Usage:
  * - Browser mode: E2E_BASE_URL=http://localhost:1420 yarn test:e2e
  * - Docker mode: E2E_BASE_URL=http://localhost:9562 yarn test:e2e
- * - With server auto-start: E2E_START_SERVER="cargo run -p web_service_standalone -- --port 9562" yarn test:e2e
+ * - With server auto-start: E2E_START_SERVER="cargo run -p e2e-backend --bin web_service_standalone -- --port 9562" yarn test:e2e
  */
 
 const suite = process.env.E2E_SUITE ?? 'all';
