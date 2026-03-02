@@ -213,7 +213,7 @@
    - 增强错误处理
    - 添加模型验证
 
-2. `docs/implementation/MODELMAPPINGCARD_ENHANCEMENTS.md` (新增)
+2. `docs/archive/2026-03-03/implementation/MODELMAPPINGCARD_ENHANCEMENTS.md` (新增)
    - 详细的实现文档
    - 测试场景说明
    - 性能优化数据
@@ -264,8 +264,8 @@
    - 清理未使用的 `useModels` hook
 
 ### 📚 新增文档
-- `docs/refactoring/ANTHROPIC_MODEL_MAPPING_PROVIDER_SUPPORT.md` - 详细重构文档
-- `docs/implementation/ANTHROPIC_MODEL_MAPPING_DYNAMIC_PROVIDER.md` - 技术实现细节
+- `docs/archive/2026-03-03/refactoring/ANTHROPIC_MODEL_MAPPING_PROVIDER_SUPPORT.md` - 详细重构文档
+- `docs/archive/2026-03-03/implementation/ANTHROPIC_MODEL_MAPPING_DYNAMIC_PROVIDER.md` - 技术实现细节
 
 ### 🔄 更新文档
 - `docs/plans/2026-02-12-config-ui-redesign.md` - 更新 ModelMappingCard 说明
