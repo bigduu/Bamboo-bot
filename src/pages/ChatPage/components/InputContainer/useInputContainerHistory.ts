@@ -1,12 +1,11 @@
 import { useCallback } from "react";
-import type { Message, UserFileReferenceMessage } from "../../types/chat";
+import type { Message } from "../../types/chat";
 
 interface UseInputContainerHistoryProps {
   currentChatId: string | null;
   currentChat: any | null;
   currentMessages: Message[];
-  deleteMessage: (chatId: string, messageId: string) => void;
-  sendMessage: (content: string) => Promise<void>;
+  retryLastTurn: () => Promise<void>;
   navigate: (
     direction: "previous" | "next",
     currentValue: string,
@@ -20,8 +19,7 @@ export const useInputContainerHistory = ({
   currentChatId,
   currentChat,
   currentMessages,
-  deleteMessage,
-  sendMessage,
+  retryLastTurn,
   navigate,
 }: UseInputContainerHistoryProps) => {
   const retryLastMessage = useCallback(async () => {
@@ -36,25 +34,8 @@ export const useInputContainerHistory = ({
 
     if (lastUserIndex === -1) return;
 
-    // Convert back to forward index
-    const actualIndex = history.length - 1 - lastUserIndex;
-    const lastUser = history[actualIndex];
-
-    const content =
-      "content" in lastUser
-        ? lastUser.content
-        : (lastUser as UserFileReferenceMessage).displayText;
-    if (typeof content !== "string") return;
-
-    // Delete the last user message and all messages after it (including any assistant responses)
-    const messagesToDelete = history.slice(actualIndex);
-    for (const message of messagesToDelete) {
-      deleteMessage(currentChatId, message.id);
-    }
-
-    // Resend the last user message content
-    await sendMessage(content);
-  }, [currentChat, currentChatId, currentMessages, deleteMessage, sendMessage]);
+    await retryLastTurn();
+  }, [currentChat, currentChatId, currentMessages, retryLastTurn]);
 
   const handleHistoryNavigate = useCallback(
     (direction: "previous" | "next", currentValue: string): string | null => {

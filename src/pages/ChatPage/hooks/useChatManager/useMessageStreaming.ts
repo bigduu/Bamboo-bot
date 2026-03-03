@@ -10,6 +10,7 @@ import { useActiveModel } from "../useActiveModel";
 
 export interface UseMessageStreaming {
   sendMessage: (content: string, images?: ImageFile[]) => Promise<void>;
+  retryLastTurn: () => Promise<void>;
   cancel: () => void;
   agentAvailable: boolean | null;
 }
@@ -254,8 +255,97 @@ export function useMessageStreaming(
     ],
   );
 
+  const retryLastTurn = useCallback(async () => {
+    if (!currentChat) {
+      modal.info({
+        title: "No Active Chat",
+        content: "Please create or select a chat before retrying.",
+      });
+      return;
+    }
+
+    if (!deps.chatId) {
+      modal.info({
+        title: "No Chat ID",
+        content: "Chat ID is required to retry.",
+      });
+      return;
+    }
+
+    // Validate model is available
+    if (!activeModel) {
+      modal.error({
+        title: "No Model Selected",
+        content: "Please select a model before retrying.",
+      });
+      return;
+    }
+
+    let isAgentAvailable = agentAvailable;
+    if (isAgentAvailable === null) {
+      isAgentAvailable = await checkAgentAvailability();
+    }
+    if (!isAgentAvailable) {
+      appMessage.error("Agent unavailable. Please try again later.");
+      return;
+    }
+
+    const chatId = deps.chatId;
+
+    // Clear any lingering local draft so we don't show stale streaming content.
+    if (streamingMessageIdRef.current) {
+      streamingMessageBus.clear(chatId, streamingMessageIdRef.current);
+    }
+    streamingMessageIdRef.current = null;
+    streamingContentRef.current = "";
+
+    try {
+      // Server-side truncate: keep last user message, drop assistant/tool tail.
+      await agentClientRef.current.truncateSessionMessages(chatId, {
+        mode: "after_last_user",
+      });
+
+      // Immediately reconcile UI with persisted history so old assistant/tool tail disappears.
+      // (Avoid relying on per-message deletes; backend is the source of truth.)
+      await useAppStore.getState().loadChatHistory(chatId, { mode: "replace" });
+
+      // Activate event subscription (handled by useAgentEventSubscription).
+      deps.setChatProcessing(chatId, true);
+
+      // Re-run execution (idempotent).
+      const executeResult = await agentClientRef.current.execute(chatId, activeModel);
+      if (["started", "already_running"].includes(executeResult.status)) {
+        // Keep processing true.
+        return;
+      }
+      if (executeResult.status === "completed") {
+        // Nothing to do (e.g. no pending user message).
+        deps.setChatProcessing(chatId, false);
+        return;
+      }
+
+      deps.setChatProcessing(chatId, false);
+      throw new Error(`Execute failed: ${executeResult.status}`);
+    } catch (error) {
+      console.error("[useMessageStreaming] Retry failed:", error);
+      appMessage.error("Retry failed. Please try again.");
+      deps.setChatProcessing(chatId, false);
+    } finally {
+      abortRef.current = null;
+    }
+  }, [
+    activeModel,
+    agentAvailable,
+    appMessage,
+    checkAgentAvailability,
+    currentChat,
+    deps,
+    modal,
+  ]);
+
   return {
     sendMessage,
+    retryLastTurn,
     cancel,
     agentAvailable,
   };

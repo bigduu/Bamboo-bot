@@ -70,7 +70,6 @@ export const InputContainer: React.FC<InputContainerProps> = ({
   const currentMessages = currentChat?.messages || [];
   const addMessage = useAppStore((state) => state.addMessage);
   const updateChat = useAppStore((state) => state.updateChat);
-  const deleteMessage = useAppStore((state) => state.deleteMessage);
   const processingChats = useAppStore((state) => state.processingChats);
   const setChatProcessing = useAppStore((state) => state.setChatProcessing);
   const activeModel = useActiveModel();
@@ -108,6 +107,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
 
   const {
     sendMessage,
+    retryLastTurn,
     cancel: cancelMessage,
     agentAvailable,
   } = useMessageStreaming({
@@ -244,8 +244,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
     currentChatId: chatId,
     currentChat,
     currentMessages,
-    deleteMessage,
-    sendMessage,
+    retryLastTurn,
     navigate,
   });
 
@@ -422,7 +421,7 @@ export const InputContainer: React.FC<InputContainerProps> = ({
         maxCharCount={8000}
         interaction={{
           isStreaming,
-          hasMessages: currentMessages.length > 0,
+          hasMessages: currentMessages.some((m) => m.role === "user"),
           allowRetry: true,
           onRetry: retryLastMessage,
           onCancel: cancelMessage,

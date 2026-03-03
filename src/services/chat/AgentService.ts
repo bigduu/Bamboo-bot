@@ -207,6 +207,18 @@ export interface PatchSessionRequest {
   pinned?: boolean;
 }
 
+export type TruncateSessionMessagesRequest =
+  | {
+      mode: "after_last_user";
+    };
+
+export interface TruncateSessionMessagesResponse {
+  success: boolean;
+  session_id: string;
+  messages_removed: number;
+  message_count: number;
+}
+
 export interface ScheduleRunConfig {
   system_prompt?: string;
   task_message?: string;
@@ -358,6 +370,35 @@ export class AgentClient {
   async clearSession(sessionId: string): Promise<void> {
     const encodedSessionId = encodeURIComponent(sessionId);
     await agentApiClient.post(`sessions/${encodedSessionId}/clear`);
+  }
+
+  /**
+   * Truncate session message history (server-side).
+   *
+   * Used for "retry/regenerate": keep the last user message, drop any assistant/tool tail.
+   */
+  async truncateSessionMessages(
+    sessionId: string,
+    req: TruncateSessionMessagesRequest,
+  ): Promise<TruncateSessionMessagesResponse> {
+    const encodedSessionId = encodeURIComponent(sessionId);
+    return agentApiClient.post<TruncateSessionMessagesResponse>(
+      `sessions/${encodedSessionId}/messages/truncate`,
+      req,
+    );
+  }
+
+  /**
+   * Delete a single persisted message from a session.
+   *
+   * Note: Some UI messages are local-only placeholders and may not exist on the backend.
+   */
+  async deleteSessionMessage(sessionId: string, messageId: string): Promise<void> {
+    const encodedSessionId = encodeURIComponent(sessionId);
+    const encodedMessageId = encodeURIComponent(messageId);
+    await agentApiClient.delete(
+      `sessions/${encodedSessionId}/messages/${encodedMessageId}`,
+    );
   }
 
   /**

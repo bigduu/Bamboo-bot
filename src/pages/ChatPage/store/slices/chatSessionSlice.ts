@@ -497,6 +497,14 @@ export const createChatSlice: StateCreator<AppState, [], [], ChatSlice> = (
     if (!chat) return;
     const updatedMessages = chat.messages.filter((msg) => msg.id !== messageId);
     get().updateChat(chatId, { messages: updatedMessages });
+
+    // Best-effort persistence: some UI messages are local-only placeholders and may not exist on the backend.
+    agentClient.deleteSessionMessage(chatId, messageId).catch((e) => {
+      console.warn(
+        `[ChatSlice] Failed to delete message ${messageId} from session ${chatId}:`,
+        e,
+      );
+    });
   },
 
   refreshChats: async () => {
