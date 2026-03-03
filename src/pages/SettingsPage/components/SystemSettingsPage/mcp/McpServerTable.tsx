@@ -9,6 +9,7 @@ interface McpServerTableProps {
   loading?: boolean;
   selectedServerId?: string | null;
   onSelectServer?: (serverId: string) => void;
+  onEditServer?: (server: McpServer) => void;
   onDeleteServer?: (server: McpServer) => Promise<void> | void;
   onConnectServer?: (server: McpServer) => Promise<void> | void;
   onDisconnectServer?: (server: McpServer) => Promise<void> | void;
@@ -37,6 +38,7 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
   loading = false,
   selectedServerId,
   onSelectServer,
+  onEditServer,
   onDeleteServer,
   onConnectServer,
   onDisconnectServer,
@@ -81,12 +83,21 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
       {
         key: "actions",
         title: "Actions",
-        width: 300,
+        width: 360,
         render: (_, record) => {
           const status = record.runtime?.status ?? ServerStatus.Stopped;
           const isConnected = isConnectedStatus(status);
           return (
             <Space size={token.marginXS}>
+              <Button
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditServer?.(record);
+                }}
+              >
+                Edit
+              </Button>
               <Popconfirm
                 title="Delete MCP server"
                 description={`Delete server \"${record.name || record.id}\"?`}
@@ -101,6 +112,7 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
                   size="small"
                   danger
                   loading={isServerActionLoading?.(record.id, "delete")}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   Delete
                 </Button>
@@ -109,7 +121,10 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
               {isConnected ? (
                 <Button
                   size="small"
-                  onClick={() => onDisconnectServer?.(record)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDisconnectServer?.(record);
+                  }}
                   loading={isServerActionLoading?.(record.id, "disconnect")}
                 >
                   Disconnect
@@ -119,7 +134,10 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
                   size="small"
                   type="primary"
                   ghost
-                  onClick={() => onConnectServer?.(record)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onConnectServer?.(record);
+                  }}
                   loading={isServerActionLoading?.(record.id, "connect")}
                 >
                   Connect
@@ -128,7 +146,10 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
 
               <Button
                 size="small"
-                onClick={() => onRefreshTools?.(record)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRefreshTools?.(record);
+                }}
                 loading={isServerActionLoading?.(record.id, "refresh")}
               >
                 Refresh Tools
@@ -143,6 +164,7 @@ export const McpServerTable: React.FC<McpServerTableProps> = ({
       onConnectServer,
       onDeleteServer,
       onDisconnectServer,
+      onEditServer,
       onRefreshTools,
       token.marginXS,
     ],

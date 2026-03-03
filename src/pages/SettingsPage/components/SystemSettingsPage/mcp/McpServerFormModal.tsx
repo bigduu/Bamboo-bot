@@ -139,20 +139,55 @@ const toServerConfig = (
   const serverId = mode === "edit" ? initialConfig?.id || values.id : values.id;
   const trimmedName = values.name?.trim();
 
+  // NOTE: The form currently doesn't expose every config field. When editing,
+  // preserve any fields that are not present in the submitted form values to
+  // avoid unintentionally resetting them to defaults.
+  const preservedRequestTimeoutMs =
+    typeof values.requestTimeoutMs === "number"
+      ? values.requestTimeoutMs
+      : initialConfig?.request_timeout_ms ?? DEFAULT_REQUEST_TIMEOUT_MS;
+
+  const preservedHealthcheckIntervalMs =
+    typeof values.healthcheckIntervalMs === "number"
+      ? values.healthcheckIntervalMs
+      : initialConfig?.healthcheck_interval_ms ?? DEFAULT_HEALTHCHECK_INTERVAL_MS;
+
+  const preservedAllowedTools =
+    Array.isArray(values.allowedTools)
+      ? values.allowedTools
+      : initialConfig?.allowed_tools ?? [];
+
+  const preservedDeniedTools =
+    Array.isArray(values.deniedTools)
+      ? values.deniedTools
+      : initialConfig?.denied_tools ?? [];
+
   const transport: TransportConfig =
     values.transportType === "sse"
       ? ({
           type: "sse",
           url: values.url?.trim() || "",
           headers: entriesToHeaders(values.headerEntries || []),
-          connect_timeout_ms: DEFAULT_SSE_CONNECT_TIMEOUT_MS,
+          connect_timeout_ms:
+            initialConfig?.transport.type === "sse"
+              ? initialConfig.transport.connect_timeout_ms ??
+                DEFAULT_SSE_CONNECT_TIMEOUT_MS
+              : DEFAULT_SSE_CONNECT_TIMEOUT_MS,
         } satisfies SseTransportConfig)
       : ({
           type: "stdio",
           command: values.command?.trim() || "",
           args: values.args || [],
           env: entriesToRecord(values.envEntries || []),
-          startup_timeout_ms: DEFAULT_STDIO_STARTUP_TIMEOUT_MS,
+          cwd:
+            initialConfig?.transport.type === "stdio"
+              ? initialConfig.transport.cwd
+              : undefined,
+          startup_timeout_ms:
+            initialConfig?.transport.type === "stdio"
+              ? initialConfig.transport.startup_timeout_ms ??
+                DEFAULT_STDIO_STARTUP_TIMEOUT_MS
+              : DEFAULT_STDIO_STARTUP_TIMEOUT_MS,
         } satisfies StdioTransportConfig);
 
   return {
@@ -160,11 +195,10 @@ const toServerConfig = (
     name: trimmedName || undefined,
     enabled: values.enabled,
     transport,
-    request_timeout_ms: values.requestTimeoutMs || DEFAULT_REQUEST_TIMEOUT_MS,
-    healthcheck_interval_ms:
-      values.healthcheckIntervalMs || DEFAULT_HEALTHCHECK_INTERVAL_MS,
-    allowed_tools: values.allowedTools || [],
-    denied_tools: values.deniedTools || [],
+    request_timeout_ms: preservedRequestTimeoutMs,
+    healthcheck_interval_ms: preservedHealthcheckIntervalMs,
+    allowed_tools: preservedAllowedTools,
+    denied_tools: preservedDeniedTools,
     reconnect: initialConfig?.reconnect,
   };
 };

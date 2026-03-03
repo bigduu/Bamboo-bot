@@ -21,6 +21,7 @@ import {
 } from "../../../../services/mcp";
 import { useMcpSettings } from "./hooks/useMcpSettings";
 import { McpServerTable } from "./mcp/McpServerTable";
+import { McpServerFormModal } from "./mcp/McpServerFormModal";
 import { McpToolList } from "./mcp/McpToolList";
 
 const { Text } = Typography;
@@ -115,10 +116,13 @@ const SystemSettingsMcpTab: React.FC = () => {
     selectedServerId,
     selectedServerTools,
     isLoadingServers,
+    isMutatingConfig,
     isRefreshingAll,
     isSelectedServerToolsLoading,
     error,
     setSelectedServerId,
+    addServer,
+    updateServer,
     deleteServer,
     connectServer,
     disconnectServer,
@@ -126,6 +130,12 @@ const SystemSettingsMcpTab: React.FC = () => {
     refreshAll,
     isServerActionLoading,
   } = useMcpSettings();
+
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+  const [serverModalMode, setServerModalMode] = useState<"create" | "edit">(
+    "create",
+  );
+  const [editingServer, setEditingServer] = useState<McpServer | null>(null);
 
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<ImportMode>("merge");
@@ -205,6 +215,38 @@ const SystemSettingsMcpTab: React.FC = () => {
       msgApi.error(
         getErrorMessage(refreshError, "Failed to refresh MCP status"),
       );
+    }
+  };
+
+  const openCreateServerModal = () => {
+    setEditingServer(null);
+    setServerModalMode("create");
+    setIsServerModalOpen(true);
+  };
+
+  const openEditServerModal = (server: McpServer) => {
+    setEditingServer(server);
+    setServerModalMode("edit");
+    setIsServerModalOpen(true);
+  };
+
+  const handleSubmitServer = async (config: McpServer["config"]) => {
+    try {
+      if (serverModalMode === "edit") {
+        if (!editingServer) {
+          msgApi.error("No server selected for editing");
+          return;
+        }
+        await updateServer(editingServer.id, config);
+        msgApi.success(`Saved ${editingServer.name || editingServer.id}`);
+      } else {
+        await addServer(config);
+        msgApi.success(`Added ${config.name || config.id}`);
+      }
+      setIsServerModalOpen(false);
+      setEditingServer(null);
+    } catch (e) {
+      msgApi.error(getErrorMessage(e, "Failed to save MCP server"));
     }
   };
 
@@ -321,6 +363,9 @@ const SystemSettingsMcpTab: React.FC = () => {
         title="MCP Servers"
         extra={
           <Space>
+            <Button type="primary" onClick={openCreateServerModal}>
+              Add Server
+            </Button>
             <Button
               icon={<ReloadOutlined />}
               loading={isRefreshingAll}
@@ -344,6 +389,7 @@ const SystemSettingsMcpTab: React.FC = () => {
           loading={isLoadingServers}
           selectedServerId={selectedServerId}
           onSelectServer={setSelectedServerId}
+          onEditServer={openEditServerModal}
           onDeleteServer={handleDeleteServer}
           onConnectServer={handleConnectServer}
           onDisconnectServer={handleDisconnectServer}
@@ -356,6 +402,19 @@ const SystemSettingsMcpTab: React.FC = () => {
         server={selectedServer}
         tools={selectedServerTools}
         loading={isSelectedServerToolsLoading}
+      />
+
+      <McpServerFormModal
+        open={isServerModalOpen}
+        mode={serverModalMode}
+        initialConfig={editingServer?.config ?? null}
+        confirmLoading={isMutatingConfig}
+        onCancel={() => {
+          if (isMutatingConfig) return;
+          setIsServerModalOpen(false);
+          setEditingServer(null);
+        }}
+        onSubmit={(config) => void handleSubmitServer(config)}
       />
 
       <Modal
