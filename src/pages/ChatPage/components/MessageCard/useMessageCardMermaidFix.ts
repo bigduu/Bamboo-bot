@@ -30,10 +30,15 @@ const replaceMermaidBlock = (
 };
 
 const fixMermaidWithAI = async (chart: string, model?: string | null) => {
+  const modelToUse = model?.trim();
+  if (!modelToUse) {
+    throw new Error(
+      "No model configured. Please select a default model in Provider Settings.",
+    );
+  }
   const client = getOpenAIClient();
   const response = await client.chat.completions.create({
-    // Use provided model, or use "default" to let backend use its configured default
-    model: model || "default",
+    model: modelToUse,
     messages: [
       {
         role: "system",

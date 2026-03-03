@@ -205,10 +205,16 @@ const generateTitleWithAI = async (
     return "";
   }
 
+  const modelToUse = model?.trim();
+  if (!modelToUse) {
+    throw new Error(
+      "No model configured. Please select a default model in Provider Settings.",
+    );
+  }
+
   const client = getOpenAIClient();
   const response = await client.chat.completions.create({
-    // Use provided model, or use "default" to let backend use its configured default
-    model: model || "default",
+    model: modelToUse,
     temperature: 0.2,
     max_tokens: MAX_TITLE_TOKENS,
     messages: [

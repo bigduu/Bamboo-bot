@@ -9,6 +9,7 @@ import { streamingMessageBus } from "../../utils/streamingMessageBus";
 import { buildRequestMessages } from "./openAiMessageMapping";
 import { streamOpenAIWithTools } from "./openAiStreamingRunner";
 import type OpenAI from "openai";
+import { useActiveModel } from "../useActiveModel";
 
 export interface UseChatOpenAIStreaming {
   sendMessage: (content: string, images?: ImageFile[]) => Promise<void>;
@@ -31,8 +32,8 @@ export function useChatOpenAIStreaming(
   >(null);
   const streamingMessageIdRef = useRef<string | null>(null);
   const streamingContentRef = useRef<string>("");
-  const selectedModel = useAppStore((state) => state.selectedModel);
   const skills = useAppStore((state) => state.skills);
+  const activeModel = useActiveModel();
 
   // Clear tools cache when enabled skills change
   useEffect(() => {
@@ -118,13 +119,13 @@ export function useChatOpenAIStreaming(
         const tools = await resolveTools(chatId);
 
         // Model must be loaded before sending - fail fast if not available
-        if (!selectedModel) {
+        if (!activeModel) {
           throw new Error(
-            "Model configuration not loaded. Please wait for model to load or reload the page.",
+            "No model configured. Please select a default model in Provider Settings.",
           );
         }
 
-        const model = selectedModel;
+        const model = activeModel;
         const openaiMessages = buildMessages(updatedMessages);
 
         await streamOpenAIWithTools({
@@ -163,7 +164,7 @@ export function useChatOpenAIStreaming(
         deps.setProcessing(false);
       }
     },
-    [deps, modal, appMessage, resolveTools, buildMessages, selectedModel],
+    [deps, modal, appMessage, resolveTools, buildMessages, activeModel],
   );
 
   return {

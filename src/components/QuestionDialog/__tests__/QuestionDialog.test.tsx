@@ -32,8 +32,7 @@ describe("QuestionDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsChatProcessing.mockReturnValue(false);
-    // Ensure provider store has a default model available (QuestionDialog falls back to it
-    // when the per-chat selectedModel is not set).
+    // Ensure provider store has a default model available (QuestionDialog uses it for resume).
     useProviderStore.setState({
       currentProvider: "openai",
       providerConfig: {
@@ -52,14 +51,16 @@ describe("QuestionDialog", () => {
           setChatProcessing: mockSetChatProcessing,
           isChatProcessing: mockIsChatProcessing,
           chats: [],
-          selectedModel: "gpt-5-mini",
+          // Keep a "selectedModel" in the store to ensure the dialog does NOT use it
+          // (it may auto-default to models[0] elsewhere).
+          selectedModel: "gpt-5-ultra-expensive",
         });
       }
       return {
         setChatProcessing: mockSetChatProcessing,
         isChatProcessing: mockIsChatProcessing,
         chats: [],
-        selectedModel: "gpt-5-mini",
+        selectedModel: "gpt-5-ultra-expensive",
       };
     });
   });
@@ -190,24 +191,6 @@ describe("QuestionDialog", () => {
         events_url: "/events/test-session-1",
       }); // /execute
 
-    // No per-chat model selected.
-    (useAppStore as any).mockImplementation((selector: (state: any) => any) => {
-      if (typeof selector === "function") {
-        return selector({
-          setChatProcessing: mockSetChatProcessing,
-          isChatProcessing: mockIsChatProcessing,
-          chats: [],
-          selectedModel: undefined,
-        });
-      }
-      return {
-        setChatProcessing: mockSetChatProcessing,
-        isChatProcessing: mockIsChatProcessing,
-        chats: [],
-        selectedModel: undefined,
-      };
-    });
-
     await act(async () => {
       render(<QuestionDialog {...defaultProps} />);
     });
@@ -222,9 +205,12 @@ describe("QuestionDialog", () => {
     });
 
     await waitFor(() => {
-      expect(agentApiClient.post).toHaveBeenCalledWith("execute/test-session-1", {
-        model: "gpt-5-mini",
-      });
+      expect(agentApiClient.post).toHaveBeenCalledWith(
+        "execute/test-session-1",
+        {
+          model: "gpt-5-mini",
+        },
+      );
     });
   });
 

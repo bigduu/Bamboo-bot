@@ -48,7 +48,6 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
   const emptyCountRef = useRef(0);
 
   const setChatProcessing = useAppStore((state) => state.setChatProcessing);
-  const selectedModel = useAppStore((state) => state.selectedModel);
   const activeModel = useActiveModel();
 
   // v2: chatId === sessionId
@@ -131,9 +130,8 @@ export const QuestionDialog: React.FC<QuestionDialogProps> = ({
 
       // Step 2: Restart agent execution
       try {
-        // Prefer the chat-selected model (if any), otherwise fall back to the
-        // provider's configured default model.
-        const modelToUse = selectedModel?.trim() || activeModel?.trim();
+        // Always resume with the currently-active provider model.
+        const modelToUse = activeModel?.trim();
         if (!modelToUse) {
           // Do not guess a model here. The user must explicitly configure one.
           message.error(
