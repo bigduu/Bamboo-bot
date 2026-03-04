@@ -1,7 +1,7 @@
 {
-  "name": "copilot_chat",
+  "name": "bodhi",
   "private": true,
-  "version": "2026.3.3",
+  "version": "2026.03.08",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,12 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "rebrand:public": "node scripts/rebrand.cjs --target=public",
+    "rebrand:internal": "node scripts/rebrand.cjs --target=internal",
+    "build:public": "npm run rebrand:public && npm run build",
+    "build:internal": "npm run rebrand:internal && npm run build",
+    "tauri:build:public": "npm run rebrand:public && npm run tauri:build",
+    "tauri:build:internal": "npm run rebrand:internal && npm run tauri:build",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
