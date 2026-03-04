@@ -70,9 +70,13 @@ function App() {
             onDecline={() => {
               // Exit the application
               if (typeof window !== "undefined" && "__TAURI__" in window) {
-                // Tauri specific exit
-                import("@tauri-apps/api/process").then(({ exit }) => {
+                // Tauri specific exit - use plugin-process
+                import("@tauri-apps/plugin-process").then(({ exit }) => {
                   exit(0);
+                }).catch((error) => {
+                  console.error("Failed to exit app:", error);
+                  // Fallback: close window
+                  window.close();
                 });
               } else {
                 // Browser fallback - close tab

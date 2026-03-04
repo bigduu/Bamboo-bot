@@ -38,6 +38,7 @@
     "@tanstack/react-virtual": "^3.13.12",
     "@tauri-apps/plugin-dialog": "~2",
     "@tauri-apps/plugin-fs": "~2",
+    "@tauri-apps/plugin-process": "^2.3.1",
     "@types/markdown-it": "^14.1.2",
     "@types/react-syntax-highlighter": "^15.5.13",
     "antd": "^5.24.7",

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Typography, Space } from "antd";
-import { ExitOutlined, CheckOutlined } from "@ant-design/icons";
+import { LogoutOutlined, CheckOutlined } from "@ant-design/icons";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -100,7 +100,7 @@ export const StartupConfirmation: React.FC<StartupConfirmationProps> = ({
         <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
           <Button
             size="large"
-            icon={<ExitOutlined />}
+            icon={<LogoutOutlined />}
             onClick={handleDecline}
             danger
           >
@@ -155,9 +155,9 @@ export const useStartupConfirmation = (isInternal: boolean) => {
     setShowConfirmation(false);
     // Exit the application
     if (typeof window !== "undefined" && "__TAURI__" in window) {
-      // Use Tauri API to exit
-      import("@tauri-apps/api/app").then((app) => {
-        app.exit(0);
+      // Use Tauri plugin-process to exit
+      import("@tauri-apps/plugin-process").then(({ exit }) => {
+        exit(0);
       }).catch((error) => {
         console.error("Failed to exit app:", error);
         // Fallback: close window
