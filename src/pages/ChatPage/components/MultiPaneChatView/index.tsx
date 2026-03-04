@@ -91,8 +91,8 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
             type="text"
             icon={<BorderHorizontalOutlined />}
             disabled={!canSplit}
-            title="左右分屏"
-            aria-label="左右分屏"
+            title="Split Horizontal"
+            aria-label="Split Horizontal"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -110,8 +110,8 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
             type="text"
             icon={<BorderVerticleOutlined />}
             disabled={!canSplit}
-            title="上下分屏"
-            aria-label="上下分屏"
+            title="Split Vertical"
+            aria-label="Split Vertical"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -129,8 +129,8 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
             danger
             icon={<CloseOutlined />}
             disabled={!canClose}
-            title="关闭"
-            aria-label="关闭"
+            title="Close"
+            aria-label="Close"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -154,10 +154,10 @@ const PaneShell: React.FC<{ leafId: string }> = ({ leafId }) => {
           style={{ height: "100%", minHeight: 0, padding: token.paddingLG }}
         >
           <div style={{ color: token.colorTextSecondary }}>
-            选择一个会话开始聊天
+            Select a session to start chatting
           </div>
           <div style={{ color: token.colorTextTertiary, fontSize: 12 }}>
-            悬停右上角可以分屏/关闭
+            Hover over top-right corner to split/close
           </div>
         </Flex>
       )}
