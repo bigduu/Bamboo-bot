@@ -1,21 +1,29 @@
 name: "publish"
 
 on:
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
+    inputs:
+      lotus_version:
+        description: "Lotus npm version to bundle (default: latest)"
+        required: false
+        default: "latest"
   push:
     branches:
-      - release # Triggers on push to the release branch
+      - release
 
 jobs:
   publish-tauri:
+    env:
+      LOTUS_SOURCE: package
+      LOTUS_PACKAGE_NAME: "@bigduu/lotus"
     permissions:
-      contents: write # Needed to create a GitHub release
+      contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-latest" # Intel and Apple Silicon (Rosetta)
-            args: "" # Tauri action automatically builds universal macOS binaries by default if no target is specified.
+          - platform: "macos-latest"
+            args: ""
           - platform: "ubuntu-22.04"
             args: ""
           - platform: "windows-latest"
@@ -34,22 +42,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: lts/* # Use the latest Long-Term Support version of Node.js
-          cache: "yarn" # Or 'npm' or 'pnpm' depending on your project
+          node-version: lts/*
+          cache: "npm"
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        # No specific targets needed for macos-latest as tauri-action handles universal builds.
-        # For other platforms, specific targets might be required if not building for the host architecture.
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target" # Adjust if your tauri project is in a subdirectory
+          workspaces: "./src-tauri -> target"
 
-      - name: Install frontend dependencies
-        # Adjust the command based on your package manager (e.g., npm install, pnpm install)
-        run: yarn install
+      - name: Install shell dependencies
+        run: npm ci
+
+      - name: Install Lotus package
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.lotus_version }}" ]; then
+            LOTUS_VERSION="${{ github.event.inputs.lotus_version }}"
+          else
+            LOTUS_VERSION="latest"
+          fi
+          echo "Using @bigduu/lotus@${LOTUS_VERSION}"
+          npm install --no-save "@bigduu/lotus@${LOTUS_VERSION}"
+
+      - name: Print Lotus source resolution
+        run: npm run web:source:info
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -65,12 +83,12 @@ jobs:
       - name: Upload Build Artifacts to Workflow
         uses: actions/upload-artifact@v4
         with:
-          name: app-build-${{ matrix.platform }} # Unique name for each platform's artifact
-          path: | # Paths to the expected build outputs for Tauri
+          name: app-build-${{ matrix.platform }}
+          path: |
             src-tauri/target/release/bundle/dmg/*.dmg
             src-tauri/target/release/bundle/macos/*.app.tar.gz
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/msi/*.msi.zip
-          if-no-files-found: warn # Warn if some patterns don't match (expected, as not all artifacts are built on all OSes)
+          if-no-files-found: warn
