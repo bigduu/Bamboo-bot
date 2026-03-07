@@ -77,7 +77,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-process = "2"
 
 # Bamboo engine (shared by src-tauri and e2e-backend)
-bamboo-agent = { path = "../bamboo" }
+bamboo-agent = "2026.3.3"
 
 # Development
 tempfile = "3"
