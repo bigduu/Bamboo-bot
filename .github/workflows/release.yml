@@ -102,11 +102,14 @@ jobs:
           const tauriConfigPath = 'src-tauri/tauri.conf.json';
 
           const cargoBefore = fs.readFileSync(cargoPath, 'utf8');
-          const cargoAfter = cargoBefore.replace(/^version\s*=\s*"[^"]+"/m, `version = "${target}"`);
-          if (cargoBefore === cargoAfter) {
-            throw new Error('Unable to update src-tauri/Cargo.toml version');
+          const cargoVersionPattern = /^version\s*=\s*"[^"]+"/m;
+          if (!cargoVersionPattern.test(cargoBefore)) {
+            throw new Error('Unable to find version entry in src-tauri/Cargo.toml');
           }
-          fs.writeFileSync(cargoPath, cargoAfter);
+          const cargoAfter = cargoBefore.replace(/^version\s*=\s*"[^"]+"/m, `version = "${target}"`);
+          if (cargoBefore !== cargoAfter) {
+            fs.writeFileSync(cargoPath, cargoAfter);
+          }
 
           const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, 'utf8'));
           tauriConfig.version = target;
