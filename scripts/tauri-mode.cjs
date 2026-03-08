@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 const { spawnSync } = require("node:child_process");
+const path = require("node:path");
+const ROOT = path.resolve(__dirname, "..");
 
 function parseArgs(argv) {
   return argv.reduce((acc, arg) => {
@@ -37,12 +39,14 @@ const env = {
   BODHI_INTERNAL_BUILD: mode === "internal" ? "true" : "false",
 };
 
-const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+const isWindows = process.platform === "win32";
 const npmArgs = ["run", `tauri:${target}`];
 
-let result = spawnSync(npmCmd, npmArgs, {
+let result = spawnSync("npm", npmArgs, {
   stdio: "inherit",
   env,
+  cwd: ROOT,
+  shell: isWindows,
 });
 
 if (typeof result.status === "number") {
@@ -51,15 +55,16 @@ if (typeof result.status === "number") {
 
 // Some Windows shells/process environments fail to resolve npm.cmd when spawned
 // without an intermediate shell. Retry once through shell for resilience.
-if (process.platform === "win32") {
+if (isWindows) {
   const fallbackCommand = `npm run tauri:${target}`;
   if (result.error && result.error.message) {
     console.warn(`⚠️ Direct npm launch failed: ${result.error.message}`);
   }
-  console.warn(`⚠️ Retrying via shell: ${fallbackCommand}`);
+  console.warn(`⚠️ Retrying via shell in cwd=${ROOT}: ${fallbackCommand}`);
   result = spawnSync(fallbackCommand, {
     stdio: "inherit",
     env,
+    cwd: ROOT,
     shell: true,
   });
   if (typeof result.status === "number") {

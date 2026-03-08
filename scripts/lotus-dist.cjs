@@ -71,11 +71,13 @@ function resolvePackageRoot() {
 }
 
 function runNpmScript(prefix, script) {
-  const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-  const npmArgs = ["--prefix", prefix, "run", script];
-  let result = spawnSync(npmCmd, npmArgs, {
+  const isWindows = process.platform === "win32";
+  // Use cwd instead of --prefix to avoid Windows path argument parsing issues.
+  let result = spawnSync("npm", ["run", script], {
     stdio: "inherit",
     env: process.env,
+    cwd: prefix,
+    shell: isWindows,
   });
 
   if (typeof result.status === "number") {
@@ -85,17 +87,17 @@ function runNpmScript(prefix, script) {
     return;
   }
 
-  // Some Windows shells/process environments fail to resolve npm.cmd when
-  // spawned directly. Retry once through shell before failing.
-  if (process.platform === "win32") {
-    const fallbackCommand = `npm --prefix "${prefix}" run ${script}`;
+  // Retry once through an explicit command string on Windows before failing.
+  if (isWindows) {
+    const fallbackCommand = `npm run ${script}`;
     if (result.error && result.error.message) {
       console.warn(`⚠️ Direct npm launch failed: ${result.error.message}`);
     }
-    console.warn(`⚠️ Retrying via shell: ${fallbackCommand}`);
+    console.warn(`⚠️ Retrying via shell in cwd=${prefix}: ${fallbackCommand}`);
     result = spawnSync(fallbackCommand, {
       stdio: "inherit",
       env: process.env,
+      cwd: prefix,
       shell: true,
     });
 
@@ -107,6 +109,9 @@ function runNpmScript(prefix, script) {
     }
   }
 
+  if (result.error && result.error.message) {
+    console.error(`❌ npm launch error in ${prefix}: ${result.error.message}`);
+  }
   fail(`Failed to run npm script "${script}" in ${prefix}`);
 }
 
