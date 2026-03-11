@@ -10,6 +10,7 @@
     {
       "identifier": "fs:write-all"
     },
+    "shell:default",
     "process:default",
     "process:allow-exit"
   ]
