@@ -614,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "bodhi"
-version = "2026.3.20"
+version = "2026.3.30"
 dependencies = [
  "anyhow",
  "arboard",
