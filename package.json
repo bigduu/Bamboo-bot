@@ -1,7 +1,7 @@
 {
   "name": "bodhi-shell",
   "private": true,
-  "version": "2026.3.100",
+  "version": "2026.3.101",
   "type": "module",
   "scripts": {
     "dev": "npm --prefix ../lotus run dev",
