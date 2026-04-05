@@ -1,50 +1,101 @@
-# Bodhi Shell
+# Bodhi AI
 
-Bodhi is the Tauri desktop shell for Lotus. After the project split, Lotus owns frontend product code, while Bodhi owns desktop runtime concerns: native commands, window lifecycle, packaging, and release behavior.
+Bodhi AI is the AI agent that feels like a real product, not just a smarter chat box.
 
-## Ownership and Scope
+It is a **desktop AI workbench** designed to help you move work forward on your own machine: plan tasks, run tools, connect MCP systems, keep long-running context alive, and turn repeated work into automation.
 
-- `lotus`: frontend source of truth (React/Vite UI, web tests, E2E)
-- `bodhi`: desktop shell (`src-tauri`), app packaging, native integrations
-- `bamboo`: backend agent service/framework
+<p align="center">
+  <img src="./docs/assets/bodhi-workbench.png" alt="Bodhi AI workbench" width="100%" />
+</p>
 
-Bodhi can currently source Lotus assets from either:
-- a local sibling checkout (`../lotus`), or
-- the published npm package (`@bigduu/lotus`)
+## Why people try Bodhi AI
 
-## Architecture
+Because most AI tools still stop at one of these stages:
 
-```text
-+-------------------------+        +----------------------+
-|      Bodhi (Tauri)      | <----> |   bamboo-agent API   |
-|  - native Rust commands |        |  local/remote backend|
-|  - desktop packaging    |        +----------------------+
-|  - bundles Lotus assets |
-+------------+------------+
-             |
-             v
-       Lotus frontend
-   (local checkout or npm package)
+- they answer well, but do not really **work**
+- they can call tools, but still feel like a **wrapper around chat**
+- they look powerful, but the execution is still a **black box**
+- they help once, but do not become a **lasting work system**
+
+Bodhi AI is built to push past that.
+
+## What Bodhi AI wants to be
+
+Bodhi AI is not trying to be “just another AI interface.”
+It is trying to become your **desktop AI teammate**:
+
+- something you can install and actually use every day
+- something that shows its work instead of hiding it
+- something that can remember, adapt, and keep long tasks moving
+- something that turns success into workflows and schedules
+
+## The pitch in one sentence
+
+**Bodhi AI turns AI from a chat experience into a desktop work system.**
+
+## Why Bodhi AI feels different
+
+### 1. It feels like an AI product, not a demo
+Bodhi AI is built as a desktop-native experience with real surfaces for settings, providers, env vars, metrics, skills, MCP, and workflow-driven work.
+
+### 2. It does not just answer — it advances work
+The point is not only to generate output. The point is to break work into steps, run tools, manage state, and keep execution moving.
+
+### 3. The process is visible
+Instead of waiting on a black box, you can see tasks, tools, events, status changes, and runtime behavior as the system moves.
+
+### 4. It gets more valuable over time
+A one-off useful run can become a workflow. A workflow can become a schedule. Bodhi AI is designed to compound.
+
+### 5. It has a real runtime behind it
+Bodhi AI is powered by Bamboo, a structured Rust runtime for context, memory, tools, tasks, scheduling, MCP, and execution boundaries.
+
+## Compared with other AI agents
+
+| Common pattern | Bodhi AI |
+|---|---|
+| Chat-first AI interface | **Desktop-first AI workbench** |
+| Good at answers, weaker at execution | **Built to move tasks forward** |
+| Black-box behavior | **Visible tasks, tools, and event flow** |
+| One-off usefulness | **Workflow + schedule compounding** |
+| Thin shell around model access | **Backed by a structured runtime** |
+
+## Screenshots
+
+### Main workbench
+<p align="center">
+  <img src="./docs/assets/bodhi-workbench.png" alt="Bodhi AI desktop workbench" width="100%" />
+</p>
+
+### Provider settings
+<p align="center">
+  <img src="./docs/assets/bodhi-provider-settings.png" alt="Bodhi AI provider settings" width="100%" />
+</p>
+
+### Environment variables and local integrations
+<p align="center">
+  <img src="./docs/assets/bodhi-env-vars.png" alt="Bodhi AI environment variables settings" width="100%" />
+</p>
+
+### Metrics and usage view
+<p align="center">
+  <img src="./docs/assets/bodhi-metrics.png" alt="Bodhi AI metrics" width="100%" />
+</p>
+
+## What’s underneath
+
+Bodhi AI is one layer in a larger system:
+
+- `bodhi` — desktop shell and product surface
+- `lotus` — visible UI layer
+- `bamboo` — structured local Rust runtime
+
+```mermaid
+graph TD
+  B[Bodhi AI desktop product] --> L[Lotus UI]
+  B --> R[Bamboo runtime]
+  L --> R
 ```
-
-## Repository Layout
-
-```text
-bodhi/
-├── src-tauri/              # Tauri app (Rust)
-├── scripts/                # Lotus source/rebrand helpers
-├── docs/                   # Bodhi-specific documentation
-├── e2e-backend/            # backend fixtures/helpers
-└── .lotus-dist/            # staged Lotus frontend assets consumed by Tauri
-```
-
-Legacy frontend mirror files are intentionally removed from Bodhi root (`src/`, `public/`, `index.html`, Vite/TS configs). Frontend source of truth lives in Lotus only.
-
-## Prerequisites
-
-- Node.js LTS (20+ recommended)
-- Rust stable (`rustup`)
-- Optional local `../lotus` checkout (required for `tauri:dev` and local web scripts)
 
 ## Development
 
@@ -57,66 +108,41 @@ npm run tauri:dev
 Useful commands:
 
 ```bash
-npm run tauri:build         # build desktop app
-npm run web:build           # stage Lotus dist into .lotus-dist
-npm run web:source:info     # print Lotus source resolution
-npm run web:verify:migration # fail if legacy frontend mirror files reappear
-npm run type-check          # delegates to ../lotus
-npm run test:run            # delegates to ../lotus Vitest
-npm run test:e2e            # delegates to ../lotus/e2e
+npm run tauri:build
+npm run web:build
+npm run web:source:info
+npm run type-check
+npm run test:run
+npm run test:e2e
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-## Lotus Source Modes
+## Lotus source modes
 
-`npm run web:build` stages frontend assets into `bodhi/.lotus-dist`, which Tauri consumes as `frontendDist`.
+Bodhi AI can source Lotus assets from:
 
-- `LOTUS_SOURCE=auto` (default): local `../lotus` first, then npm package
-- `LOTUS_SOURCE=local`: force local mode
-- `LOTUS_SOURCE=package`: force package mode
-- `LOTUS_LOCAL_PATH`: override local path (default `../lotus`)
-- `LOTUS_PACKAGE_NAME`: override package name (default `@bigduu/lotus`)
+- a local sibling checkout (`../lotus`)
+- the published npm package (`@bigduu/lotus`)
 
-Package-mode build example:
+Supported environment variables:
 
-```bash
-cd bodhi
-npm install @bigduu/lotus@<version>
-LOTUS_SOURCE=package LOTUS_PACKAGE_NAME=@bigduu/lotus npm run tauri:build
-```
+- `LOTUS_SOURCE=auto|local|package`
+- `LOTUS_LOCAL_PATH`
+- `LOTUS_PACKAGE_NAME`
 
-## Build Profiles
+## Docs
 
-- `npm run tauri:dev:public`
-- `npm run tauri:dev:internal`
-- `npm run tauri:build:public`
-- `npm run tauri:build:internal`
+- [Docs index](./docs/README.md)
+- [Architecture docs](./docs/architecture/README.md)
+- [Reports](./docs/reports/README.md)
+- [Configuration docs](./docs/configuration/README.md)
+- [Deployment docs](./docs/deployment/DEPLOYMENT_GUIDE.md)
 
-These profiles control shell mode/rebrand behavior while keeping app identity as Bodhi.
+## When Bodhi AI is the right choice
 
-## CI Boundary
+Choose Bodhi AI if you want:
 
-- Lotus CI: web checks and frontend artifacts only
-- Bodhi CI: Tauri build and desktop packaging
-
-## macOS Local Self-Signing
-
-Releases may provide unsigned macOS app bundles. End users can self-sign locally after download.
-
-Use:
-
-```bash
-bash scripts/self-sign-macos-app.sh --input ~/Downloads/Bodhi_2026.3.11_aarch64.dmg
-```
-
-Or sign an existing app directly:
-
-```bash
-bash scripts/self-sign-macos-app.sh --input /Applications/Bodhi.app --open
-```
-
-What the script does:
-- mounts `.dmg` and copies `Bodhi.app` to `/Applications` (configurable via `--install-dir`)
-- removes quarantine attribute
-- applies ad-hoc deep signature (`codesign --force --deep --sign -`)
-- runs verification commands (`codesign` and `spctl`)
+- a **desktop AI agent product** with stronger AI product feel
+- a system that **shows its work** instead of hiding execution
+- something that can evolve from one run into **workflows and schedules**
+- Bamboo’s runtime power in a **more usable, more compelling product surface**

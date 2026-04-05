@@ -1,7 +1,8 @@
 {
   "name": "bodhi-shell",
   "private": true,
-  "version": "2026.4.2",
+  "version": "2026.4.5",
+  "description": "Bodhi AI is a desktop AI agent that moves work forward, shows its work, and turns successful runs into automation.",
   "type": "module",
   "scripts": {
     "dev": "npm --prefix ../lotus run dev",

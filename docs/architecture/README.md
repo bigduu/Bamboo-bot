@@ -1,76 +1,49 @@
 # Architecture Documentation
 
-This directory contains project architecture design and system enhancement documentation.
+This directory contains Bodhi-owned architecture documentation for the desktop shell, runtime boundary, and system integration story.
 
-## 📋 Core Architecture
+## Core Architecture
 
-### Context & Session Management (v2.0)
-- [`CONTEXT_SESSION_ARCHITECTURE.md`](./CONTEXT_SESSION_ARCHITECTURE.md) - **NEW** Complete architecture overview for Context Manager v2.0
+### System and product map
+- [`zenith-flow-diagram.md`](./zenith-flow-diagram.md) - High-level architecture flow across Bamboo, Lotus, Bodhi, and Pavilion
+
+### Context and session management
+- [`CONTEXT_SESSION_ARCHITECTURE.md`](./CONTEXT_SESSION_ARCHITECTURE.md) - Complete architecture overview for Context Manager v2.0
 - [`context-manager-migration.md`](./context-manager-migration.md) - Migration guide from v1.0 to v2.0
 - [`context_manager_fsm_plan.md`](./context_manager_fsm_plan.md) - Finite State Machine design
 - [`context_manager_plan.md`](./context_manager_plan.md) - Original planning document
 
-### Frontend and Interaction Architecture
+### Interaction and workflow architecture
 - Frontend architecture moved to Lotus:
   - [`../../../lotus/docs/architecture/FRONTEND_ARCHITECTURE.md`](../../../lotus/docs/architecture/FRONTEND_ARCHITECTURE.md)
 - [`AGENT_LOOP_ARCHITECTURE.md`](./AGENT_LOOP_ARCHITECTURE.md) - Agent interaction loop
 - [`WORKFLOW_SYSTEM_ARCHITECTURE.md`](./WORKFLOW_SYSTEM_ARCHITECTURE.md) - Workflow system design
 
-### Tool System
+### Tool and model system
 - [`tools-system.md`](./tools-system.md) - Tool system developer guide
+- [`copilot_model_refactor_plan.md`](./copilot_model_refactor_plan.md) - Copilot model refactor
+- [`openai_adapter_plan.md`](./openai_adapter_plan.md) - OpenAI adapter design
 
-### Enhancement Plans
+### Enhancement plans
 - [`MERMAID_ENHANCEMENT.md`](./MERMAID_ENHANCEMENT.md) - Mermaid diagram enhancements
 - [`SYSTEM_PROMPT_PERSISTENCE_DESIGN.md`](./SYSTEM_PROMPT_PERSISTENCE_DESIGN.md) - System prompt persistence design
 - [`SYSTEM_PROMPT_IMPLEMENTATION_STATUS.md`](./SYSTEM_PROMPT_IMPLEMENTATION_STATUS.md) - Implementation status
 
-### Model Integration
-- [`copilot_model_refactor_plan.md`](./copilot_model_refactor_plan.md) - Copilot model refactor
-- [`openai_adapter_plan.md`](./openai_adapter_plan.md) - OpenAI adapter design
+## Suggested reading
 
-## 📖 Quick Start
+### I want the big picture
+1. [`zenith-flow-diagram.md`](./zenith-flow-diagram.md)
+2. [`CONTEXT_SESSION_ARCHITECTURE.md`](./CONTEXT_SESSION_ARCHITECTURE.md)
+3. [`AGENT_LOOP_ARCHITECTURE.md`](./AGENT_LOOP_ARCHITECTURE.md)
 
-### For New Developers
-1. Start with [`CONTEXT_SESSION_ARCHITECTURE.md`](./CONTEXT_SESSION_ARCHITECTURE.md) to understand the core system
-2. Read [`../../../lotus/docs/architecture/FRONTEND_ARCHITECTURE.md`](../../../lotus/docs/architecture/FRONTEND_ARCHITECTURE.md) for frontend structure
-3. Review [`tools-system.md`](./tools-system.md) for tool development
+### I want to understand the desktop/runtime boundary
+1. [`zenith-flow-diagram.md`](./zenith-flow-diagram.md)
+2. [`WORKFLOW_SYSTEM_ARCHITECTURE.md`](./WORKFLOW_SYSTEM_ARCHITECTURE.md)
+3. [`tools-system.md`](./tools-system.md)
 
-### For Migration
-1. Read [`context-manager-migration.md`](./context-manager-migration.md) for migration steps
-2. Check [Release Notes](../release/CONTEXT_MANAGER_V2_RELEASE_NOTES.md) for breaking changes
-3. Review [API Documentation](../api/CONTEXT_MANAGER_API.md) for new endpoints
+### I want frontend details
+- See Lotus: [`../../../lotus/docs/architecture/FRONTEND_ARCHITECTURE.md`](../../../lotus/docs/architecture/FRONTEND_ARCHITECTURE.md)
 
-## 🏗️ Document Categories
+## Maintenance note
 
-### System Architecture
-Documents describing overall system design and component relationships:
-- Context & Session Management
-- Frontend Architecture
-- Agent Loop Architecture
-
-### Feature Enhancements
-Documents for specific feature improvements and optimizations:
-- Mermaid Enhancement
-- System Prompt Enhancement
-- Tool Call Flow Improvements
-
-### Migration Guides
-Documents for architecture changes and system upgrades:
-- Context Manager Migration
-- Tool Architecture Migration
-
-## 🔄 Maintenance
-
-Architecture documentation should be updated as the system evolves to ensure consistency with actual implementation.
-
-### Recent Updates
-- **2025-11-09**: Added Context Manager v2.0 architecture documentation
-- **2025-11-09**: Created comprehensive API documentation
-- **2025-11-09**: Published v2.0 release notes
-
-## 📚 Related Documentation
-
-- [API Documentation](../api/) - REST API and SSE event reference
-- [Release Notes](../release/) - Version history and changelogs
-- [Migration Notes](../migration/) - Structured change and rollout notes
-- [Development Guides](../development/) - Development workflows and guidelines
+Bodhi architecture docs should stay focused on desktop shell behavior, desktop product structure, and Bamboo/Lotus integration boundaries. Deep backend runtime internals should live in Bamboo docs.
