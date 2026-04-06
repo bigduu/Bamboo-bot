@@ -6,6 +6,8 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const OUTPUT_DIST = path.join(ROOT, ".lotus-dist");
+const BAMBOO_ROOT = path.resolve(ROOT, "../bamboo");
+const BAMBOO_FRONTEND_PACKAGE_SCRIPT = path.join(BAMBOO_ROOT, "scripts/frontend-package.cjs");
 const LEGACY_FRONTEND_MIRROR_PATHS = [
   "index.html",
   "public",
@@ -139,6 +141,30 @@ function copyDist(sourceDist) {
   console.log(`✅ Synced Lotus dist: ${sourceDist} -> ${OUTPUT_DIST}`);
 }
 
+function syncBambooFrontendPackageIfAvailable() {
+  if (!fs.existsSync(BAMBOO_FRONTEND_PACKAGE_SCRIPT)) {
+    console.log(
+      `ℹ️ Skipping Bamboo frontend package sync because script is missing: ${BAMBOO_FRONTEND_PACKAGE_SCRIPT}`,
+    );
+    return;
+  }
+
+  console.log(`ℹ️ Syncing Bamboo frontend package via ${BAMBOO_FRONTEND_PACKAGE_SCRIPT}`);
+  const isWindows = process.platform === "win32";
+  const result = spawnSync("node", [BAMBOO_FRONTEND_PACKAGE_SCRIPT, "stage:prebuilt"], {
+    stdio: "inherit",
+    env: process.env,
+    cwd: ROOT,
+    shell: isWindows,
+  });
+
+  if (typeof result.status === "number" && result.status === 0) {
+    return;
+  }
+
+  fail("Failed to sync Bamboo frontend package from Bodhi stage flow");
+}
+
 function resolveSource() {
   if (!["auto", "local", "package"].includes(SOURCE_MODE)) {
     fail(`Invalid LOTUS_SOURCE="${SOURCE_MODE}" (expected auto|local|package)`);
@@ -188,6 +214,7 @@ function stageDist() {
     console.log(`ℹ️ Using local Lotus at ${LOCAL_PATH}`);
     runNpmScript(LOCAL_PATH, "build");
     copyDist(path.join(LOCAL_PATH, "dist"));
+    syncBambooFrontendPackageIfAvailable();
     return;
   }
 
@@ -195,6 +222,7 @@ function stageDist() {
   const packageDist = path.join(packageRoot, "dist");
   console.log(`ℹ️ Using packaged Lotus "${PACKAGE_NAME}" at ${packageRoot}`);
   copyDist(packageDist);
+  syncBambooFrontendPackageIfAvailable();
 }
 
 function runLocalOnly(script) {

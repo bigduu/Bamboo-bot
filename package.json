@@ -5,7 +5,7 @@
   "description": "Bodhi AI is a desktop AI agent that moves work forward, shows its work, and turns successful runs into automation.",
   "type": "module",
   "scripts": {
-    "dev": "npm --prefix ../lotus run dev",
+    "dev": "npm run web:dev",
     "build": "npm run web:build",
     "preview": "npm --prefix ../lotus run preview",
     "type-check": "npm --prefix ../lotus run type-check",
@@ -13,7 +13,7 @@
     "test:run": "npm --prefix ../lotus run test:run",
     "format": "npm --prefix ../lotus run format",
     "format:check": "npm --prefix ../lotus run format:check",
-    "web:dev": "npm --prefix ../lotus run dev",
+    "web:dev": "node scripts/lotus-dist.cjs stage && npm --prefix ../lotus run dev",
     "web:build": "node scripts/lotus-dist.cjs stage && node scripts/lotus-dist.cjs verify:migration && node scripts/lotus-dist.cjs verify:docs-boundary",
     "web:source:info": "node scripts/lotus-dist.cjs info",
     "web:verify:migration": "node scripts/lotus-dist.cjs verify:migration",
